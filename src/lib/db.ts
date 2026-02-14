@@ -135,7 +135,7 @@ export async function reorderTasks(
 export async function updateTask(
   projectId: string,
   taskId: string,
-  data: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "order" | "findings" | "humanSteps" | "agentLog">>
+  data: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "order" | "findings" | "humanSteps" | "agentLog" | "locked">>
 ): Promise<Task | null> {
   const db = await getStateDb(projectId);
   const task = db.data.tasks.find((t) => t.id === taskId);

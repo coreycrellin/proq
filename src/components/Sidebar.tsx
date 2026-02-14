@@ -1,12 +1,14 @@
-'use client';
+"use client";
 
-import React, { Fragment } from 'react';
+import React, { Fragment } from "react";
 import {
   PlusIcon,
   LayoutGridIcon,
   MessageSquareIcon,
-} from 'lucide-react';
-import type { Project, Task, TaskStatus } from '@/lib/types';
+  RefreshCwIcon,
+  CheckCircle2Icon,
+} from "lucide-react";
+import type { Project, Task, TaskStatus } from "@/lib/types";
 
 interface SidebarProps {
   projects: Project[];
@@ -19,16 +21,6 @@ interface SidebarProps {
   chatPreview?: string;
 }
 
-function StatusDot({ tasks }: { tasks: Task[] }) {
-  const hasInProgress = tasks.some((t) => t.status === 'in-progress');
-  const hasVerify = tasks.some((t) => t.status === 'verify');
-
-  let color = 'bg-zinc-600'; // gray default
-  if (hasInProgress) color = 'bg-green-400';
-  else if (hasVerify) color = 'bg-amber-400';
-
-  return <span className={`inline-block w-2 h-2 rounded-full ${color} flex-shrink-0`} />;
-}
 
 function TaskStatusSummary({ tasks }: { tasks: Task[] }) {
   const counts: Partial<Record<TaskStatus, number>> = {};
@@ -36,25 +28,45 @@ function TaskStatusSummary({ tasks }: { tasks: Task[] }) {
     counts[task.status] = (counts[task.status] || 0) + 1;
   }
 
-  const segments: string[] = [];
-  if (counts['todo']) segments.push(`${counts['todo']} todo`);
-  if (counts['in-progress']) segments.push(`${counts['in-progress']} in progress`);
-  if (counts['verify']) segments.push(`${counts['verify']} verify`);
-  if (counts['done']) segments.push(`${counts['done']} done`);
+  const segments: React.ReactNode[] = [];
+  if (counts["in-progress"]) {
+    segments.push(
+      <span key="ip" className="flex items-center gap-1">
+        <RefreshCwIcon className="w-3 h-3 text-blue-400 animate-[spin_3s_linear_infinite]" />
+        <span className="text-zinc-400">{counts["in-progress"]} in progress</span>
+      </span>
+    );
+  }
+  if (counts["verify"]) {
+    segments.push(
+      <span key="v" className="flex items-center gap-1">
+        <CheckCircle2Icon className="w-3 h-3 text-green-400" />
+        <span className="text-zinc-400">{counts["verify"]} to verify</span>
+      </span>
+    );
+  }
+  if (counts["todo"]) {
+    segments.push(
+      <span key="t" className="flex items-center gap-1">
+        <span className="inline-block w-2 h-2 rounded-full bg-zinc-500 flex-shrink-0" />
+        <span className="text-zinc-400">{counts["todo"]} todo</span>
+      </span>
+    );
+  }
 
   if (segments.length === 0) {
-    return <span className="text-zinc-600 text-[11px]">No tasks</span>;
+    return <span className="text-zinc-600 text-[11px]">No active tasks</span>;
   }
 
   return (
-    <span className="text-zinc-500 text-[11px]">
+    <div className="flex items-center gap-1 flex-wrap">
       {segments.map((seg, i) => (
         <Fragment key={i}>
-          {i > 0 && <span className="text-zinc-700"> &middot; </span>}
+          {i > 0 && <span className="text-zinc-700">·</span>}
           {seg}
         </Fragment>
       ))}
-    </span>
+    </div>
   );
 }
 
@@ -74,7 +86,7 @@ export function Sidebar({
       <div className="h-16 flex items-center px-4 border-b border-zinc-800/50">
         <LayoutGridIcon className="w-5 h-5 text-zinc-400 mr-3" />
         <span className="text-sm font-bold tracking-wide text-zinc-100 uppercase">
-          Mission Control
+          Claude Queued
         </span>
       </div>
 
@@ -82,17 +94,17 @@ export function Sidebar({
       <button
         onClick={onSelectChat}
         className={`w-full text-left p-3 px-4 relative group py-4 border-b border-zinc-800/60
-          ${isChatActive ? 'bg-zinc-800' : 'hover:bg-zinc-800/40'}`}
+          ${isChatActive ? "bg-zinc-800" : "hover:bg-zinc-800/40"}`}
       >
         {isChatActive && (
           <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500" />
         )}
         <div className="flex items-center gap-2.5">
           <MessageSquareIcon
-            className={`w-4 h-4 ${isChatActive ? 'text-blue-400' : 'text-zinc-500 group-hover:text-zinc-300'}`}
+            className={`w-4 h-4 ${isChatActive ? "text-blue-400" : "text-zinc-500 group-hover:text-zinc-300"}`}
           />
           <span
-            className={`text-sm font-medium ${isChatActive ? 'text-zinc-100' : 'text-zinc-300 group-hover:text-zinc-100'}`}
+            className={`text-sm font-medium ${isChatActive ? "text-zinc-100" : "text-zinc-300 group-hover:text-zinc-100"}`}
           >
             Big Claude
           </span>
@@ -117,25 +129,27 @@ export function Sidebar({
               key={project.id}
               onClick={() => onSelectProject(project.id)}
               className={`w-full text-left p-3 px-4 relative group
-                ${isActive ? 'bg-zinc-800' : 'hover:bg-zinc-800/40'}
-                ${index > 0 ? 'border-t border-zinc-800/60' : ''}
+                ${isActive ? "bg-zinc-800" : "hover:bg-zinc-800/40"}
+                ${index > 0 ? "border-t border-zinc-800/60" : ""}
                 py-4`}
             >
               {isActive && (
                 <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500" />
               )}
-              <div className="flex items-center gap-2">
-                <StatusDot tasks={tasks} />
-                <span
-                  className={`text-sm font-medium leading-tight ${isActive ? 'text-zinc-100' : 'text-zinc-300 group-hover:text-zinc-100'}`}
-                >
-                  {project.name}
-                </span>
+              {/* Project Name */}
+              <div
+                className={`text-sm font-medium leading-tight ${isActive ? "text-zinc-100" : "text-zinc-300 group-hover:text-zinc-100"}`}
+              >
+                {project.name}
               </div>
-              <div className="text-[11px] font-mono text-zinc-600 mt-1 truncate pl-4">
+
+              {/* Path */}
+              <div className="text-[11px] font-mono text-zinc-600 mt-1 truncate">
                 {project.path}
               </div>
-              <div className="mt-2 pl-4">
+
+              {/* Task Summary */}
+              <div className="mt-2.5 text-[11px]">
                 <TaskStatusSummary tasks={tasks} />
               </div>
             </button>

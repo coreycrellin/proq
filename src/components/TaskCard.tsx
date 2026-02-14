@@ -4,6 +4,7 @@ import React from 'react';
 import {
   AlertTriangleIcon,
   Trash2Icon,
+  Loader2Icon,
 } from 'lucide-react';
 import type { Task } from '@/lib/types';
 
@@ -17,11 +18,15 @@ interface TaskCardProps {
 export function TaskCard({ task, isDragOverlay, onDelete, onClick }: TaskCardProps) {
   const steps = task.humanSteps?.split('\n').filter(Boolean) || [];
   const priority = task.priority || 'medium';
+  const isLocked = task.status === 'in-progress' && task.locked;
 
   return (
     <div
       className={`
-        group relative bg-zinc-800/30 border border-zinc-800 rounded-md overflow-hidden
+        group relative bg-zinc-800/30 border rounded-md overflow-hidden
+        ${isLocked
+          ? 'border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.15)] animate-pulse-subtle'
+          : 'border-zinc-800'}
         ${isDragOverlay ? 'ring-1 ring-blue-500 shadow-lg shadow-black/40' : 'hover:bg-zinc-900 hover:border-zinc-700 cursor-pointer'}
       `}
       onClick={() => !isDragOverlay && onClick?.(task)}
@@ -44,6 +49,9 @@ export function TaskCard({ task, isDragOverlay, onDelete, onClick }: TaskCardPro
           <h4 className="text-sm text-zinc-200 leading-snug font-normal">
             {task.title}
           </h4>
+          {isLocked && (
+            <Loader2Icon className="w-3.5 h-3.5 text-blue-400 animate-spin flex-shrink-0 mt-0.5" />
+          )}
         </div>
 
         {task.description && (

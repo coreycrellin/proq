@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { reorderTasks, getProject } from "@/lib/db";
+import { reorderTasks, getProject, getAllTasks, updateTask } from "@/lib/db";
+import { dispatchTask, abortTask } from "@/lib/agent-dispatch";
 
 type Params = { params: { id: string } };
 
@@ -21,6 +22,27 @@ export async function PUT(request: Request, { params }: Params) {
     );
   }
 
+  // Snapshot previous statuses before reorder
+  const previousTasks = await getAllTasks(params.id);
+  const prevStatusMap = new Map(previousTasks.map((t) => [t.id, t.status]));
+
   await reorderTasks(params.id, items);
+
+  // Detect status transitions and fire dispatch/abort
+  for (const item of items) {
+    const prevStatus = prevStatusMap.get(item.id);
+    const newStatus = item.status;
+    if (!newStatus || prevStatus === newStatus) continue;
+
+    if (newStatus === "in-progress" && prevStatus !== "in-progress") {
+      const task = previousTasks.find((t) => t.id === item.id);
+      await updateTask(params.id, item.id, { locked: true });
+      dispatchTask(params.id, item.id, task?.title ?? "", task?.description ?? "");
+    } else if (prevStatus === "in-progress" && newStatus === "todo") {
+      await updateTask(params.id, item.id, { locked: false });
+      abortTask(params.id, item.id);
+    }
+  }
+
   return NextResponse.json({ success: true });
 }

@@ -10,7 +10,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCenter,
+  rectIntersection,
   useDroppable,
 } from '@dnd-kit/core';
 import {
@@ -200,7 +200,7 @@ export function KanbanBoard({
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
+    const { active } = event;
     setActiveDragId(null);
     setOverColumnId(null);
 
@@ -209,15 +209,9 @@ export function KanbanBoard({
       return;
     }
 
-    if (!over) {
-      setLocalTasks(null);
-      return;
-    }
-
     const activeId = active.id as string;
     const activeTask = localTasks.find((t) => t.id === activeId);
-    const originalTask = tasks.find((t) => t.id === activeId);
-    if (!activeTask || !originalTask) {
+    if (!activeTask) {
       setLocalTasks(null);
       return;
     }
@@ -252,7 +246,7 @@ export function KanbanBoard({
     <div className="flex-1 h-full overflow-x-auto bg-zinc-950">
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={rectIntersection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -285,7 +279,7 @@ export function KanbanBoard({
                         key={task.id}
                         task={task}
                         onDelete={onDeleteTask}
-                        onClick={onClickTask}
+                        onClick={task.status === 'in-progress' && task.locked ? undefined : onClickTask}
                       />
                     ))}
 

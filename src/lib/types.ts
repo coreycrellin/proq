@@ -27,6 +27,7 @@ export interface Task {
   findings?: string;
   humanSteps?: string;
   agentLog?: string;
+  locked?: boolean;
   createdAt: string;
   updatedAt: string;
 }
