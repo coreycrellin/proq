@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mission Control
+
+A project management dashboard for managing multiple coding projects — built to serve as the control plane for AI-assisted development workflows.
+
+## Features
+
+- **Project Sidebar** — Persistent left panel showing all projects with real-time status indicators (active, review, idle, error)
+- **Kanban Board** — 4-column drag-and-drop task board (Todo → In Progress → Verify → Done) powered by @dnd-kit
+- **Chat Panel** — Terminal-style activity log and chat interface with resizable split pane
+- **Live Preview** — Embedded iframe for viewing running dev servers
+- **Code Tab** — Quick launcher for opening projects in your editor
+- **Agent-Ready API** — RESTful endpoints designed for AI agent integration, with task fields for findings, human review steps, and execution logs
+
+## Tech Stack
+
+- **Framework:** Next.js 14 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS + shadcn/ui
+- **Database:** lowdb (JSON file storage)
+- **Drag & Drop:** @dnd-kit
+- **Icons:** Lucide React
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Data Storage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Mission Control uses file-based JSON storage — no external database required.
 
-## Learn More
+- `data/config.json` — Project registry
+- `data/state/{project-id}.json` — Per-project tasks and chat history
 
-To learn more about Next.js, take a look at the following resources:
+State files are gitignored so each environment maintains its own data.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+All endpoints are under `/api/projects`:
 
-## Deploy on Vercel
+| Endpoint | Methods | Description |
+|----------|---------|-------------|
+| `/api/projects` | GET, POST | List or create projects |
+| `/api/projects/[id]` | GET, PATCH, DELETE | Single project operations |
+| `/api/projects/[id]/tasks` | GET, POST | List or create tasks |
+| `/api/projects/[id]/tasks/[taskId]` | PATCH, DELETE | Update or delete a task |
+| `/api/projects/[id]/chat` | GET, POST | Chat/activity log |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev    # Development server
+npm run build  # Production build
+npm run start  # Production server
+npm run lint   # ESLint
+```

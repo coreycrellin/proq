@@ -1,101 +1,302 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { TerminalIcon } from 'lucide-react';
+import { Sidebar } from '@/components/Sidebar';
+import { TopBar, type TabOption } from '@/components/TopBar';
+import { KanbanBoard } from '@/components/KanbanBoard';
+import { ChatPanel } from '@/components/ChatPanel';
+import { LiveTab } from '@/components/LiveTab';
+import { CodeTab } from '@/components/CodeTab';
+import { AddProjectModal } from '@/components/AddProjectModal';
+import { AddTaskModal } from '@/components/AddTaskModal';
+import { TaskDetailModal } from '@/components/TaskDetailModal';
+import type { Project, Task, ChatLogEntry } from '@/lib/types';
+
+export default function Dashboard() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasksByProject, setTasksByProject] = useState<Record<string, Task[]>>({});
+  const [chatLog, setChatLog] = useState<ChatLogEntry[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<TabOption>('project');
+  const [chatPercent, setChatPercent] = useState(60);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isChatView, setIsChatView] = useState(false);
+  const [showAddProject, setShowAddProject] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [mainChatMessages, setMainChatMessages] = useState<ChatLogEntry[]>([
+    {
+      role: 'twin',
+      message: "Hey! I'm your AI assistant. Ask me anything across all your projects.",
+      timestamp: new Date().toISOString(),
+    },
+  ]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const fetchProjects = useCallback(() => {
+    fetch('/api/projects')
+      .then((r) => r.json())
+      .then((data: Project[]) => {
+        setProjects(data);
+        if (data.length > 0 && !activeProjectId) {
+          setActiveProjectId(data[0].id);
+        }
+        data.forEach((p) => {
+          fetch(`/api/projects/${p.id}/tasks`)
+            .then((r) => r.json())
+            .then((tasks: Task[]) => {
+              setTasksByProject((prev) => ({ ...prev, [p.id]: tasks }));
+            });
+        });
+      });
+  }, [activeProjectId]);
+
+  // Fetch projects on mount
+  useEffect(() => {
+    fetchProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const refreshTasks = useCallback(() => {
+    if (!activeProjectId) return;
+    fetch(`/api/projects/${activeProjectId}/tasks`)
+      .then((r) => r.json())
+      .then((tasks: Task[]) => {
+        setTasksByProject((prev) => ({ ...prev, [activeProjectId]: tasks }));
+      });
+  }, [activeProjectId]);
+
+  // Fetch chat for active project
+  useEffect(() => {
+    if (!activeProjectId) return;
+    fetch(`/api/projects/${activeProjectId}/chat`)
+      .then((r) => r.json())
+      .then((log: ChatLogEntry[]) => setChatLog(log));
+  }, [activeProjectId]);
+
+  const activeProject = projects.find((p) => p.id === activeProjectId);
+  const activeTasks = tasksByProject[activeProjectId] || [];
+
+  const deleteTask = async (taskId: string) => {
+    setTasksByProject((prev) => ({
+      ...prev,
+      [activeProjectId]: (prev[activeProjectId] || []).filter((t) => t.id !== taskId),
+    }));
+    await fetch(`/api/projects/${activeProjectId}/tasks/${taskId}`, {
+      method: 'DELETE',
+    });
+  };
+
+  const reorderTasks = async (reordered: Task[]) => {
+    // Optimistic update
+    setTasksByProject((prev) => ({
+      ...prev,
+      [activeProjectId]: reordered,
+    }));
+
+    // Build reorder items for all affected columns
+    const items = reordered.map((t) => ({
+      id: t.id,
+      order: t.order ?? 0,
+      status: t.status,
+    }));
+
+    await fetch(`/api/projects/${activeProjectId}/tasks/reorder`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    });
+  };
+
+  const updateTask = async (taskId: string, data: Partial<Task>) => {
+    // Optimistic update
+    setTasksByProject((prev) => ({
+      ...prev,
+      [activeProjectId]: (prev[activeProjectId] || []).map((t) =>
+        t.id === taskId ? { ...t, ...data, updatedAt: new Date().toISOString() } : t
+      ),
+    }));
+    // Also update selected task if it's the one being edited
+    setSelectedTask((prev) =>
+      prev && prev.id === taskId
+        ? { ...prev, ...data, updatedAt: new Date().toISOString() }
+        : prev
+    );
+    await fetch(`/api/projects/${activeProjectId}/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  };
+
+  const sendMessage = async (content: string) => {
+    const entry: ChatLogEntry = {
+      role: 'brian',
+      message: content,
+      timestamp: new Date().toISOString(),
+    };
+    setChatLog((prev) => [...prev, entry]);
+    await fetch(`/api/projects/${activeProjectId}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'brian', message: content }),
+    });
+  };
+
+  const sendMainChatMessage = (content: string) => {
+    const entry: ChatLogEntry = {
+      role: 'brian',
+      message: content,
+      timestamp: new Date().toISOString(),
+    };
+    setMainChatMessages((prev) => [...prev, entry]);
+  };
+
+  // Resize handle
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const percent = ((rect.height - y) / rect.height) * 100;
+      setChatPercent(Math.min(85, Math.max(15, percent)));
+    };
+    const handleMouseUp = () => setIsDragging(false);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  const handleSelectProject = (id: string) => {
+    setActiveProjectId(id);
+    setIsChatView(false);
+  };
+
+  const handleSelectChat = () => {
+    setIsChatView(true);
+  };
+
+  const chatPreview =
+    mainChatMessages.length > 0
+      ? mainChatMessages[mainChatMessages.length - 1].message.slice(0, 60) +
+        (mainChatMessages[mainChatMessages.length - 1].message.length > 60 ? '\u2026' : '')
+      : undefined;
+
+  if (!activeProject && projects.length === 0) {
+    return (
+      <div className="flex h-screen w-full bg-zinc-950 text-zinc-100 items-center justify-center">
+        <div className="text-zinc-500 text-sm">Loading...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="flex h-screen w-full bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
+      <Sidebar
+        projects={projects}
+        tasksByProject={tasksByProject}
+        activeProjectId={activeProjectId}
+        onSelectProject={handleSelectProject}
+        onAddProject={() => setShowAddProject(true)}
+        isChatActive={isChatView}
+        onSelectChat={handleSelectChat}
+        chatPreview={chatPreview}
+      />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <div className="flex-1 flex flex-col min-w-0">
+        {isChatView ? (
+          <>
+            <header className="h-16 border-b border-zinc-800 bg-zinc-950 flex items-center px-6 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <TerminalIcon className="w-5 h-5 text-zinc-400" />
+                <h1 className="text-lg font-semibold text-zinc-100 leading-tight">Chat</h1>
+              </div>
+            </header>
+            <main className="flex-1 flex flex-col overflow-hidden">
+              <ChatPanel
+                messages={mainChatMessages}
+                onSendMessage={sendMainChatMessage}
+                style={{ flex: 1 }}
+              />
+            </main>
+          </>
+        ) : activeProject ? (
+          <>
+            <TopBar project={activeProject} activeTab={activeTab} onTabChange={setActiveTab} />
+
+            <main ref={containerRef} className="flex-1 flex flex-col overflow-hidden relative">
+              {activeTab === 'project' && (
+                <>
+                  <div
+                    className="flex-1 min-h-0 overflow-hidden"
+                    style={{ flexBasis: `${100 - chatPercent}%` }}
+                  >
+                    <KanbanBoard
+                      tasks={activeTasks}
+                      onReorderTasks={reorderTasks}
+                      onAddTask={() => setShowAddTask(true)}
+                      onDeleteTask={deleteTask}
+                      onClickTask={setSelectedTask}
+                    />
+                  </div>
+
+                  <div
+                    onMouseDown={handleMouseDown}
+                    className={`w-full h-0 border-t border-zinc-800 hover:border-zinc-600 cursor-row-resize relative z-10 ${
+                      isDragging ? 'border-zinc-600' : ''
+                    }`}
+                    style={{ margin: '-2px 0', padding: '2px 0' }}
+                  />
+
+                  <ChatPanel
+                    messages={chatLog}
+                    onSendMessage={sendMessage}
+                    style={{ flexBasis: `${chatPercent}%` }}
+                  />
+                </>
+              )}
+
+              {activeTab === 'live' && <LiveTab project={activeProject} />}
+              {activeTab === 'code' && <CodeTab project={activeProject} />}
+            </main>
+          </>
+        ) : null}
+      </div>
+
+      {isDragging && <div className="fixed inset-0 z-50 cursor-row-resize" />}
+
+      <AddProjectModal
+        open={showAddProject}
+        onClose={() => setShowAddProject(false)}
+        onCreated={fetchProjects}
+      />
+
+      {activeProjectId && (
+        <AddTaskModal
+          open={showAddTask}
+          projectId={activeProjectId}
+          onClose={() => setShowAddTask(false)}
+          onCreated={refreshTasks}
+        />
+      )}
+
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onUpdate={updateTask}
+        />
+      )}
     </div>
   );
 }
