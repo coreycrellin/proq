@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { execSync } from "child_process";
 import { getTask, updateTask, deleteTask } from "@/lib/db";
 import { dispatchTask, abortTask } from "@/lib/agent-dispatch";
+
+const OPENCLAW = "/opt/homebrew/bin/openclaw";
 
 type Params = { params: { id: string; taskId: string } };
 
@@ -25,6 +28,17 @@ export async function PATCH(request: Request, { params }: Params) {
       await updateTask(params.id, params.taskId, { locked: false });
       updated.locked = false;
       abortTask(params.id, params.taskId);
+    } else if (prevTask.status === "in-progress" && body.status === "verify") {
+      // Agent completed — notify Slack
+      try {
+        const title = updated.title.replace(/"/g, '\\"');
+        execSync(
+          `${OPENCLAW} message send --channel slack --target C0AEY4GBCGM --message "✅ *${title}* → verify"`,
+          { timeout: 10_000 }
+        );
+      } catch (e) {
+        console.error(`[task-patch] slack verify notify failed:`, e);
+      }
     }
   }
 
