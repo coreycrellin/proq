@@ -257,6 +257,7 @@ export default function Dashboard() {
                       onAddTask={() => setShowAddTask(true)}
                       onDeleteTask={deleteTask}
                       onClickTask={setSelectedTask}
+                      onRefreshTasks={refreshTasks}
                     />
                   </div>
 

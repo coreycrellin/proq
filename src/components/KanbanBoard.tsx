@@ -36,6 +36,7 @@ interface KanbanBoardProps {
   onAddTask?: () => void;
   onDeleteTask?: (taskId: string) => void;
   onClickTask?: (task: Task) => void;
+  onRefreshTasks?: () => void;
 }
 
 const COLUMNS: { id: TaskStatus; label: string; icon: React.ReactNode }[] = [
@@ -110,6 +111,7 @@ export function KanbanBoard({
   onAddTask,
   onDeleteTask,
   onClickTask,
+  onRefreshTasks,
 }: KanbanBoardProps) {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
@@ -241,10 +243,21 @@ export function KanbanBoard({
       return t;
     });
 
+    // Check if any task moved into in-progress
+    const movedToInProgress = finalTasks.some((t) => {
+      const original = tasks.find((ot) => ot.id === t.id);
+      return original && original.status !== 'in-progress' && t.status === 'in-progress';
+    });
+
     // Keep localTasks as optimistic state until parent props catch up
     setLocalTasks(finalTasks);
     pendingCommitRef.current = finalTasks;
     onReorderTasks(finalTasks);
+
+    // If a task moved to in-progress, refresh after API settles to pick up locked state
+    if (movedToInProgress && onRefreshTasks) {
+      setTimeout(onRefreshTasks, 500);
+    }
   }
 
   function handleDragCancel() {
