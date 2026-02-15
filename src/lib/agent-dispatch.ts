@@ -3,7 +3,7 @@ import { getAllProjects } from "./db";
 import { spawnPty, killPty } from "./pty-server";
 
 const OPENCLAW = "/opt/homebrew/bin/openclaw";
-const MC_API = "http://localhost:3000";
+const MC_API = "http://localhost:7331";
 const CLAUDE = process.env.CLAUDE_BIN || "/Users/brian/.local/bin/claude";
 
 export async function dispatchTask(
