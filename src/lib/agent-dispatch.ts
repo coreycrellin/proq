@@ -29,9 +29,10 @@ export async function dispatchTask(
 
   // Check if running in parallel mode
   const executionMode = await getExecutionMode(projectId);
-  const parallelWarning = executionMode === "parallel"
-    ? `\nNOTE: Multiple agents may be running on this project in parallel. When committing, only stage the specific files you changed — do not use "git add -A" or "git add .".\n`
-    : "";
+  const parallelWarning =
+    executionMode === "parallel"
+      ? `\nNOTE: Multiple agents may be running on this project in parallel. When committing, only stage the specific files you changed — do not use "git add -A" or "git add .".\n`
+      : "";
 
   // Build the agent prompt
   const callbackCurl = `curl -s -X PATCH ${MC_API}/api/projects/${projectId}/tasks/${taskId} \\
@@ -53,8 +54,7 @@ When completely finished, commit and signal complete:
 1. If code was changed, stage and commit the changes with a descriptive message.
 2. Signal back to the main process to update the task board, including the results/summary ("findings") and human steps (if there are any operational steps the user should take to verify, or complete the task)
 ${callbackCurl}
-3. After signaling, change to the main project directory for any follow-up work:
-cd ${projectPath}`;
+`;
     claudeFlags = "--dangerously-skip-permissions";
   } else if (mode === "answer") {
     prompt = `# ${taskTitle}
@@ -65,9 +65,7 @@ IMPORTANT: Do NOT make any code changes. Do NOT create, edit, or delete any file
 ${parallelWarning}
 When completely finished, signal complete:
 ${callbackCurl}
-
-After signaling, change to the main project directory for any follow-up work:
-cd ${projectPath}`;
+`;
     claudeFlags = "--dangerously-skip-permissions";
   } else {
     prompt = `# ${taskTitle}
@@ -78,8 +76,7 @@ When completely finished, commit and signal complete:
 1. If code was changed, stage and commit the changes with a descriptive message.
 2. Signal back to the main process to update the task board, including the results/summary ("findings") and human steps (if there are any operational steps the user should take to verify, or complete the task)
 ${callbackCurl}
-3. After signaling, change to the main project directory for any follow-up work:
-cd ${projectPath}`;
+`;
     claudeFlags = "--dangerously-skip-permissions";
   }
 
