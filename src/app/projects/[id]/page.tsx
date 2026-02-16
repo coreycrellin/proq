@@ -219,8 +219,8 @@ export default function ProjectPage() {
           onSave={updateTask}
           onMoveToInProgress={async (taskId, currentData) => {
             const taskData = tasks.find((t) => t.id === taskId) || modalTask!;
-            setModalTask(null);
             await updateTask(taskId, { ...currentData, status: 'in-progress' });
+            setModalTask(null);
             setAgentModalTask({ ...taskData, ...currentData, status: 'in-progress', locked: true });
           }}
         />
