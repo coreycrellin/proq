@@ -1,6 +1,6 @@
 import { execSync } from "child_process";
 import { getAllProjects, getAllTasks, getExecutionMode } from "./db";
-import { createWorktree, removeWorktree } from "./git-worktree";
+import { isGitRepo, createWorktree, removeWorktree } from "./git-worktree";
 import type { TaskMode } from "./types";
 
 const OPENCLAW = "/opt/homebrew/bin/openclaw";
@@ -73,8 +73,8 @@ ${callbackCurl}`;
   // Escape for shell
   const escapedPrompt = prompt.replace(/'/g, "'\\''");
 
-  // Create isolated worktree for this agent (falls back to projectPath on failure)
-  const worktree = createWorktree(projectPath, shortId);
+  // Create isolated worktree for this agent (falls back to projectPath if not a git repo or on failure)
+  const worktree = isGitRepo(projectPath) ? createWorktree(projectPath, shortId) : null;
   const workingDir = worktree ?? projectPath;
 
   // Launch via tmux — session survives server restarts
@@ -119,12 +119,14 @@ export async function abortTask(projectId: string, taskId: string) {
     );
   }
 
-  // Clean up worktree
+  // Clean up worktree (only if project is a git repo)
   const projects = await getAllProjects();
   const project = projects.find((p) => p.id === projectId);
   if (project) {
     const projectPath = project.path.replace(/^~/, process.env.HOME || "~");
-    removeWorktree(projectPath, shortId);
+    if (isGitRepo(projectPath)) {
+      removeWorktree(projectPath, shortId);
+    }
   }
 }
 

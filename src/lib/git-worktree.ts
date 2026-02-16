@@ -11,6 +11,18 @@ function branchName(shortId: string): string {
   return `mc/${shortId}`;
 }
 
+export function isGitRepo(projectPath: string): boolean {
+  try {
+    execSync(`git -C '${projectPath}' rev-parse --git-dir`, {
+      timeout: 5_000,
+      stdio: "pipe",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Create a git worktree for an agent to work in isolation.
  * Returns the worktree path on success, null on failure (caller falls back to project dir).
