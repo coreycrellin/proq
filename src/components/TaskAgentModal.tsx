@@ -203,8 +203,8 @@ export function TaskAgentModal({ task, projectId, isQueued, onClose, onComplete 
           </div>
 
           {/* Bottom half: agent findings & summary */}
-          <div ref={bottomPanelRef} className={`flex-1 min-h-0 overflow-y-auto ${isLocked && findings.length === 0 ? 'flex flex-col items-center justify-center p-5' : 'p-5 space-y-4'}`}>
-            {findings.length > 0 || !isLocked ? (
+          <div ref={bottomPanelRef} className={`flex-1 min-h-0 overflow-y-auto ${isLocked && !isQueued && findings.length === 0 ? 'flex flex-col items-center justify-center p-5' : 'p-5 space-y-4'}`}>
+            {findings.length > 0 || !isLocked || isQueued ? (
               <div className="flex items-center gap-2">
                 <ClipboardListIcon className="w-3.5 h-3.5 text-warm-600 dark:text-zinc-500" />
                 <span className="text-xs font-medium text-warm-600 dark:text-zinc-500 uppercase tracking-wide">
@@ -241,7 +241,7 @@ export function TaskAgentModal({ task, projectId, isQueued, onClose, onComplete 
                   ))}
                 </ul>
               </div>
-            ) : isLocked ? (
+            ) : isLocked && !isQueued ? (
               <div className="flex flex-col items-center justify-center gap-3">
                 <Loader2Icon className="w-5 h-5 text-blue-400 animate-spin" />
                 <span className="text-xs text-blue-400 font-medium uppercase tracking-wide">
@@ -251,6 +251,10 @@ export function TaskAgentModal({ task, projectId, isQueued, onClose, onComplete 
                   Agent is still working. Findings will appear here when reported.
                 </p>
               </div>
+            ) : isQueued ? (
+              <p className="text-xs text-warm-500 dark:text-zinc-600 italic">
+                Task is queued. Findings will appear here once the agent starts working.
+              </p>
             ) : (
               <p className="text-xs text-warm-500 dark:text-zinc-600 italic">
                 No findings reported.
