@@ -129,6 +129,7 @@ export function KanbanBoard({
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const [localTasks, setLocalTasks] = useState<Task[] | null>(null);
   const pendingCommitRef = useRef<Task[] | null>(null);
+  const lastOverIdRef = useRef<string | null>(null);
   const [pendingRerun, setPendingRerun] = useState<{ finalTasks: Task[]; taskTitle: string } | null>(null);
   const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
@@ -189,6 +190,8 @@ export function KanbanBoard({
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event;
     if (!over || !localTasks) return;
+    if (over.id === lastOverIdRef.current) return;
+    lastOverIdRef.current = over.id as string;
 
     const activeId = active.id as string;
     const overId = over.id as string;
@@ -249,6 +252,7 @@ export function KanbanBoard({
     setActiveDragId(null);
     setOverColumnId(null);
     setDragWidth(null);
+    lastOverIdRef.current = null;
 
     if (!localTasks) {
       setLocalTasks(null);
@@ -311,6 +315,7 @@ export function KanbanBoard({
     setActiveDragId(null);
     setOverColumnId(null);
     setDragWidth(null);
+    lastOverIdRef.current = null;
     setLocalTasks(null);
   }
 
