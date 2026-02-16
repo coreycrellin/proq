@@ -12,6 +12,7 @@ import { TerminalPane } from './TerminalPane';
 
 interface TerminalPanelProps {
   projectId: string;
+  projectPath?: string;
   style?: React.CSSProperties;
   collapsed: boolean;
   onToggleCollapsed: () => void;
@@ -21,7 +22,7 @@ interface TerminalPanelProps {
 /*  Panel component                                                            */
 /* -------------------------------------------------------------------------- */
 
-export default function TerminalPanel({ projectId, style, collapsed, onToggleCollapsed }: TerminalPanelProps) {
+export default function TerminalPanel({ projectId, projectPath, style, collapsed, onToggleCollapsed }: TerminalPanelProps) {
   const { getTabs, getActiveTabId, setActiveTabId, openTab, closeTab } = useTerminalTabs();
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -47,11 +48,11 @@ export default function TerminalPanel({ projectId, style, collapsed, onToggleCol
     await fetch('/api/terminal/spawn', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tabId: id }),
+      body: JSON.stringify({ tabId: id, cwd: projectPath }),
     });
 
     openTab(projectId, id, `Terminal ${shellCount}`, 'shell');
-  }, [tabs, openTab, projectId]);
+  }, [tabs, openTab, projectId, projectPath]);
 
   const removeTab = useCallback(
     (tabId: string) => {

@@ -212,6 +212,7 @@ export default function ProjectPage() {
 
             <TerminalPanel
               projectId={projectId}
+              projectPath={project?.path}
               style={{ flexBasis: `${chatPercent}%` }}
               collapsed={terminalCollapsed}
               onToggleCollapsed={toggleTerminalCollapsed}
