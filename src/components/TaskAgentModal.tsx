@@ -35,6 +35,7 @@ export function TaskAgentModal({ task, projectId, isQueued, onClose, onComplete 
   const [copied, setCopied] = useState(false);
   const [topPanelPercent, setTopPanelPercent] = useState(50);
   const rightPanelRef = useRef<HTMLDivElement>(null);
+  const bottomPanelRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
@@ -61,6 +62,13 @@ export function TaskAgentModal({ task, projectId, isQueued, onClose, onComplete 
     document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
+  }, []);
+
+  // Scroll agent report to bottom on first load
+  useEffect(() => {
+    if (bottomPanelRef.current) {
+      bottomPanelRef.current.scrollTop = bottomPanelRef.current.scrollHeight;
+    }
   }, []);
 
   // Load xterm CSS
@@ -188,25 +196,6 @@ export function TaskAgentModal({ task, projectId, isQueued, onClose, onComplete 
               </p>
             )}
 
-            {/* Human steps banner */}
-            {steps.length > 0 && (
-              <div className="bg-amber-500/8 border border-amber-500/20 rounded-md p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangleIcon className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="text-xs font-medium text-amber-500 uppercase tracking-wide">
-                    Steps for you
-                  </span>
-                </div>
-                <ul className="space-y-1">
-                  {steps.map((step, idx) => (
-                    <li key={idx} className="text-xs text-zinc-300 flex items-start">
-                      <span className="mr-2 text-zinc-600">&bull;</span>
-                      {step}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
 
           {/* Resize handle */}
@@ -218,7 +207,7 @@ export function TaskAgentModal({ task, projectId, isQueued, onClose, onComplete 
           </div>
 
           {/* Bottom half: agent findings & summary */}
-          <div className={`flex-1 min-h-0 overflow-y-auto ${isLocked && findings.length === 0 ? 'flex flex-col items-center justify-center p-5' : 'p-5 space-y-4'}`}>
+          <div ref={bottomPanelRef} className={`flex-1 min-h-0 overflow-y-auto ${isLocked && findings.length === 0 ? 'flex flex-col items-center justify-center p-5' : 'p-5 space-y-4'}`}>
             {findings.length > 0 || !isLocked ? (
               <div className="flex items-center gap-2">
                 <ClipboardListIcon className="w-3.5 h-3.5 text-zinc-500" />
@@ -283,6 +272,26 @@ export function TaskAgentModal({ task, projectId, isQueued, onClose, onComplete 
                 <pre className="text-[11px] text-zinc-500 font-mono bg-zinc-950 border border-zinc-800 rounded-md p-3 overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto">
                   {task.agentLog}
                 </pre>
+              </div>
+            )}
+
+            {/* Human steps banner */}
+            {steps.length > 0 && (
+              <div className="bg-amber-500/8 border border-amber-500/20 rounded-md p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangleIcon className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="text-xs font-medium text-amber-500 uppercase tracking-wide">
+                    Steps for you
+                  </span>
+                </div>
+                <ul className="space-y-1">
+                  {steps.map((step, idx) => (
+                    <li key={idx} className="text-xs text-zinc-300 flex items-start">
+                      <span className="mr-2 text-zinc-600">&bull;</span>
+                      {step}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
