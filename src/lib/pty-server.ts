@@ -30,9 +30,14 @@ export function spawnPty(tabId: string, cmd?: string, cwd?: string): PtyEntry {
   const program = parts[0];
   const args = parts.slice(1).map((a) => a.replace(/^['"]|['"]$/g, ""));
 
-  // Strip CLAUDECODE env var so nested Claude instances don't refuse to start
+  // Clean env: strip vars that cause issues in interactive shells
   const env = { ...process.env } as Record<string, string>;
   delete env.CLAUDECODE;
+  delete env.npm_config_prefix;
+  // Remove all npm_* env vars injected by the parent npm process
+  for (const key of Object.keys(env)) {
+    if (key.startsWith('npm_')) delete env[key];
+  }
 
   const shell = pty.spawn(program, args, {
     name: "xterm-256color",
