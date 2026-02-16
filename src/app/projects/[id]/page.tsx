@@ -38,6 +38,14 @@ export default function ProjectPage() {
     return () => clearInterval(interval);
   }, [projectId, refresh]);
 
+  // Keep agent modal in sync with polled task data
+  useEffect(() => {
+    if (agentModalTask) {
+      const updated = tasks.find((t) => t.id === agentModalTask.id);
+      if (updated) setAgentModalTask(updated);
+    }
+  }, [tasks]);
+
   const deleteTask = async (taskId: string) => {
     await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
       method: 'DELETE',

@@ -25,15 +25,15 @@ export async function dispatchTask(
   const terminalTabId = `task-${shortId}`;
   const tmuxSession = `mc-${shortId}`;
 
-  // Build the callback curl that the agent runs when done
-  const callbackCurl = `curl -s -X PATCH ${MC_API}/api/projects/${projectId}/tasks/${taskId} -H 'Content-Type: application/json' -d '{"status":"verify","locked":false}'`;
-
   // Build the agent prompt
   const prompt = `${taskDescription}
 
 When completely finished:
 1. git add -A && git commit -m "<descriptive message>"
-2. Run this to update the task board: ${callbackCurl}`;
+2. Run this to update the task board (replace the placeholder values):
+curl -s -X PATCH ${MC_API}/api/projects/${projectId}/tasks/${taskId} \\
+  -H 'Content-Type: application/json' \\
+  -d '{"status":"verify","locked":false,"findings":"<newline-separated summary of what you did and found>","humanSteps":"<any steps the human should take to verify, or empty string>"}'`;
 
   // Escape for shell
   const escapedPrompt = prompt.replace(/'/g, "'\\''");
