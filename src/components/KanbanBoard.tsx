@@ -26,8 +26,11 @@ import {
   SearchCheckIcon,
   CheckCircle2Icon,
   PlusIcon,
+  ListOrderedIcon,
+  LayersIcon,
+  ChevronDownIcon,
 } from 'lucide-react';
-import type { Task, TaskStatus } from '@/lib/types';
+import type { Task, TaskStatus, ExecutionMode } from '@/lib/types';
 import { TaskCard } from './TaskCard';
 
 interface KanbanBoardProps {
@@ -37,6 +40,9 @@ interface KanbanBoardProps {
   onDeleteTask?: (taskId: string) => void;
   onClickTask?: (task: Task) => void;
   onRefreshTasks?: () => void;
+  executionMode?: ExecutionMode;
+  onExecutionModeChange?: (mode: ExecutionMode) => void;
+  dispatchedTaskIds?: Set<string>;
 }
 
 const COLUMNS: { id: TaskStatus; label: string; icon: React.ReactNode }[] = [
@@ -71,10 +77,12 @@ function DroppableColumn({
 
 function SortableTaskCard({
   task,
+  isQueued,
   onDelete,
   onClick,
 }: {
   task: Task;
+  isQueued?: boolean;
   onDelete?: (taskId: string) => void;
   onClick?: (task: Task) => void;
 }) {
@@ -100,7 +108,7 @@ function SortableTaskCard({
       {...attributes}
       className={`cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
     >
-      <TaskCard task={task} onDelete={onDelete} onClick={onClick} />
+      <TaskCard task={task} isQueued={isQueued} onDelete={onDelete} onClick={onClick} />
     </div>
   );
 }
@@ -112,12 +120,29 @@ export function KanbanBoard({
   onDeleteTask,
   onClickTask,
   onRefreshTasks,
+  executionMode = 'sequential',
+  onExecutionModeChange,
+  dispatchedTaskIds,
 }: KanbanBoardProps) {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const [localTasks, setLocalTasks] = useState<Task[] | null>(null);
   const pendingCommitRef = useRef<Task[] | null>(null);
   const [pendingRerun, setPendingRerun] = useState<{ finalTasks: Task[]; taskTitle: string } | null>(null);
+  const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
+  const modeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!modeDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(e.target as Node)) {
+        setModeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [modeDropdownOpen]);
 
   // Clear localTasks once the parent props reflect the committed drag result
   useEffect(() => {
@@ -304,6 +329,40 @@ export function KanbanBoard({
                   <div className="flex items-center gap-2">
                     {column.icon}
                     <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{column.label}</h3>
+                    {column.id === 'in-progress' && onExecutionModeChange && (
+                      <div className="relative" ref={modeDropdownRef}>
+                        <button
+                          onClick={() => setModeDropdownOpen(!modeDropdownOpen)}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-medium text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
+                        >
+                          {executionMode === 'sequential' ? (
+                            <ListOrderedIcon className="w-3 h-3" />
+                          ) : (
+                            <LayersIcon className="w-3 h-3" />
+                          )}
+                          <span>{executionMode === 'sequential' ? 'Seq' : 'Par'}</span>
+                          <ChevronDownIcon className="w-3 h-3" />
+                        </button>
+                        {modeDropdownOpen && (
+                          <div className="absolute top-full left-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-xl z-50 min-w-[140px]">
+                            <button
+                              onClick={() => { onExecutionModeChange('sequential'); setModeDropdownOpen(false); }}
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-zinc-700 transition-colors ${executionMode === 'sequential' ? 'text-blue-400' : 'text-zinc-300'}`}
+                            >
+                              <ListOrderedIcon className="w-3.5 h-3.5" />
+                              Sequential
+                            </button>
+                            <button
+                              onClick={() => { onExecutionModeChange('parallel'); setModeDropdownOpen(false); }}
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-zinc-700 transition-colors ${executionMode === 'parallel' ? 'text-blue-400' : 'text-zinc-300'}`}
+                            >
+                              <LayersIcon className="w-3.5 h-3.5" />
+                              Parallel
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-500 font-mono">
                     {colTasks.length}
@@ -312,14 +371,18 @@ export function KanbanBoard({
 
                 <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
                   <div className="flex-1 space-y-3 overflow-y-auto pb-4 px-1 min-h-[80px]">
-                    {colTasks.map((task) => (
-                      <SortableTaskCard
-                        key={task.id}
-                        task={task}
-                        onDelete={onDeleteTask}
-                        onClick={onClickTask}
-                      />
-                    ))}
+                    {colTasks.map((task) => {
+                      const isQueued = column.id === 'in-progress' && task.locked && dispatchedTaskIds != null && !dispatchedTaskIds.has(task.id);
+                      return (
+                        <SortableTaskCard
+                          key={task.id}
+                          task={task}
+                          isQueued={isQueued}
+                          onDelete={onDeleteTask}
+                          onClick={onClickTask}
+                        />
+                      );
+                    })}
 
                     {colTasks.length === 0 && (
                       <div className="h-24 border-2 border-dashed border-zinc-200 dark:border-zinc-900 rounded-lg flex items-center justify-center">

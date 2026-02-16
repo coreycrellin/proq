@@ -65,8 +65,11 @@ export interface AgentSession {
 }
 
 // ── Per-project state ────────────────────────────────────
+export type ExecutionMode = 'sequential' | 'parallel';
+
 export interface ProjectState {
   tasks: Task[];
   chatLog: ChatLogEntry[];
   agentSession?: AgentSession;
+  executionMode?: ExecutionMode;
 }

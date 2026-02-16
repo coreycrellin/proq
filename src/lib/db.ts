@@ -7,6 +7,7 @@ import type {
   ProjectState,
   Task,
   ChatLogEntry,
+  ExecutionMode,
 } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -167,6 +168,21 @@ export async function deleteTask(
   db.data.tasks.splice(idx, 1);
   await db.write();
   return true;
+}
+
+// ═══════════════════════════════════════════════════════════
+// EXECUTION MODE
+// ═══════════════════════════════════════════════════════════
+
+export async function getExecutionMode(projectId: string): Promise<ExecutionMode> {
+  const db = await getStateDb(projectId);
+  return db.data.executionMode ?? 'sequential';
+}
+
+export async function setExecutionMode(projectId: string, mode: ExecutionMode): Promise<void> {
+  const db = await getStateDb(projectId);
+  db.data.executionMode = mode;
+  await db.write();
 }
 
 // ═══════════════════════════════════════════════════════════

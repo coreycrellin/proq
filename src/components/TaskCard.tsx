@@ -5,17 +5,19 @@ import {
   AlertTriangleIcon,
   Trash2Icon,
   Loader2Icon,
+  ClockIcon,
 } from 'lucide-react';
 import type { Task } from '@/lib/types';
 
 interface TaskCardProps {
   task: Task;
   isDragOverlay?: boolean;
+  isQueued?: boolean;
   onDelete?: (taskId: string) => void;
   onClick?: (task: Task) => void;
 }
 
-export function TaskCard({ task, isDragOverlay, onDelete, onClick }: TaskCardProps) {
+export function TaskCard({ task, isDragOverlay, isQueued, onDelete, onClick }: TaskCardProps) {
   const steps = task.humanSteps?.split('\n').filter(Boolean) || [];
   const isLocked = task.status === 'in-progress' && task.locked;
 
@@ -23,8 +25,10 @@ export function TaskCard({ task, isDragOverlay, onDelete, onClick }: TaskCardPro
     <div
       className={`
         group relative bg-white dark:bg-zinc-800/30 border rounded-md overflow-hidden
-        ${isLocked
+        ${isLocked && !isQueued
           ? 'border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.15)] animate-pulse-subtle'
+          : isQueued
+          ? 'border-zinc-500/30'
           : 'border-zinc-200 dark:border-zinc-800'}
         ${isDragOverlay ? 'ring-1 ring-blue-500 shadow-lg shadow-black/20 dark:shadow-black/40' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 cursor-pointer'}
       `}
@@ -66,7 +70,14 @@ export function TaskCard({ task, isDragOverlay, onDelete, onClick }: TaskCardPro
         )}
 
         <div className="flex items-center justify-between mt-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/50">
-          {isLocked ? (
+          {isQueued ? (
+            <div className="flex items-center gap-1.5">
+              <ClockIcon className="w-3 h-3 text-zinc-400" />
+              <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">
+                Queued
+              </span>
+            </div>
+          ) : isLocked ? (
             <div className="flex items-center gap-1.5">
               <Loader2Icon className="w-3 h-3 text-blue-400 animate-spin" />
               <span className="text-[10px] text-blue-400 font-medium uppercase tracking-wide">

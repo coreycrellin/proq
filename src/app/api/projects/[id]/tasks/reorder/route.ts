@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { reorderTasks, getProject, getAllTasks, updateTask } from "@/lib/db";
-import { dispatchTask, abortTask } from "@/lib/agent-dispatch";
+import { dispatchTask, abortTask, shouldDispatch } from "@/lib/agent-dispatch";
 
 type Params = { params: { id: string } };
 
@@ -39,9 +39,11 @@ export async function PUT(request: Request, { params }: Params) {
     if (newStatus === "in-progress" && prevStatus !== "in-progress") {
       const task = previousTasks.find((t) => t.id === item.id);
       await updateTask(params.id, item.id, { locked: true });
-      const terminalTabId = await dispatchTask(params.id, item.id, task?.title ?? "", task?.description ?? "", task?.mode);
-      if (terminalTabId) {
-        dispatched.push({ taskId: item.id, terminalTabId, title: task?.title ?? "" });
+      if (await shouldDispatch(params.id)) {
+        const terminalTabId = await dispatchTask(params.id, item.id, task?.title ?? "", task?.description ?? "", task?.mode);
+        if (terminalTabId) {
+          dispatched.push({ taskId: item.id, terminalTabId, title: task?.title ?? "" });
+        }
       }
     } else if (newStatus === "todo" && prevStatus !== "todo") {
       // Reset session data when moved back to todo from any status

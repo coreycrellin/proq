@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { getAllProjects } from "./db";
+import { getAllProjects, getAllTasks, getExecutionMode } from "./db";
 import type { TaskMode } from "./types";
 
 const OPENCLAW = "/opt/homebrew/bin/openclaw";
@@ -113,4 +113,41 @@ export function abortTask(projectId: string, taskId: string) {
       err,
     );
   }
+}
+
+export function isTaskDispatched(taskId: string): boolean {
+  const shortId = taskId.slice(0, 8);
+  const tmuxSession = `mc-${shortId}`;
+  try {
+    execSync(`tmux has-session -t '${tmuxSession}'`, { timeout: 3_000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function shouldDispatch(projectId: string): Promise<boolean> {
+  const mode = await getExecutionMode(projectId);
+  if (mode === 'parallel') return true;
+
+  // Sequential: check if any task is already actively dispatched
+  const tasks = await getAllTasks(projectId);
+  const inProgressTasks = tasks.filter(t => t.status === 'in-progress' && t.locked);
+  return !inProgressTasks.some(t => isTaskDispatched(t.id));
+}
+
+export async function dispatchNextQueued(projectId: string): Promise<void> {
+  const mode = await getExecutionMode(projectId);
+  if (mode !== 'sequential') return;
+
+  const tasks = await getAllTasks(projectId);
+  const queued = tasks
+    .filter(t => t.status === 'in-progress' && t.locked && !isTaskDispatched(t.id))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  if (queued.length === 0) return;
+
+  const next = queued[0];
+  console.log(`[agent-dispatch] auto-dispatching next queued task: ${next.id}`);
+  await dispatchTask(projectId, next.id, next.title, next.description, next.mode);
 }

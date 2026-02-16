@@ -10,7 +10,7 @@ import { CodeTab } from '@/components/CodeTab';
 import { TaskModal } from '@/components/TaskModal';
 import { TaskAgentModal } from '@/components/TaskAgentModal';
 import { useProjects } from '@/components/ProjectsProvider';
-import type { Task } from '@/lib/types';
+import type { Task, ExecutionMode } from '@/lib/types';
 
 export default function ProjectPage() {
   const params = useParams();
@@ -29,14 +29,33 @@ export default function ProjectPage() {
   });
   const [modalTask, setModalTask] = useState<Task | null>(null);
   const [agentModalTask, setAgentModalTask] = useState<Task | null>(null);
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>('sequential');
+  const [dispatchedTaskIds, setDispatchedTaskIds] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
 
   const project = projects.find((p) => p.id === projectId);
   const tasks = tasksByProject[projectId] || [];
 
+  const fetchExecutionMode = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/execution-mode`);
+      const data = await res.json();
+      setExecutionMode(data.mode);
+      setDispatchedTaskIds(new Set(data.dispatchedTaskIds || []));
+    } catch (e) {
+      console.error('Failed to fetch execution mode:', e);
+    }
+  }, [projectId]);
+
   const refresh = useCallback(() => {
     refreshTasks(projectId);
-  }, [projectId, refreshTasks]);
+    fetchExecutionMode();
+  }, [projectId, refreshTasks, fetchExecutionMode]);
+
+  // Fetch execution mode on project load
+  useEffect(() => {
+    if (projectId) fetchExecutionMode();
+  }, [projectId, fetchExecutionMode]);
 
   // Auto-refresh tasks every 5 seconds
   useEffect(() => {
@@ -86,6 +105,16 @@ export default function ProjectPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+    });
+    refresh();
+  };
+
+  const handleExecutionModeChange = async (mode: ExecutionMode) => {
+    setExecutionMode(mode);
+    await fetch(`/api/projects/${projectId}/execution-mode`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode }),
     });
     refresh();
   };
@@ -165,6 +194,9 @@ export default function ProjectPage() {
                   }
                 }}
                 onRefreshTasks={refresh}
+                executionMode={executionMode}
+                onExecutionModeChange={handleExecutionModeChange}
+                dispatchedTaskIds={dispatchedTaskIds}
               />
             </div>
 

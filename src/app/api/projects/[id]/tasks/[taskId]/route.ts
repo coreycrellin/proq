@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { execSync } from "child_process";
 import { getTask, updateTask, deleteTask } from "@/lib/db";
-import { dispatchTask, abortTask } from "@/lib/agent-dispatch";
+import { dispatchTask, abortTask, shouldDispatch, dispatchNextQueued } from "@/lib/agent-dispatch";
 
 const OPENCLAW = "/opt/homebrew/bin/openclaw";
 
@@ -25,7 +25,9 @@ export async function PATCH(request: Request, { params }: Params) {
     if (body.status === "in-progress" && prevTask.status !== "in-progress") {
       await updateTask(params.id, params.taskId, { locked: true });
       updated.locked = true;
-      terminalTabId = await dispatchTask(params.id, params.taskId, updated.title, updated.description, updated.mode);
+      if (await shouldDispatch(params.id)) {
+        terminalTabId = await dispatchTask(params.id, params.taskId, updated.title, updated.description, updated.mode);
+      }
     } else if (body.status === "todo" && prevTask.status !== "todo") {
       // Reset session data when moved back to todo from any status
       const resetFields = { locked: false, findings: "", humanSteps: "", agentLog: "" };
@@ -34,17 +36,21 @@ export async function PATCH(request: Request, { params }: Params) {
       if (prevTask.status === "in-progress") {
         abortTask(params.id, params.taskId);
       }
-    } else if (prevTask.status === "in-progress" && body.status === "verify") {
+    } else if (prevTask.status === "in-progress" && (body.status === "verify" || body.status === "done")) {
       // Agent completed — notify Slack
       try {
         const title = updated.title.replace(/"/g, '\\"');
         execSync(
-          `${OPENCLAW} message send --channel slack --target C0AEY4GBCGM --message "✅ *${title}* → verify"`,
+          `${OPENCLAW} message send --channel slack --target C0AEY4GBCGM --message "✅ *${title}* → ${body.status}"`,
           { timeout: 10_000 }
         );
       } catch (e) {
         console.error(`[task-patch] slack verify notify failed:`, e);
       }
+      // Auto-dispatch next queued task in sequential mode
+      dispatchNextQueued(params.id).catch(e =>
+        console.error(`[task-patch] auto-dispatch next failed:`, e)
+      );
     }
   }
 
