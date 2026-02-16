@@ -71,6 +71,13 @@ export default function TerminalPanel({ projectId, style, collapsed, onToggleCol
     >
       {/* Tab Bar */}
       <div className="h-14 flex items-center border-t border-zinc-200/60 dark:border-zinc-800/60 bg-zinc-200/20 dark:bg-zinc-900/20 px-1 overflow-x-auto shrink-0">
+        <button
+          onClick={onToggleCollapsed}
+          className="flex items-center justify-center w-7 h-7 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-zinc-200/30 dark:hover:bg-zinc-800/30 rounded-md ml-1 mr-2 shrink-0"
+          title={collapsed ? 'Expand terminal' : 'Collapse terminal'}
+        >
+          {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -106,15 +113,6 @@ export default function TerminalPanel({ projectId, style, collapsed, onToggleCol
           <Plus className="w-3.5 h-3.5" />
         </button>
 
-        {/* Spacer + Collapse toggle */}
-        <div className="flex-1" />
-        <button
-          onClick={onToggleCollapsed}
-          className="flex items-center justify-center w-7 h-7 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-zinc-200/30 dark:hover:bg-zinc-800/30 rounded-md mr-1 shrink-0"
-          title={collapsed ? 'Expand terminal' : 'Collapse terminal'}
-        >
-          {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-        </button>
       </div>
 
       {/* Terminal Panes — each manages its own xterm lifecycle */}
