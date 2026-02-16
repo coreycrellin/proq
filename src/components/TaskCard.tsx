@@ -56,7 +56,7 @@ export function TaskCard({ task, isDragOverlay, onDelete, onClick }: TaskCardPro
           </p>
         )}
 
-        {steps.length > 0 && (
+        {steps.length > 0 && task.status !== 'done' && (
           <div className="mt-2 flex items-center gap-1.5">
             <AlertTriangleIcon className="w-3 h-3 text-amber-500 flex-shrink-0" />
             <span className="text-[10px] text-amber-500 font-medium uppercase tracking-wide">
