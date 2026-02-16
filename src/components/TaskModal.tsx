@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { XIcon, PaperclipIcon, FileIcon, PlayIcon } from 'lucide-react';
+import { XIcon, PaperclipIcon, FileIcon, PlayIcon, Loader2Icon } from 'lucide-react';
 import type { Task, TaskAttachment, TaskMode } from '@/lib/types';
 
 interface TaskModalProps {
@@ -9,7 +9,7 @@ interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (taskId: string, updates: Partial<Task>) => void;
-  onMoveToInProgress?: (taskId: string, currentData: Partial<Task>) => void;
+  onMoveToInProgress?: (taskId: string, currentData: Partial<Task>) => Promise<void>;
 }
 
 function formatSize(bytes: number): string {
@@ -26,6 +26,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
     task.attachments || [],
   );
   const [isDragOver, setIsDragOver] = useState(false);
+  const [dispatching, setDispatching] = useState(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -296,15 +297,20 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
 
             {onMoveToInProgress && (
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (saveTimeout.current) clearTimeout(saveTimeout.current);
-                  onMoveToInProgress(task.id, { title, description, attachments, mode });
+                  setDispatching(true);
+                  await onMoveToInProgress(task.id, { title, description, attachments, mode });
                 }}
-                disabled={!title.trim()}
+                disabled={!title.trim() || dispatching}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-400 border border-blue-500/50 rounded-md hover:bg-blue-500/10 hover:border-blue-400 transition-colors disabled:opacity-30 disabled:pointer-events-none"
               >
-                <PlayIcon className="w-3 h-3" />
-                Move to In Progress
+                {dispatching ? (
+                  <Loader2Icon className="w-3 h-3 animate-spin" />
+                ) : (
+                  <PlayIcon className="w-3 h-3" />
+                )}
+                {dispatching ? 'Starting...' : 'Move to In Progress'}
               </button>
             )}
           </div>
