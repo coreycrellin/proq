@@ -213,32 +213,34 @@ export function KanbanBoard({
       // Moving to a different column
       setLocalTasks((prev) => {
         if (!prev) return prev;
+        const current = prev.find((t) => t.id === activeId);
+        if (!current || current.status === targetStatus) return prev;
         return prev.map((t) =>
           t.id === activeId ? { ...t, status: targetStatus, order: -1 } : t
         );
       });
     } else if (!isOverColumn) {
       // Reordering within same column
-      const colTasks = localTasks.filter((t) => t.status === targetStatus);
-      const oldIndex = colTasks.findIndex((t) => t.id === activeId);
-      const newIndex = colTasks.findIndex((t) => t.id === overId);
+      setLocalTasks((prev) => {
+        if (!prev) return prev;
+        const colTasks = prev.filter((t) => t.status === targetStatus);
+        const oldIndex = colTasks.findIndex((t) => t.id === activeId);
+        const newIndex = colTasks.findIndex((t) => t.id === overId);
+        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return prev;
 
-      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
         const reordered = arrayMove(colTasks, oldIndex, newIndex);
-        // Assign new order values
         const orderMap = new Map<string, number>();
         reordered.forEach((t, i) => orderMap.set(t.id, i));
 
-        setLocalTasks((prev) => {
-          if (!prev) return prev;
-          return prev.map((t) => {
-            if (t.status === targetStatus && orderMap.has(t.id)) {
-              return { ...t, order: orderMap.get(t.id)! };
-            }
-            return t;
-          });
+        return prev.map((t) => {
+          if (t.status === targetStatus && orderMap.has(t.id)) {
+            const newOrder = orderMap.get(t.id)!;
+            if (t.order === newOrder) return t;
+            return { ...t, order: newOrder };
+          }
+          return t;
         });
-      }
+      });
     }
   }
 
