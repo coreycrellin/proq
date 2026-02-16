@@ -31,7 +31,7 @@ async function getStateDb(projectId: string) {
 
 export async function getAllProjects(): Promise<Project[]> {
   const db = await getConfigDb();
-  return db.data.projects;
+  return [...db.data.projects].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
 export async function getProject(id: string): Promise<Project | undefined> {
@@ -72,6 +72,18 @@ export async function deleteProject(id: string): Promise<boolean> {
   const idx = db.data.projects.findIndex((p) => p.id === id);
   if (idx === -1) return false;
   db.data.projects.splice(idx, 1);
+  await db.write();
+  return true;
+}
+
+export async function reorderProjects(
+  orderedIds: string[]
+): Promise<boolean> {
+  const db = await getConfigDb();
+  for (let i = 0; i < orderedIds.length; i++) {
+    const project = db.data.projects.find((p) => p.id === orderedIds[i]);
+    if (project) project.order = i;
+  }
   await db.write();
   return true;
 }

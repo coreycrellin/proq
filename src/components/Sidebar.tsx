@@ -1,22 +1,40 @@
 "use client";
 
-import React, { Fragment } from "react";
+import React, { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   PlusIcon,
   LayoutGridIcon,
   MessageSquareIcon,
   RefreshCwIcon,
   CheckCircle2Icon,
+  MoreHorizontalIcon,
+  GripVerticalIcon,
+  PencilIcon,
+  Trash2Icon,
 } from "lucide-react";
-import type { Task, TaskStatus } from "@/lib/types";
+import type { Project, Task, TaskStatus } from "@/lib/types";
 import { useProjects } from "./ProjectsProvider";
 
 interface SidebarProps {
   onAddProject: () => void;
 }
-
 
 function TaskStatusSummary({ tasks }: { tasks: Task[] }) {
   const counts: Partial<Record<TaskStatus, number>> = {};
@@ -66,11 +84,282 @@ function TaskStatusSummary({ tasks }: { tasks: Task[] }) {
   );
 }
 
+// ── Context Menu ─────────────────────────────────────────
+
+interface ProjectMenuProps {
+  project: Project;
+  onRename: (project: Project) => void;
+  onDelete: (project: Project) => void;
+}
+
+function ProjectMenu({ project, onRename, onDelete }: ProjectMenuProps) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen(!open);
+        }}
+        className="p-1 rounded hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <MoreHorizontalIcon className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-36 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md shadow-lg z-50 py-1">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              onRename(project);
+            }}
+            className="w-full text-left px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2"
+          >
+            <PencilIcon className="w-3.5 h-3.5" />
+            Rename
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              onDelete(project);
+            }}
+            className="w-full text-left px-3 py-1.5 text-sm text-red-500 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2"
+          >
+            <Trash2Icon className="w-3.5 h-3.5" />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Rename Inline Input ──────────────────────────────────
+
+function RenameInput({
+  project,
+  onDone,
+}: {
+  project: Project;
+  onDone: (newName: string | null) => void;
+}) {
+  const [value, setValue] = useState(project.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const submit = () => {
+    const trimmed = value.trim();
+    if (trimmed && trimmed !== project.name) {
+      onDone(trimmed);
+    } else {
+      onDone(null);
+    }
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={submit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") submit();
+        if (e.key === "Escape") onDone(null);
+      }}
+      onClick={(e) => e.preventDefault()}
+      className="text-sm font-medium leading-tight bg-white dark:bg-zinc-700 border border-blue-500 rounded px-1 py-0.5 text-zinc-900 dark:text-zinc-100 outline-none w-full"
+    />
+  );
+}
+
+// ── Sortable Project Item ────────────────────────────────
+
+interface SortableProjectProps {
+  project: Project;
+  index: number;
+  isActive: boolean;
+  tasks: Task[];
+  renamingId: string | null;
+  onRename: (project: Project) => void;
+  onRenameDone: (project: Project, newName: string | null) => void;
+  onDelete: (project: Project) => void;
+}
+
+function SortableProject({
+  project,
+  index,
+  isActive,
+  tasks,
+  renamingId,
+  onRename,
+  onRenameDone,
+  onDelete,
+}: SortableProjectProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: project.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.5 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <Link
+        href={`/projects/${project.id}`}
+        className={`w-full text-left p-3 px-4 relative group block
+          ${isActive ? "bg-zinc-200 dark:bg-zinc-800" : "hover:bg-zinc-200/60 dark:hover:bg-zinc-800/40"}
+          ${index > 0 ? "border-t border-zinc-200/60 dark:border-zinc-800/60" : ""}
+          py-4`}
+      >
+        {isActive && (
+          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500" />
+        )}
+
+        {/* Top row: drag handle + name + menu */}
+        <div className="flex items-center gap-1">
+          <button
+            ref={setActivatorNodeRef}
+            {...listeners}
+            className="p-0.5 -ml-1 cursor-grab active:cursor-grabbing text-zinc-300 dark:text-zinc-600 hover:text-zinc-500 dark:hover:text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+            onClick={(e) => e.preventDefault()}
+          >
+            <GripVerticalIcon className="w-3.5 h-3.5" />
+          </button>
+
+          <div className="flex-1 min-w-0">
+            {renamingId === project.id ? (
+              <RenameInput
+                project={project}
+                onDone={(newName) => onRenameDone(project, newName)}
+              />
+            ) : (
+              <div
+                className={`text-sm font-medium leading-tight truncate ${isActive ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100"}`}
+              >
+                {project.name}
+              </div>
+            )}
+          </div>
+
+          <ProjectMenu
+            project={project}
+            onRename={onRename}
+            onDelete={onDelete}
+          />
+        </div>
+
+        {/* Path */}
+        <div className="text-[11px] font-mono text-zinc-400 dark:text-zinc-600 mt-1 truncate pl-4">
+          {project.path}
+        </div>
+
+        {/* Task Summary */}
+        <div className="mt-2.5 text-[11px] pl-4">
+          <TaskStatusSummary tasks={tasks} />
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+// ── Sidebar ──────────────────────────────────────────────
+
 export function Sidebar({ onAddProject }: SidebarProps) {
   const pathname = usePathname();
-  const { projects, tasksByProject } = useProjects();
+  const router = useRouter();
+  const { projects, tasksByProject, refreshProjects } = useProjects();
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   const isChatActive = pathname === "/chat";
+
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = projects.findIndex((p) => p.id === active.id);
+      const newIndex = projects.findIndex((p) => p.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const reordered = arrayMove(projects, oldIndex, newIndex);
+      const orderedIds = reordered.map((p) => p.id);
+
+      await fetch("/api/projects/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderedIds }),
+      });
+      await refreshProjects();
+    },
+    [projects, refreshProjects]
+  );
+
+  const handleRename = useCallback((project: Project) => {
+    setRenamingId(project.id);
+  }, []);
+
+  const handleRenameDone = useCallback(
+    async (project: Project, newName: string | null) => {
+      setRenamingId(null);
+      if (!newName) return;
+
+      await fetch(`/api/projects/${project.id}/rename`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+      await refreshProjects();
+    },
+    [refreshProjects]
+  );
+
+  const handleDelete = useCallback(
+    async (project: Project) => {
+      await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
+      await refreshProjects();
+
+      // Navigate away if we deleted the active project
+      if (pathname === `/projects/${project.id}`) {
+        router.push("/");
+      }
+    },
+    [refreshProjects, pathname, router]
+  );
 
   return (
     <aside className="w-[260px] h-full bg-zinc-100/50 dark:bg-zinc-800/30 border-r border-zinc-200 dark:border-zinc-800 flex flex-col flex-shrink-0">
@@ -108,40 +397,34 @@ export function Sidebar({ onAddProject }: SidebarProps) {
         <div className="px-4 py-3 text-[10px] font-medium text-zinc-500 uppercase tracking-widest">
           Projects
         </div>
-        {projects.map((project, index) => {
-          const isActive = pathname === `/projects/${project.id}`;
-          const tasks = tasksByProject[project.id] || [];
-          return (
-            <Link
-              key={project.id}
-              href={`/projects/${project.id}`}
-              className={`w-full text-left p-3 px-4 relative group block
-                ${isActive ? "bg-zinc-200 dark:bg-zinc-800" : "hover:bg-zinc-200/60 dark:hover:bg-zinc-800/40"}
-                ${index > 0 ? "border-t border-zinc-200/60 dark:border-zinc-800/60" : ""}
-                py-4`}
-            >
-              {isActive && (
-                <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500" />
-              )}
-              {/* Project Name */}
-              <div
-                className={`text-sm font-medium leading-tight ${isActive ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100"}`}
-              >
-                {project.name}
-              </div>
-
-              {/* Path */}
-              <div className="text-[11px] font-mono text-zinc-400 dark:text-zinc-600 mt-1 truncate">
-                {project.path}
-              </div>
-
-              {/* Task Summary */}
-              <div className="mt-2.5 text-[11px]">
-                <TaskStatusSummary tasks={tasks} />
-              </div>
-            </Link>
-          );
-        })}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={projects.map((p) => p.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {projects.map((project, index) => {
+              const isActive = pathname === `/projects/${project.id}`;
+              const tasks = tasksByProject[project.id] || [];
+              return (
+                <SortableProject
+                  key={project.id}
+                  project={project}
+                  index={index}
+                  isActive={isActive}
+                  tasks={tasks}
+                  renamingId={renamingId}
+                  onRename={handleRename}
+                  onRenameDone={handleRenameDone}
+                  onDelete={handleDelete}
+                />
+              );
+            })}
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Footer */}

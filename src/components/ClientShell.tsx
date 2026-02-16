@@ -1,14 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback } from 'react';
 import { ProjectsProvider } from './ProjectsProvider';
 import { Sidebar } from './Sidebar';
-import { AddProjectModal } from './AddProjectModal';
 import { useProjects } from './ProjectsProvider';
 
 function ShellInner({ children }: { children: React.ReactNode }) {
-  const [showAddProject, setShowAddProject] = useState(false);
   const { refreshProjects, isLoaded } = useProjects();
+
+  const handleAddProject = useCallback(async () => {
+    const res = await fetch('/api/folder-picker', { method: 'POST' });
+    const data = await res.json();
+    if (data.cancelled) return;
+
+    await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: data.name, path: data.path }),
+    });
+    await refreshProjects();
+  }, [refreshProjects]);
 
   if (!isLoaded) {
     return (
@@ -20,15 +31,10 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen w-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans">
-      <Sidebar onAddProject={() => setShowAddProject(true)} />
+      <Sidebar onAddProject={handleAddProject} />
       <div className="flex-1 flex flex-col min-w-0">
         {children}
       </div>
-      <AddProjectModal
-        open={showAddProject}
-        onClose={() => setShowAddProject(false)}
-        onCreated={refreshProjects}
-      />
     </div>
   );
 }

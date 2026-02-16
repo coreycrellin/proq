@@ -7,6 +7,7 @@ export interface Project {
   path: string;
   status?: ProjectStatus;
   serverUrl?: string;
+  order?: number;
   createdAt: string;
 }
 
