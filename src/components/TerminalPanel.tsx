@@ -120,7 +120,7 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
       {!collapsed && (
         <div className="flex-1 relative" style={{ minHeight: 0 }}>
           {tabs.map((tab) => (
-            <TerminalPane key={tab.id} tabId={tab.id} visible={activeTabId === tab.id} />
+            <TerminalPane key={tab.id} tabId={tab.id} visible={activeTabId === tab.id} cwd={projectPath} />
           ))}
         </div>
       )}

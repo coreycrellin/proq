@@ -15,7 +15,8 @@ interface TerminalInstance {
 export function useTerminal(
   tabId: string,
   containerRef: React.RefObject<HTMLDivElement | null>,
-  visible: boolean
+  visible: boolean,
+  cwd?: string,
 ) {
   const instanceRef = useRef<TerminalInstance | null>(null);
 
@@ -60,9 +61,9 @@ export function useTerminal(
       });
 
       // Connect WS — server auto-spawns the PTY if needed and replays scrollback
-      const ws = new WebSocket(
-        `ws://${window.location.hostname}:42069/ws/terminal?id=${encodeURIComponent(tabId)}`
-      );
+      let wsUrl = `ws://${window.location.hostname}:42069/ws/terminal?id=${encodeURIComponent(tabId)}`;
+      if (cwd) wsUrl += `&cwd=${encodeURIComponent(cwd)}`;
+      const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
         const dims = fitAddon.proposeDimensions();
@@ -156,13 +157,15 @@ export function TerminalPane({
   tabId,
   visible,
   enableDrop,
+  cwd,
 }: {
   tabId: string;
   visible: boolean;
   enableDrop?: boolean;
+  cwd?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { sendData } = useTerminal(tabId, containerRef, visible);
+  const { sendData } = useTerminal(tabId, containerRef, visible, cwd);
   const [dropping, setDropping] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {

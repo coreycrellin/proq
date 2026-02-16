@@ -81,7 +81,7 @@ export function spawnPty(tabId: string, cmd?: string, cwd?: string): PtyEntry {
   return entry;
 }
 
-export function attachWs(tabId: string, ws: WebSocket): void {
+export function attachWs(tabId: string, ws: WebSocket, cwd?: string): void {
   let entry = activePtys.get(tabId);
 
   if (!entry) {
@@ -90,7 +90,7 @@ export function attachWs(tabId: string, ws: WebSocket): void {
       const shortId = tabId.slice(5); // strip "task-" prefix
       entry = spawnPty(tabId, `tmux attach -t mc-${shortId}`);
     } else {
-      entry = spawnPty(tabId);
+      entry = spawnPty(tabId, undefined, cwd);
     }
   }
 

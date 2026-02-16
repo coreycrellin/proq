@@ -24,9 +24,10 @@ export function startTerminalServer() {
     if (pathname === "/ws/terminal") {
       wss.handleUpgrade(req, socket, head, (ws) => {
         const tabId = (query.id as string) || "default";
+        const cwd = query.cwd as string | undefined;
         console.log(`[ws] terminal connected: ${tabId}`);
 
-        attachWs(tabId, ws);
+        attachWs(tabId, ws, cwd);
 
         ws.on("message", (raw) => {
           const msg = raw.toString();
