@@ -30,7 +30,7 @@ export function TaskCard({ task, isDragOverlay, isQueued, onDelete, onClick }: T
           : isQueued
           ? 'border-zinc-500/30'
           : 'border-warm-300 dark:border-zinc-800'}
-        ${isDragOverlay ? 'ring-1 ring-blue-500 shadow-lg shadow-black/20 dark:shadow-black/40' : 'hover:bg-warm-100 dark:hover:bg-zinc-900 hover:border-warm-400 dark:hover:border-zinc-700 cursor-pointer'}
+        ${isDragOverlay ? 'ring-1 ring-blue-500 shadow-lg shadow-black/20 dark:shadow-black/40' : `hover:bg-warm-100 dark:hover:bg-zinc-900 cursor-pointer ${isLocked && !isQueued ? '' : 'hover:border-warm-400 dark:hover:border-zinc-700'}`}
       `}
       onClick={() => !isDragOverlay && onClick?.(task)}
     >
