@@ -110,17 +110,6 @@ export function TaskAgentModal({ task, onClose, onComplete }: TaskAgentModalProp
               </p>
             )}
 
-            {/* Complete button for verify status */}
-            {task.status === 'verify' && onComplete && (
-              <button
-                onClick={() => onComplete(task.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-400 border border-green-500/30 rounded-md hover:bg-green-500/10 transition-colors w-fit"
-              >
-                <CheckCircle2Icon className="w-3.5 h-3.5" />
-                Complete
-              </button>
-            )}
-
             {/* Human steps banner */}
             {steps.length > 0 && (
               <div className="bg-amber-500/8 border border-amber-500/20 rounded-md p-3">
@@ -194,6 +183,19 @@ export function TaskAgentModal({ task, onClose, onComplete }: TaskAgentModalProp
               </div>
             )}
           </div>
+
+          {/* Complete button pinned to bottom */}
+          {task.status === 'verify' && onComplete && (
+            <div className="border-t border-zinc-800 p-4">
+              <button
+                onClick={() => onComplete(task.id)}
+                className="flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-medium text-green-400 border border-green-500/30 rounded-md hover:bg-green-500/10 transition-colors"
+              >
+                <CheckCircle2Icon className="w-3.5 h-3.5" />
+                Complete
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Right panel: terminal (70%) ── */}
