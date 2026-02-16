@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   XIcon,
   AlertTriangleIcon,
   Loader2Icon,
   FileTextIcon,
   ClipboardListIcon,
+  ClipboardCopyIcon,
+  CheckIcon,
   CheckCircle2Icon,
   ClockIcon,
 } from 'lucide-react';
@@ -26,6 +28,7 @@ export function TaskAgentModal({ task, onClose, onComplete }: TaskAgentModalProp
   const findings = task.findings?.split('\n').filter(Boolean) || [];
   const isLocked = task.status === 'in-progress' && task.locked;
   const showTerminal = task.status === 'in-progress' || task.status === 'verify';
+  const [copied, setCopied] = useState(false);
 
   // Load xterm CSS
   useEffect(() => {
@@ -139,6 +142,23 @@ export function TaskAgentModal({ task, onClose, onComplete }: TaskAgentModalProp
                 <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
                   Agent Report
                 </span>
+                {findings.length > 0 && (
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(task.findings || '');
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="ml-auto text-zinc-600 hover:text-zinc-300 transition-colors p-0.5"
+                    title="Copy to clipboard"
+                  >
+                    {copied ? (
+                      <CheckIcon className="w-3.5 h-3.5 text-green-400" />
+                    ) : (
+                      <ClipboardCopyIcon className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                )}
               </div>
             ) : null}
 
