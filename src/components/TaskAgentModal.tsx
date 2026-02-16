@@ -64,12 +64,19 @@ export function TaskAgentModal({ task, onClose, onComplete }: TaskAgentModalProp
         className="relative w-full max-w-7xl h-[90vh] flex flex-row rounded-lg border border-[#222] bg-[#141414] shadow-2xl shadow-black/60 mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Left panel: task details (30% with terminal, full width without) ── */}
-        <div className={`${showTerminal ? 'w-[30%] border-r border-zinc-800' : 'w-full'} shrink-0 flex flex-col overflow-hidden`}>
+        {/* ── Left panel: terminal (70%) ── */}
+        {showTerminal && (
+          <div className="flex-1 relative min-h-0">
+            <TerminalPane tabId={terminalTabId} visible={true} enableDrop />
+          </div>
+        )}
+
+        {/* ── Right panel: task details (30% with terminal, full width without) ── */}
+        <div className={`${showTerminal ? 'w-[30%] border-l border-zinc-800' : 'w-full'} shrink-0 flex flex-col overflow-hidden`}>
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 left-4 p-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors z-10"
+            className="absolute top-4 right-4 p-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors z-10"
           >
             <XIcon className="w-4 h-4" />
           </button>
@@ -217,13 +224,6 @@ export function TaskAgentModal({ task, onClose, onComplete }: TaskAgentModalProp
             </div>
           )}
         </div>
-
-        {/* ── Right panel: terminal (70%) ── */}
-        {showTerminal && (
-          <div className="flex-1 relative min-h-0">
-            <TerminalPane tabId={terminalTabId} visible={true} enableDrop />
-          </div>
-        )}
       </div>
     </div>
   );
