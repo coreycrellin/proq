@@ -58,7 +58,7 @@ function TaskStatusSummary({ tasks }: { tasks: Task[] }) {
   if (counts["verify"]) {
     segments.push(
       <span key="v" className="flex items-center gap-1">
-        <CheckCircle2Icon className="w-3 h-3 text-green-400" />
+        <CheckCircle2Icon className="w-3 h-3 text-yellow-400" />
         <span className="text-zinc-500 dark:text-zinc-400">{counts["verify"]} to verify</span>
       </span>
     );
