@@ -15,7 +15,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Last Q",
+  title: "Q",
   description: "Project management dashboard",
 };
 

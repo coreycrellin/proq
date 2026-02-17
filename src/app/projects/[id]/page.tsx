@@ -37,6 +37,11 @@ export default function ProjectPage() {
   const project = projects.find((p) => p.id === projectId);
   const tasks = tasksByProject[projectId] || [];
 
+  // Update document title with project name
+  useEffect(() => {
+    document.title = project ? `Q - ${project.name}` : 'Last Q';
+  }, [project?.name]);
+
   const fetchExecutionMode = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${projectId}/execution-mode`);
