@@ -247,10 +247,9 @@ export default function ProjectPage() {
         <TaskModal
           task={modalTask}
           isOpen={true}
-          onClose={async () => {
-            const current = tasks.find((t) => t.id === modalTask.id);
-            if (current && !current.title.trim()) {
-              await deleteTask(current.id);
+          onClose={async (finalTitle: string) => {
+            if (!finalTitle.trim()) {
+              await deleteTask(modalTask.id);
             }
             setModalTask(null);
             refresh();
