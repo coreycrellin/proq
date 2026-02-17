@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { execSync } from "child_process";
-import { getTask, updateTask, deleteTask, getProject } from "@/lib/db";
+import { getTask, updateTask, deleteTask } from "@/lib/db";
 import { dispatchTask, abortTask, shouldDispatch, dispatchNextQueued } from "@/lib/agent-dispatch";
 
 const OPENCLAW = "/opt/homebrew/bin/openclaw";
