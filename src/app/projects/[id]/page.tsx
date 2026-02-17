@@ -247,8 +247,8 @@ export default function ProjectPage() {
         <TaskModal
           task={modalTask}
           isOpen={true}
-          onClose={async (finalTitle: string) => {
-            if (!finalTitle.trim()) {
+          onClose={async (isEmpty: boolean) => {
+            if (isEmpty) {
               await deleteTask(modalTask.id);
             }
             setModalTask(null);

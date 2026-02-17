@@ -8,7 +8,7 @@ import type { Task, TaskAttachment, TaskMode } from '@/lib/types';
 interface TaskModalProps {
   task: Task;
   isOpen: boolean;
-  onClose: (finalTitle: string) => void;
+  onClose: (isEmpty: boolean) => void;
   onSave: (taskId: string, updates: Partial<Task>) => void;
   onMoveToInProgress?: (taskId: string, currentData: Partial<Task>) => Promise<void>;
 }
@@ -63,14 +63,17 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
 
   const handleClose = useCallback(() => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    onSave(task.id, {
-      title,
-      description,
-      attachments,
-      mode,
-    });
-    onClose(title);
-  }, [task.id, title, description, attachments, onSave, onClose]);
+    const isEmpty = !title.trim() && !description.trim();
+    if (!isEmpty) {
+      onSave(task.id, {
+        title,
+        description,
+        attachments,
+        mode,
+      });
+    }
+    onClose(isEmpty);
+  }, [task.id, title, description, attachments, mode, onSave, onClose]);
 
   useEscapeKey(handleClose, isOpen);
 
