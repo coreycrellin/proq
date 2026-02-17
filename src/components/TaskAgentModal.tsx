@@ -33,10 +33,9 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
   const steps = parseLines(task.humanSteps);
   const findings = parseLines(task.findings);
   const isLocked = task.status === 'in-progress' && task.locked;
-  // Show terminal for done tasks too (while session is still alive)
-  const sessionCleanedUp = task.status === 'done' && !cleanupExpiresAt;
-  const showTerminal = (task.status === 'in-progress' || task.status === 'verify' || (task.status === 'done' && !sessionCleanedUp)) && !isQueued;
-  const showStaticLog = sessionCleanedUp && !!task.agentLog;
+  // Show terminal for done tasks too; fall back to static log only after cleanup has captured agentLog
+  const showStaticLog = task.status === 'done' && !cleanupExpiresAt && !!task.agentLog;
+  const showTerminal = (task.status === 'in-progress' || task.status === 'verify' || (task.status === 'done' && !showStaticLog)) && !isQueued;
   const [countdownText, setCountdownText] = useState('');
   const [dispatching, setDispatching] = useState(false);
   const [copied, setCopied] = useState(false);
