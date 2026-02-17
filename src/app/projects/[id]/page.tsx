@@ -257,18 +257,21 @@ export default function ProjectPage() {
           onSave={updateTask}
           onMoveToInProgress={async (taskId, currentData) => {
             const taskData = tasks.find((t) => t.id === taskId) || modalTask!;
-            // Save data + set status in one PATCH
+            // Save task content first
             await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...currentData, status: 'in-progress' }),
+              body: JSON.stringify(currentData),
             });
-            // Ensure dispatch happens — idempotent if PATCH already dispatched
-            await fetch(`/api/projects/${projectId}/tasks/${taskId}/dispatch`, {
-              method: 'POST',
+            // Move to in-progress via reorder — same code path as drag-drop
+            await fetch(`/api/projects/${projectId}/tasks/reorder`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                items: [{ id: taskId, order: taskData.order ?? 0, status: 'in-progress' }],
+              }),
             });
             setModalTask(null);
-            setAgentModalTask({ ...taskData, ...currentData, status: 'in-progress', locked: true });
             refresh();
           }}
         />
