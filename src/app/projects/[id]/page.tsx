@@ -271,7 +271,9 @@ export default function ProjectPage() {
                 items: [{ id: taskId, order: taskData.order ?? 0, status: 'in-progress' }],
               }),
             });
+            const freshTask = { ...taskData, ...currentData, status: 'in-progress' as const, locked: true };
             setModalTask(null);
+            setAgentModalTask(freshTask);
             refresh();
           }}
         />
