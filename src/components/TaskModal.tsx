@@ -288,7 +288,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
                 <div
                   key={att.id}
                   className="relative group rounded-md overflow-hidden border border-gunmetal-400/50 dark:border-zinc-700/50 bg-gunmetal-200/60 dark:bg-zinc-800/60 cursor-pointer"
-                  onClick={() => openDataUrl(att.dataUrl)}
+                  onClick={() => openDataUrl(att.dataUrl!)}
                 >
                   <img
                     src={att.dataUrl}

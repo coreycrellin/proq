@@ -1,19 +1,21 @@
 import { NextResponse } from "next/server";
 import { getChatLog, addChatMessage, getProject } from "@/lib/db";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
-  const project = await getProject(params.id);
+  const { id } = await params;
+  const project = await getProject(id);
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
-  const log = await getChatLog(params.id);
+  const log = await getChatLog(id);
   return NextResponse.json(log);
 }
 
 export async function POST(request: Request, { params }: Params) {
-  const project = await getProject(params.id);
+  const { id } = await params;
+  const project = await getProject(id);
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
@@ -28,6 +30,6 @@ export async function POST(request: Request, { params }: Params) {
     );
   }
 
-  const entry = await addChatMessage(params.id, { role, message, toolCalls });
+  const entry = await addChatMessage(id, { role, message, toolCalls });
   return NextResponse.json(entry, { status: 201 });
 }

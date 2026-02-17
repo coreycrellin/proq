@@ -1,19 +1,21 @@
 import { NextResponse } from "next/server";
 import { getAllTasks, createTask, getProject } from "@/lib/db";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
-  const project = await getProject(params.id);
+  const { id } = await params;
+  const project = await getProject(id);
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
-  const tasks = await getAllTasks(params.id);
+  const tasks = await getAllTasks(id);
   return NextResponse.json(tasks);
 }
 
 export async function POST(request: Request, { params }: Params) {
-  const project = await getProject(params.id);
+  const { id } = await params;
+  const project = await getProject(id);
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
@@ -22,6 +24,6 @@ export async function POST(request: Request, { params }: Params) {
   const title = body.title ?? "";
   const description = body.description ?? "";
 
-  const task = await createTask(params.id, { title, description });
+  const task = await createTask(id, { title, description });
   return NextResponse.json(task, { status: 201 });
 }

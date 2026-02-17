@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getProject, updateProject, deleteProject } from "@/lib/db";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
-  const project = await getProject(params.id);
+  const { id } = await params;
+  const project = await getProject(id);
   if (!project) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -12,8 +13,9 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PATCH(request: Request, { params }: Params) {
+  const { id } = await params;
   const body = await request.json();
-  const updated = await updateProject(params.id, body);
+  const updated = await updateProject(id, body);
   if (!updated) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -21,7 +23,8 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
-  const deleted = await deleteProject(params.id);
+  const { id } = await params;
+  const deleted = await deleteProject(id);
   if (!deleted) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { reorderTasks, getProject, getAllTasks, updateTask } from "@/lib/db";
 import { dispatchTask, abortTask, shouldDispatch, scheduleCleanup, cancelCleanup } from "@/lib/agent-dispatch";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 export async function PUT(request: Request, { params }: Params) {
-  const project = await getProject(params.id);
+  const { id } = await params;
+  const project = await getProject(id);
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
@@ -23,10 +24,10 @@ export async function PUT(request: Request, { params }: Params) {
   }
 
   // Snapshot previous statuses before reorder
-  const previousTasks = await getAllTasks(params.id);
+  const previousTasks = await getAllTasks(id);
   const prevStatusMap = new Map(previousTasks.map((t) => [t.id, t.status]));
 
-  await reorderTasks(params.id, items);
+  await reorderTasks(id, items);
 
   // Detect status transitions and fire dispatch/abort
   const dispatched: { taskId: string; terminalTabId: string; title: string }[] = [];
@@ -40,9 +41,9 @@ export async function PUT(request: Request, { params }: Params) {
       cancelCleanup(item.id);
       if (prevStatus !== "verify") {
         const task = previousTasks.find((t) => t.id === item.id);
-        await updateTask(params.id, item.id, { locked: true });
-        if (await shouldDispatch(params.id)) {
-          const terminalTabId = await dispatchTask(params.id, item.id, task?.title ?? "", task?.description ?? "", task?.mode);
+        await updateTask(id, item.id, { locked: true });
+        if (await shouldDispatch(id)) {
+          const terminalTabId = await dispatchTask(id, item.id, task?.title ?? "", task?.description ?? "", task?.mode);
           if (terminalTabId) {
             dispatched.push({ taskId: item.id, terminalTabId, title: task?.title ?? "" });
           }
@@ -51,15 +52,15 @@ export async function PUT(request: Request, { params }: Params) {
     } else if (newStatus === "todo" && prevStatus !== "todo") {
       cancelCleanup(item.id);
       // Reset session data when moved back to todo from any status
-      await updateTask(params.id, item.id, { locked: false, findings: "", humanSteps: "", agentLog: "" });
+      await updateTask(id, item.id, { locked: false, findings: "", humanSteps: "", agentLog: "" });
       if (prevStatus === "in-progress") {
-        abortTask(params.id, item.id).catch((e) =>
+        abortTask(id, item.id).catch((e) =>
           console.error(`[reorder] abortTask failed for ${item.id}:`, e)
         );
       }
     } else if (newStatus === "verify" || newStatus === "done") {
       if (prevStatus === "in-progress") {
-        scheduleCleanup(params.id, item.id);
+        scheduleCleanup(id, item.id);
       }
     }
   }
