@@ -10,7 +10,7 @@ interface LiveTabProps {
 }
 
 export function LiveTab({ project }: LiveTabProps) {
-  const [urlInput, setUrlInput] = useState('');
+  const [urlInput, setUrlInput] = useState('http://localhost:3000');
   const [barValue, setBarValue] = useState(project.serverUrl ?? '');
   const { refreshProjects } = useProjects();
 
