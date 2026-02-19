@@ -199,13 +199,19 @@ function SortableProject({
     }
   }, [isRenaming]);
 
+  const router = useRouter();
+
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <Link
+      <div
         ref={setActivatorNodeRef}
         {...listeners}
-        href={`/projects/${project.id}`}
-        onClick={pathInvalid ? (e) => { e.preventDefault(); onMissingPath?.(project); } : isRenaming ? (e) => { e.preventDefault(); } : undefined}
+        onClick={() => {
+          if (isDragging) return;
+          if (pathInvalid) { onMissingPath?.(project); return; }
+          if (isRenaming) return;
+          router.push(`/projects/${project.id}`);
+        }}
         className={`w-full text-left py-3 px-4 relative group block cursor-grab active:cursor-grabbing
           ${isActive ? "bg-gunmetal-300 dark:bg-zinc-800/50" : "hover:bg-gunmetal-300/60 dark:hover:bg-zinc-800/40"}
           ${index > 0 ? "border-t border-gunmetal-300/60 dark:border-zinc-800/60" : ""}`}
@@ -274,7 +280,7 @@ function SortableProject({
             <TaskStatusSummary tasks={tasks} />
           )}
         </div>
-      </Link>
+      </div>
     </div>
   );
 }
@@ -287,7 +293,6 @@ export function Sidebar({ onAddProject, onMissingPath }: SidebarProps) {
   const { projects, tasksByProject, refreshProjects, setProjects } = useProjects();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
