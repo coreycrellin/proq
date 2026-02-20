@@ -19,14 +19,20 @@ interface LiveTabProps {
 export function LiveTab({ project }: LiveTabProps) {
   const [urlInput, setUrlInput] = useState('http://localhost:3000');
   const [barValue, setBarValue] = useState(project.serverUrl ?? '');
-  const [viewport, setViewport] = useState<ViewportSize>('desktop');
-  const [size, setSize] = useState({ w: 768, h: 1024 });
+  const initialVp = project.liveViewport ?? 'desktop';
+  const [viewport, setViewport] = useState<ViewportSize>(initialVp);
+  const [size, setSize] = useState(initialVp !== 'desktop' ? PRESETS[initialVp] : { w: 768, h: 1024 });
   const containerRef = useRef<HTMLDivElement>(null);
   const { refreshProjects } = useProjects();
 
-  const pickViewport = (v: ViewportSize) => {
+  const pickViewport = async (v: ViewportSize) => {
     setViewport(v);
     if (v !== 'desktop') setSize(PRESETS[v]);
+    await fetch(`/api/projects/${project.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ liveViewport: v }),
+    });
   };
 
   const handleConnect = async () => {

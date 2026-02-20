@@ -12,6 +12,7 @@ export interface Project {
   order?: number;
   pathValid?: boolean;
   activeTab?: ProjectTab;
+  liveViewport?: 'desktop' | 'tablet' | 'mobile';
   createdAt: string;
 }
 
