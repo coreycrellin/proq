@@ -1,9 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { GlobeIcon, MonitorIcon } from 'lucide-react';
+import { GlobeIcon, MonitorIcon, TabletSmartphoneIcon, SmartphoneIcon } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { useProjects } from '@/components/ProjectsProvider';
+
+type ViewportSize = 'desktop' | 'tablet' | 'mobile';
+
+const VIEWPORT_WIDTHS: Record<ViewportSize, string | undefined> = {
+  desktop: undefined,   // full width
+  tablet: '768px',
+  mobile: '375px',
+};
 
 interface LiveTabProps {
   project: Project;
@@ -12,6 +20,7 @@ interface LiveTabProps {
 export function LiveTab({ project }: LiveTabProps) {
   const [urlInput, setUrlInput] = useState('http://localhost:3000');
   const [barValue, setBarValue] = useState(project.serverUrl ?? '');
+  const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const { refreshProjects } = useProjects();
 
   const handleConnect = async () => {
@@ -89,11 +98,38 @@ export function LiveTab({ project }: LiveTabProps) {
             />
           </div>
         </div>
+        <div className="flex items-center space-x-1">
+          {([
+            { size: 'desktop' as ViewportSize, icon: MonitorIcon, label: 'Desktop' },
+            { size: 'tablet' as ViewportSize, icon: TabletSmartphoneIcon, label: 'Tablet' },
+            { size: 'mobile' as ViewportSize, icon: SmartphoneIcon, label: 'Mobile' },
+          ]).map(({ size, icon: Icon, label }) => (
+            <button
+              key={size}
+              onClick={() => setViewport(size)}
+              title={label}
+              className={`p-1.5 rounded transition-colors ${
+                viewport === size
+                  ? 'bg-gunmetal-50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200'
+                  : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </button>
+          ))}
+        </div>
       </div>
-      <iframe
-        src={project.serverUrl}
-        className="flex-1 w-full border-0"
-      />
+      <div className="flex-1 flex items-start justify-center overflow-auto bg-gunmetal-100 dark:bg-zinc-950">
+        <iframe
+          src={project.serverUrl}
+          className="border-0 h-full"
+          style={{
+            width: VIEWPORT_WIDTHS[viewport] ?? '100%',
+            maxWidth: '100%',
+            transition: 'width 0.2s ease',
+          }}
+        />
+      </div>
     </div>
   );
 }
