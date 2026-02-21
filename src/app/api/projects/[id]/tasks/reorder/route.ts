@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { reorderTasks, getProject, getAllTasks, updateTask } from "@/lib/db";
-import { dispatchTask, abortTask, shouldDispatch, scheduleCleanup, cancelCleanup } from "@/lib/agent-dispatch";
+import { dispatchTask, abortTask, shouldDispatch, dispatchNextQueued, scheduleCleanup, cancelCleanup } from "@/lib/agent-dispatch";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -61,8 +61,14 @@ export async function PUT(request: Request, { params }: Params) {
           console.error(`[reorder] abortTask failed for ${item.id}:`, e)
         );
       }
-    } else if (newStatus === "done") {
-      if (prevStatus === "in-progress" || prevStatus === "verify") {
+    } else if (newStatus === "verify" || newStatus === "done") {
+      if (prevStatus === "in-progress") {
+        // Auto-dispatch next queued task in sequential mode
+        dispatchNextQueued(id).catch(e =>
+          console.error(`[reorder] auto-dispatch next failed:`, e)
+        );
+      }
+      if (newStatus === "done" && (prevStatus === "in-progress" || prevStatus === "verify")) {
         scheduleCleanup(id, item.id);
       }
     }

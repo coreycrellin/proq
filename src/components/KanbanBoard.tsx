@@ -43,7 +43,7 @@ interface KanbanBoardProps {
   onRefreshTasks?: () => void;
   executionMode?: ExecutionMode;
   onExecutionModeChange?: (mode: ExecutionMode) => void;
-  dispatchedTaskIds?: Set<string>;
+  dispatchedTaskIds?: Set<string> | null;
 }
 
 const COLUMNS: { id: TaskStatus; label: string; icon: React.ReactNode }[] = [

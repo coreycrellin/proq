@@ -55,6 +55,10 @@ export async function PATCH(request: Request, { params }: Params) {
       );
     } else if (body.status === "done" && (prevTask.status === "verify" || prevTask.status === "in-progress")) {
       scheduleCleanup(id, taskId);
+      // Safety net: dispatch next queued task if it wasn't dispatched on verify transition
+      dispatchNextQueued(id).catch(e =>
+        console.error(`[task-patch] auto-dispatch next failed:`, e)
+      );
     }
   }
 
