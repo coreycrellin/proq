@@ -122,7 +122,10 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTabId(projectId, tab.id)}
+            onClick={() => {
+              setActiveTabId(projectId, tab.id);
+              if (collapsed) onToggleCollapsed();
+            }}
             className={`flex items-center gap-1.5 px-3 self-stretch text-xs transition-colors shrink-0 ${
               activeTabId === tab.id
                 ? 'bg-gunmetal-300/60 dark:bg-zinc-800/60 ' + tabAccentColor(tab)
@@ -147,7 +150,10 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
         ))}
 
         <button
-          onClick={addShellTab}
+          onClick={() => {
+            addShellTab();
+            if (collapsed) onToggleCollapsed();
+          }}
           className="flex items-center justify-center px-2.5 self-stretch text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-gunmetal-300/30 dark:hover:bg-zinc-800/30 shrink-0"
           title="New terminal"
         >
