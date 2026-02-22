@@ -24,8 +24,15 @@ export function notify(message: string) {
 }
 const CLEANUP_DELAY_MS = 60 * 60 * 1000; // 1 hour
 
-// Track scheduled cleanup timers for completed agent sessions
-const cleanupTimers = new Map<string, { timer: NodeJS.Timeout; expiresAt: number }>();
+// ── Singletons attached to globalThis to survive HMR ──
+const ga = globalThis as unknown as {
+  __proqCleanupTimers?: Map<string, { timer: NodeJS.Timeout; expiresAt: number }>;
+  __proqProcessingProjects?: Set<string>;
+};
+if (!ga.__proqCleanupTimers) ga.__proqCleanupTimers = new Map();
+if (!ga.__proqProcessingProjects) ga.__proqProcessingProjects = new Set();
+
+const cleanupTimers = ga.__proqCleanupTimers;
 
 export function scheduleCleanup(projectId: string, taskId: string) {
   // Cancel any existing timer for this task
@@ -285,8 +292,7 @@ export async function getInitialDispatch(
   return hasActive ? "queued" : "starting";
 }
 
-// Re-entrancy guard per project
-const processingProjects = new Set<string>();
+const processingProjects = ga.__proqProcessingProjects;
 
 export async function processQueue(projectId: string): Promise<void> {
   if (processingProjects.has(projectId)) {

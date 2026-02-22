@@ -44,9 +44,11 @@ export async function PATCH(request: Request, { params }: Params) {
       scheduleCleanup(id, taskId);
     }
 
-    // processQueue handles dispatch — detached so the response returns immediately
-    // (processQueue has its own try/catch so it won't throw)
-    processQueue(id);
+    await processQueue(id);
+
+    // Re-read task to include any dispatch state changes from processQueue
+    const fresh = await getTask(id, taskId);
+    if (fresh) return NextResponse.json(fresh);
   }
 
   return NextResponse.json(updated);

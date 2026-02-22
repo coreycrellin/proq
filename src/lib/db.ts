@@ -30,10 +30,17 @@ if (fsExists(oldStateDir) && !fsExists(newProjectsDir)) {
 // Ensure data directories exist on first access (idempotent)
 mkdirSync(path.join(DATA_DIR, "projects"), { recursive: true });
 
-// ── Singleton caches to prevent concurrent write corruption ──
-let workspaceDbInstance: Low<WorkspaceData> | null = null;
-const projectDbInstances = new Map<string, Low<ProjectState>>();
-const writeLocks = new Map<string, Promise<void>>();
+// ── Singleton caches (attached to globalThis to survive HMR) ──
+const g = globalThis as unknown as {
+  __proqWorkspaceDb?: Low<WorkspaceData> | null;
+  __proqProjectDbs?: Map<string, Low<ProjectState>>;
+  __proqWriteLocks?: Map<string, Promise<void>>;
+};
+if (!g.__proqProjectDbs) g.__proqProjectDbs = new Map();
+if (!g.__proqWriteLocks) g.__proqWriteLocks = new Map();
+
+const projectDbInstances = g.__proqProjectDbs;
+const writeLocks = g.__proqWriteLocks;
 
 async function withWriteLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const prev = writeLocks.get(key) ?? Promise.resolve();
@@ -50,12 +57,12 @@ async function withWriteLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
 
 // ── Workspace DB (projects list) ─────────────────────────
 async function getWorkspaceDb() {
-  if (!workspaceDbInstance) {
+  if (!g.__proqWorkspaceDb) {
     const filePath = path.join(DATA_DIR, "workspace.json");
     const defaultData: WorkspaceData = { projects: [] };
-    workspaceDbInstance = await JSONFilePreset<WorkspaceData>(filePath, defaultData);
+    g.__proqWorkspaceDb = await JSONFilePreset<WorkspaceData>(filePath, defaultData);
   }
-  return workspaceDbInstance;
+  return g.__proqWorkspaceDb;
 }
 
 // ── Project DB (per-project tasks + chat) ────────────────

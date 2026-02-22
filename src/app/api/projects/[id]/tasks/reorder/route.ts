@@ -52,8 +52,7 @@ export async function PUT(request: Request, { params }: Params) {
     }
   }
 
-  // processQueue handles dispatch — detached so the response returns immediately
-  processQueue(id);
+  await processQueue(id);
 
   return NextResponse.json({ success: true });
 }
