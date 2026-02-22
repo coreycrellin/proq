@@ -390,6 +390,19 @@ export async function setTerminalOpen(projectId: string, open: boolean): Promise
   });
 }
 
+export async function getTerminalTabs(projectId: string): Promise<import("./types").TerminalTabInfo[]> {
+  const data = getProjectData(projectId);
+  return data.terminalTabs ?? [];
+}
+
+export async function setTerminalTabs(projectId: string, tabs: import("./types").TerminalTabInfo[]): Promise<void> {
+  return withWriteLock(`project:${projectId}`, async () => {
+    const data = getProjectData(projectId);
+    data.terminalTabs = tabs;
+    writeProject(projectId);
+  });
+}
+
 // ═══════════════════════════════════════════════════════════
 // CHAT LOG
 // ═══════════════════════════════════════════════════════════

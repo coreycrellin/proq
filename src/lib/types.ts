@@ -74,12 +74,18 @@ export interface AgentSession {
 // ── Per-project state ────────────────────────────────────
 export type ExecutionMode = 'sequential' | 'parallel';
 
+export interface TerminalTabInfo {
+  id: string;
+  label: string;
+}
+
 export interface ProjectState {
   columns: TaskColumns;
   chatLog: ChatLogEntry[];
   agentSession?: AgentSession;
   executionMode?: ExecutionMode;
   terminalOpen?: boolean;
+  terminalTabs?: TerminalTabInfo[];
   // Legacy field — present only in unmigrated files
   tasks?: Task[];
 }

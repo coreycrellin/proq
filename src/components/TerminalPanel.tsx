@@ -52,8 +52,11 @@ function useCleanupCountdown(expiresAt: number | undefined): string | null {
 }
 
 export default function TerminalPanel({ projectId, projectPath, style, collapsed, onToggleCollapsed, cleanupTimes }: TerminalPanelProps) {
-  const { getTabs, getActiveTabId, setActiveTabId, openTab, closeTab } = useTerminalTabs();
+  const { getTabs, getActiveTabId, setActiveTabId, openTab, closeTab, hydrateProject } = useTerminalTabs();
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // Hydrate persisted shell tabs on mount
+  useEffect(() => { hydrateProject(projectId); }, [projectId, hydrateProject]);
 
   const tabs = getTabs(projectId);
   const activeTabId = getActiveTabId(projectId);
