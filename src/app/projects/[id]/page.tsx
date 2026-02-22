@@ -9,6 +9,7 @@ import { LiveTab } from '@/components/LiveTab';
 import { CodeTab } from '@/components/CodeTab';
 import { TaskModal } from '@/components/TaskModal';
 import { TaskAgentModal } from '@/components/TaskAgentModal';
+import { UndoModal } from '@/components/UndoModal';
 import { useProjects } from '@/components/ProjectsProvider';
 import { emptyColumns } from '@/components/ProjectsProvider';
 import type { Task, TaskStatus, TaskColumns, ExecutionMode } from '@/lib/types';
@@ -26,6 +27,7 @@ export default function ProjectPage() {
   const [agentModalTask, setAgentModalTask] = useState<Task | null>(null);
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('sequential');
   const [cleanupTimes, setCleanupTimes] = useState<Record<string, number>>({});
+  const [undoEntry, setUndoEntry] = useState<{ task: Task; column: TaskStatus } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const project = projects.find((p) => p.id === projectId);
@@ -77,6 +79,30 @@ export default function ProjectPage() {
     const interval = setInterval(refresh, 5000);
     return () => clearInterval(interval);
   }, [projectId, refresh]);
+
+  // Cmd+Z to undo last delete — peeks without restoring
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if (e.key === 'z' && e.metaKey && !e.shiftKey && !e.ctrlKey && !undoEntry) {
+        // Don't intercept if user is typing in an input/textarea
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+        e.preventDefault();
+        try {
+          const res = await fetch(`/api/projects/${projectId}/tasks/undo`);
+          if (res.ok) {
+            const data = await res.json();
+            setUndoEntry({ task: data.task, column: data.column });
+          }
+        } catch {
+          // no-op
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [projectId, undoEntry]);
 
   // Keep agent modal in sync with polled task data
   useEffect(() => {
@@ -263,6 +289,22 @@ export default function ProjectPage() {
           onComplete={async (taskId) => {
             await updateTask(taskId, { status: 'done' });
             setAgentModalTask(null);
+          }}
+        />
+      )}
+
+      {undoEntry && (
+        <UndoModal
+          task={undoEntry.task}
+          column={undoEntry.column}
+          isOpen={true}
+          onRestore={async () => {
+            await fetch(`/api/projects/${projectId}/tasks/undo`, { method: 'POST' });
+            setUndoEntry(null);
+            refresh();
+          }}
+          onDiscard={() => {
+            setUndoEntry(null);
           }}
         />
       )}

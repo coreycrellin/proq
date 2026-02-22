@@ -10,6 +10,7 @@ import type {
   TaskColumns,
   ChatLogEntry,
   ExecutionMode,
+  DeletedTaskEntry,
 } from "./types";
 import { slugify } from "./utils";
 
@@ -110,6 +111,7 @@ function getProjectData(projectId: string): ProjectState {
   // Ensure columns exist even if file was empty
   if (!raw.columns) raw.columns = emptyColumns();
   if (!raw.chatLog) raw.chatLog = [];
+  if (!raw.recentlyDeleted) raw.recentlyDeleted = [];
 
   return raw as ProjectState;
 }
@@ -329,10 +331,69 @@ export async function deleteTask(
     const found = findTask(state, taskId);
     if (!found) return false;
 
-    const [, column, index] = found;
+    const [task, column, index] = found;
+
+    // Archive to recentlyDeleted for undo support
+    if (!state.recentlyDeleted) state.recentlyDeleted = [];
+    state.recentlyDeleted.push({
+      task: { ...task },
+      column,
+      index,
+      deletedAt: new Date().toISOString(),
+    });
+
+    // Prune entries older than 24 hours
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    state.recentlyDeleted = state.recentlyDeleted.filter(
+      (e) => new Date(e.deletedAt).getTime() > cutoff
+    );
+
     state.columns[column].splice(index, 1);
     writeProject(projectId, state);
     return true;
+  });
+}
+
+/** Peek at the most recent deleted task (within 60s) without restoring it. */
+export async function peekDeletedTask(
+  projectId: string
+): Promise<DeletedTaskEntry | null> {
+  const state = getProjectData(projectId);
+  if (!state.recentlyDeleted || state.recentlyDeleted.length === 0) return null;
+
+  const cutoff = Date.now() - 60 * 1000;
+  // Walk backwards to find the most recent within window
+  for (let i = state.recentlyDeleted.length - 1; i >= 0; i--) {
+    if (new Date(state.recentlyDeleted[i].deletedAt).getTime() > cutoff) {
+      return state.recentlyDeleted[i];
+    }
+  }
+  return null;
+}
+
+/** Actually restore the most recent deleted task (within 60s) back into its column. */
+export async function restoreDeletedTask(
+  projectId: string
+): Promise<DeletedTaskEntry | null> {
+  return withWriteLock(`project:${projectId}`, async () => {
+    const state = getProjectData(projectId);
+    if (!state.recentlyDeleted || state.recentlyDeleted.length === 0) return null;
+
+    const cutoff = Date.now() - 60 * 1000;
+    const recentIdx = state.recentlyDeleted.findLastIndex(
+      (e) => new Date(e.deletedAt).getTime() > cutoff
+    );
+    if (recentIdx === -1) return null;
+
+    const entry = state.recentlyDeleted.splice(recentIdx, 1)[0];
+
+    // Restore task into its original column
+    const col = state.columns[entry.column];
+    const insertIdx = Math.min(entry.index, col.length);
+    col.splice(insertIdx, 0, entry.task);
+
+    writeProject(projectId, state);
+    return entry;
   });
 }
 

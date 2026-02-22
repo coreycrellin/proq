@@ -71,6 +71,14 @@ export interface AgentSession {
   status: string;
 }
 
+// ── Deleted task entry (for undo) ────────────────────────
+export interface DeletedTaskEntry {
+  task: Task;
+  column: TaskStatus;
+  index: number;
+  deletedAt: string; // ISO timestamp
+}
+
 // ── Per-project state ────────────────────────────────────
 export type ExecutionMode = 'sequential' | 'parallel';
 
@@ -87,6 +95,7 @@ export interface ProjectState {
   terminalOpen?: boolean;
   terminalTabs?: TerminalTabInfo[];
   terminalActiveTabId?: string;
+  recentlyDeleted?: DeletedTaskEntry[];
   // Legacy field — present only in unmigrated files
   tasks?: Task[];
 }
