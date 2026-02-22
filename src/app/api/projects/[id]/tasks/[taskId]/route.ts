@@ -8,8 +8,9 @@ export async function PATCH(request: Request, { params }: Params) {
   const { id, taskId } = await params;
   const body = await request.json();
 
-  // Check for status transitions before applying update
+  // Snapshot previous status before updateTask mutates the same object reference
   const prevTask = await getTask(id, taskId);
+  const prevStatus = prevTask?.status;
 
   const updated = await updateTask(id, taskId, body);
   if (!updated) {
@@ -17,37 +18,33 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   // Handle status transitions
-  if (prevTask && body.status && prevTask.status !== body.status) {
-    if (body.status === "in-progress" && prevTask.status !== "in-progress") {
+  if (prevStatus && body.status && prevStatus !== body.status) {
+    if (body.status === "in-progress" && prevStatus !== "in-progress") {
       cancelCleanup(taskId);
-      if (prevTask.status !== "verify") {
-        // New dispatch: mark as not-yet-dispatched, processQueue will handle it
-        await updateTask(id, taskId, { dispatched: false });
-        updated.dispatched = false;
+      if (prevStatus !== "verify") {
+        // New dispatch: mark as not-yet-running, processQueue will handle it
+        await updateTask(id, taskId, { running: false });
+        updated.running = false;
       }
-    } else if (body.status === "todo" && prevTask.status !== "todo") {
+    } else if (body.status === "todo" && prevStatus !== "todo") {
       cancelCleanup(taskId);
-      const resetFields = { dispatched: false, findings: "", humanSteps: "", agentLog: "" };
+      const resetFields = { running: false, findings: "", humanSteps: "", agentLog: "" };
       await updateTask(id, taskId, resetFields);
       Object.assign(updated, resetFields);
-      if (prevTask.status === "in-progress") {
-        abortTask(id, taskId).catch((e) =>
-          console.error(`[task-patch] abortTask failed:`, e)
-        );
+      if (prevStatus === "in-progress") {
+        await abortTask(id, taskId);
       }
-    } else if (prevTask.status === "in-progress" && (body.status === "verify" || body.status === "done")) {
+    } else if (prevStatus === "in-progress" && (body.status === "verify" || body.status === "done")) {
       if (body.status === "done") {
         scheduleCleanup(id, taskId);
       }
       notify(`✅ *${updated.title.replace(/"/g, '\\"')}* → ${body.status}`);
-    } else if (body.status === "done" && prevTask.status === "verify") {
+    } else if (body.status === "done" && prevStatus === "verify") {
       scheduleCleanup(id, taskId);
     }
 
     // Single processQueue call handles all dispatch needs
-    processQueue(id).catch(e =>
-      console.error(`[task-patch] processQueue failed:`, e)
-    );
+    await processQueue(id);
   }
 
   return NextResponse.json(updated);
@@ -63,8 +60,8 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   // If deleted task was in-progress, abort and process queue for next
   if (task?.status === "in-progress") {
-    abortTask(id, taskId).catch(() => {});
-    processQueue(id).catch(() => {});
+    await abortTask(id, taskId);
+    await processQueue(id);
   }
 
   return NextResponse.json({ success: true });

@@ -256,7 +256,7 @@ export default function ProjectPage() {
         <TaskAgentModal
           task={agentModalTask}
           projectId={projectId}
-          isQueued={agentModalTask.status === 'in-progress' && !agentModalTask.dispatched}
+          isQueued={agentModalTask.status === 'in-progress' && !agentModalTask.running}
           cleanupExpiresAt={cleanupTimes[agentModalTask.id]}
           onClose={() => setAgentModalTask(null)}
           onComplete={async (taskId) => {

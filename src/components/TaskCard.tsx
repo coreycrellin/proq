@@ -20,7 +20,7 @@ interface TaskCardProps {
 
 export function TaskCard({ task, isDragOverlay, isQueued, onDelete, onClick }: TaskCardProps) {
   const steps = parseLines(task.humanSteps);
-  const isDispatched = task.status === 'in-progress' && task.dispatched;
+  const isDispatched = task.status === 'in-progress' && task.running;
 
   return (
     <div

@@ -44,7 +44,7 @@ export interface Task {
   findings?: string;
   humanSteps?: string;
   agentLog?: string;
-  dispatched?: boolean;
+  running?: boolean;
   attachments?: TaskAttachment[];
   createdAt: string;
   updatedAt: string;

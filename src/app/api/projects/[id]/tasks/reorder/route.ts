@@ -38,16 +38,14 @@ export async function PUT(request: Request, { params }: Params) {
     if (newStatus === "in-progress" && prevStatus !== "in-progress") {
       cancelCleanup(item.id);
       if (prevStatus !== "verify") {
-        // Mark as not-yet-dispatched; processQueue will handle it
-        await updateTask(id, item.id, { dispatched: false });
+        // Mark as not-yet-running; processQueue will handle it
+        await updateTask(id, item.id, { running: false });
       }
     } else if (newStatus === "todo" && prevStatus !== "todo") {
       cancelCleanup(item.id);
-      await updateTask(id, item.id, { dispatched: false, findings: "", humanSteps: "", agentLog: "" });
+      await updateTask(id, item.id, { running: false, findings: "", humanSteps: "", agentLog: "" });
       if (prevStatus === "in-progress") {
-        abortTask(id, item.id).catch((e) =>
-          console.error(`[reorder] abortTask failed for ${item.id}:`, e)
-        );
+        await abortTask(id, item.id);
       }
     } else if (newStatus === "done" && (prevStatus === "in-progress" || prevStatus === "verify")) {
       scheduleCleanup(id, item.id);
@@ -55,9 +53,7 @@ export async function PUT(request: Request, { params }: Params) {
   }
 
   // Single processQueue call at the end
-  processQueue(id).catch(e =>
-    console.error(`[reorder] processQueue failed:`, e)
-  );
+  await processQueue(id);
 
   return NextResponse.json({ success: true });
 }

@@ -136,7 +136,7 @@ export async function dispatchTask(
   // Build the agent prompt
   const callbackCurl = `curl -s -X PATCH ${MC_API}/api/projects/${projectId}/tasks/${taskId} \\
   -H 'Content-Type: application/json' \\
-  -d '{"status":"verify","dispatched":false,"findings":"<newline-separated summary of what you did and found>","humanSteps":"<any steps the human should take to verify, or empty string>"}'`;
+  -d '{"status":"verify","running":false,"findings":"<newline-separated summary of what you did and found>","humanSteps":"<any steps the human should take to verify, or empty string>"}'`;
 
   let prompt: string;
   let claudeFlags: string;
@@ -253,7 +253,7 @@ export async function abortTask(projectId: string, taskId: string) {
   try { if (existsSync(logPath)) unlinkSync(logPath); } catch {}
 }
 
-export function isTaskDispatched(taskId: string): boolean {
+export function isSessionAlive(taskId: string): boolean {
   const shortId = taskId.slice(0, 8);
   const tmuxSession = `mc-${shortId}`;
   try {
@@ -268,7 +268,10 @@ export function isTaskDispatched(taskId: string): boolean {
 const processingProjects = new Set<string>();
 
 export async function processQueue(projectId: string): Promise<void> {
-  if (processingProjects.has(projectId)) return;
+  if (processingProjects.has(projectId)) {
+    console.log(`[processQueue] skipped (already processing ${projectId})`);
+    return;
+  }
   processingProjects.add(projectId);
 
   try {
@@ -276,18 +279,20 @@ export async function processQueue(projectId: string): Promise<void> {
     const tasks = await getAllTasks(projectId);
 
     const queued = tasks
-      .filter((t) => t.status === "in-progress" && !t.dispatched)
+      .filter((t) => t.status === "in-progress" && !t.running)
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
     const running = tasks.filter(
-      (t) => t.status === "in-progress" && t.dispatched && isTaskDispatched(t.id),
+      (t) => t.status === "in-progress" && t.running,
     );
+
+    console.log(`[processQueue] ${projectId}: mode=${mode} running=${running.length} queued=${queued.length}`);
 
     if (mode === "sequential") {
       if (running.length === 0 && queued.length > 0) {
         const next = queued[0];
-        console.log(`[agent-dispatch] processQueue: dispatching ${next.id}`);
-        await updateTask(projectId, next.id, { dispatched: true });
+        console.log(`[processQueue] dispatching ${next.id.slice(0, 8)} "${next.title}"`);
+        await updateTask(projectId, next.id, { running: true });
         const result = await dispatchTask(
           projectId,
           next.id,
@@ -297,14 +302,17 @@ export async function processQueue(projectId: string): Promise<void> {
           next.attachments,
         );
         if (!result) {
-          await updateTask(projectId, next.id, { dispatched: false });
+          console.log(`[processQueue] dispatch failed for ${next.id.slice(0, 8)}, rolling back`);
+          await updateTask(projectId, next.id, { running: false });
         }
+      } else if (queued.length > 0) {
+        console.log(`[processQueue] ${running.length} task(s) running, ${queued.length} waiting`);
       }
     } else {
       // parallel: dispatch all queued
       for (const task of queued) {
-        console.log(`[agent-dispatch] processQueue: dispatching ${task.id} (parallel)`);
-        await updateTask(projectId, task.id, { dispatched: true });
+        console.log(`[processQueue] dispatching ${task.id.slice(0, 8)} "${task.title}" (parallel)`);
+        await updateTask(projectId, task.id, { running: true });
         const result = await dispatchTask(
           projectId,
           task.id,
@@ -314,10 +322,13 @@ export async function processQueue(projectId: string): Promise<void> {
           task.attachments,
         );
         if (!result) {
-          await updateTask(projectId, task.id, { dispatched: false });
+          console.log(`[processQueue] dispatch failed for ${task.id.slice(0, 8)}, rolling back`);
+          await updateTask(projectId, task.id, { running: false });
         }
       }
     }
+  } catch (err) {
+    console.error(`[processQueue] error for project ${projectId}:`, err);
   } finally {
     processingProjects.delete(projectId);
   }
