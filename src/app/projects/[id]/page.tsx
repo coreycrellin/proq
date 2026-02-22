@@ -55,9 +55,10 @@ export default function ProjectPage() {
     }
   }, [columns, activeWorktreeTaskId]);
 
-  // Clear worktree view when switching projects
+  // Reset worktree view when switching projects (will be restored from server)
   useEffect(() => {
     setActiveWorktreeTaskId(null);
+    initialLoadRef.current = true;
   }, [projectId]);
 
   // Update document title with project id (slug)
@@ -79,12 +80,19 @@ export default function ProjectPage() {
       .catch(() => {});
   }, [projectId]);
 
+  const initialLoadRef = useRef(true);
+
   const fetchExecutionMode = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${projectId}/execution-mode`);
       const data = await res.json();
       setExecutionMode(data.mode);
       setCleanupTimes(data.cleanupTimes || {});
+      // Restore persisted worktree selection on initial load only
+      if (initialLoadRef.current) {
+        initialLoadRef.current = false;
+        setActiveWorktreeTaskId(data.activeWorktreeTaskId || null);
+      }
     } catch (e) {
       console.error('Failed to fetch execution mode:', e);
     }
@@ -144,6 +152,15 @@ export default function ProjectPage() {
       }
     }
   }, [columns]);
+
+  const switchWorktree = useCallback((taskId: string | null) => {
+    setActiveWorktreeTaskId(taskId);
+    fetch(`/api/projects/${projectId}/active-worktree`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId }),
+    }).catch(() => {});
+  }, [projectId]);
 
   const deleteTask = async (taskId: string) => {
     await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
@@ -280,7 +297,7 @@ export default function ProjectPage() {
         activeTab={activeTab}
         onTabChange={handleTabChange}
         worktreeBranch={executionMode === 'parallel' ? (activeWorktreeTask?.branch || 'main') : undefined}
-        onExitWorktree={activeWorktreeTaskId ? () => setActiveWorktreeTaskId(null) : undefined}
+        onExitWorktree={activeWorktreeTaskId ? () => switchWorktree(null) : undefined}
       />
 
       <main ref={containerRef} className="flex-1 flex flex-col overflow-hidden relative">
@@ -348,7 +365,7 @@ export default function ProjectPage() {
           }}
           parallelMode={executionMode === 'parallel'}
           activeWorktreeTaskId={activeWorktreeTaskId}
-          onSwitchWorktree={(taskId) => setActiveWorktreeTaskId(taskId)}
+          onSwitchWorktree={(taskId) => switchWorktree(taskId)}
         />
       )}
 

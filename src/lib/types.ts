@@ -94,6 +94,7 @@ export interface ProjectState {
   chatLog: ChatLogEntry[];
   agentSession?: AgentSession;
   executionMode?: ExecutionMode;
+  activeWorktreeTaskId?: string;
   terminalOpen?: boolean;
   terminalTabs?: TerminalTabInfo[];
   terminalActiveTabId?: string;

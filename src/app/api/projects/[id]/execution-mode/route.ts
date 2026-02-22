@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getExecutionMode, setExecutionMode } from "@/lib/db";
+import { getExecutionMode, setExecutionMode, getActiveWorktreeTaskId, setActiveWorktreeTaskId } from "@/lib/db";
 import { processQueue, getAllCleanupTimes } from "@/lib/agent-dispatch";
 import type { ExecutionMode } from "@/lib/types";
 
@@ -9,7 +9,8 @@ export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
   const mode = await getExecutionMode(id);
   const cleanupTimes = getAllCleanupTimes();
-  return NextResponse.json({ mode, cleanupTimes });
+  const activeWorktreeTaskId = await getActiveWorktreeTaskId(id);
+  return NextResponse.json({ mode, cleanupTimes, activeWorktreeTaskId });
 }
 
 export async function PATCH(request: Request, { params }: Params) {
@@ -25,6 +26,9 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   await setExecutionMode(id, mode);
+
+  // Clear active worktree when switching modes
+  await setActiveWorktreeTaskId(id, null);
 
   // processQueue will dispatch queued tasks according to the new mode
   processQueue(id);
