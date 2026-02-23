@@ -51,23 +51,67 @@ export async function PUT(request: Request, { params }: Params) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
         removeWorktree(projectPath, prevTask.id.slice(0, 8));
       }
-      await updateTask(id, taskId, { dispatch: null, findings: "", humanSteps: "", agentLog: "", worktreePath: undefined, branch: undefined });
+      await updateTask(id, taskId, { dispatch: null, findings: "", humanSteps: "", agentLog: "", worktreePath: undefined, branch: undefined, mergeConflict: undefined });
       if (prevStatus === "in-progress") {
         await abortTask(id, taskId);
       }
-    } else if (toColumn === "done" && (prevStatus === "in-progress" || prevStatus === "verify")) {
-      // Merge worktree if task has one
+    } else if (toColumn === "verify" && prevStatus === "in-progress") {
+      // Auto-merge worktree when leaving in-progress
+      if (prevTask?.worktreePath) {
+        const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
+        const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
+        if (result.success) {
+          await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
+        } else {
+          await updateTask(id, taskId, {
+            mergeConflict: {
+              error: result.error || "Merge conflict",
+              files: result.conflictFiles || [],
+              branch: prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`,
+            },
+          });
+        }
+      }
+    } else if (toColumn === "done" && prevStatus === "in-progress") {
+      // Auto-merge worktree when skipping verify
+      if (prevTask?.worktreePath) {
+        const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
+        const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
+        if (result.success) {
+          await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
+        } else {
+          // Can't move to done with conflict — land in verify
+          await moveTask(id, taskId, "verify", 0);
+          await updateTask(id, taskId, {
+            mergeConflict: {
+              error: result.error || "Merge conflict",
+              files: result.conflictFiles || [],
+              branch: prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`,
+            },
+          });
+          await processQueue(id);
+          return NextResponse.json({ success: false, error: result.error });
+        }
+      }
+      scheduleCleanup(id, taskId);
+    } else if (toColumn === "done" && prevStatus === "verify") {
+      // Re-attempt merge if task still has a worktree (conflict case)
       if (prevTask?.worktreePath) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
         const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
         if (!result.success) {
-          // Revert to verify, explain the conflict
           await moveTask(id, taskId, "verify", 0);
-          await updateTask(id, taskId, { findings: result.error });
+          await updateTask(id, taskId, {
+            mergeConflict: {
+              error: result.error || "Merge conflict",
+              files: result.conflictFiles || [],
+              branch: prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`,
+            },
+          });
           await processQueue(id);
           return NextResponse.json({ success: false, error: result.error });
         }
-        await updateTask(id, taskId, { worktreePath: undefined, branch: undefined });
+        await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
       }
       scheduleCleanup(id, taskId);
     }

@@ -47,6 +47,11 @@ export interface Task {
   dispatch?: "queued" | "starting" | "running" | null;
   worktreePath?: string;
   branch?: string;
+  mergeConflict?: {
+    error: string;
+    files: string[];
+    branch: string;
+  };
   attachments?: TaskAttachment[];
   createdAt: string;
   updatedAt: string;
@@ -94,7 +99,6 @@ export interface ProjectState {
   chatLog: ChatLogEntry[];
   agentSession?: AgentSession;
   executionMode?: ExecutionMode;
-  activeWorktreeTaskId?: string;
   terminalOpen?: boolean;
   terminalTabs?: TerminalTabInfo[];
   terminalActiveTabId?: string;

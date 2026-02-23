@@ -46,7 +46,7 @@ export function removeWorktree(
 export function mergeWorktree(
   projectPath: string,
   shortId: string,
-): { success: boolean; error?: string } {
+): { success: boolean; error?: string; conflictFiles?: string[] } {
   const branch = `proq/${shortId}`;
   try {
     execSync(
@@ -57,6 +57,18 @@ export function mergeWorktree(
     removeWorktree(projectPath, shortId);
     return { success: true };
   } catch (err) {
+    // Capture conflicting file list before aborting
+    let conflictFiles: string[] = [];
+    try {
+      const output = execSync(
+        `git -C '${projectPath}' diff --name-only --diff-filter=U`,
+        { timeout: 10_000, encoding: "utf-8" },
+      );
+      conflictFiles = output.trim().split("\n").filter(Boolean);
+    } catch {
+      // May fail if merge didn't leave conflicts
+    }
+
     // Abort the failed merge
     try {
       execSync(`git -C '${projectPath}' merge --abort`, { timeout: 10_000 });
@@ -68,7 +80,8 @@ export function mergeWorktree(
     console.error(`[worktree] merge failed for ${branch}:`, message);
     return {
       success: false,
-      error: `Merge conflict merging ${branch}. Resolve conflicts in the worktree terminal, then move to Done again.`,
+      error: `Merge conflict merging ${branch}`,
+      conflictFiles,
     };
   }
 }

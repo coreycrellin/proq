@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { TerminalPane } from './TerminalPane';
+import { ConflictModal } from './ConflictModal';
 
 interface TaskAgentModalProps {
   task: Task;
@@ -28,11 +29,9 @@ interface TaskAgentModalProps {
   onClose: () => void;
   onComplete?: (taskId: string) => void;
   parallelMode?: boolean;
-  activeWorktreeTaskId?: string | null;
-  onSwitchWorktree?: (taskId: string) => void;
 }
 
-export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, onClose, onComplete, parallelMode, activeWorktreeTaskId, onSwitchWorktree }: TaskAgentModalProps) {
+export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, onClose, onComplete, parallelMode }: TaskAgentModalProps) {
   const shortId = task.id.slice(0, 8);
   const terminalTabId = `task-${shortId}`;
   const steps = parseLines(task.humanSteps);
@@ -44,6 +43,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
   const [countdownText, setCountdownText] = useState('');
   const [dispatching, setDispatching] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showConflictModal, setShowConflictModal] = useState(false);
   const [topPanelPercent, setTopPanelPercent] = useState(30);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const bottomPanelRef = useRef<HTMLDivElement>(null);
@@ -128,34 +128,22 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
       >
         {/* ── Left panel: terminal or queued state (70%) ── */}
         <div className="flex-1 min-h-0 flex flex-col">
-          {/* Worktree bar — always visible in parallel mode */}
+          {/* Worktree status — only in parallel mode */}
           {parallelMode && (
             <div className="shrink-0 flex items-center justify-end px-3 py-2 border-b border-gunmetal-300 dark:border-zinc-800 bg-gunmetal-100/50 dark:bg-zinc-900/50">
               <span className="flex items-center gap-1.5 text-xs text-gunmetal-500 dark:text-zinc-500">
                 <span>worktree:</span>
                 <span className={`inline-flex items-center gap-1 font-mono px-1.5 py-0.5 rounded border ${
-                  task.branch
+                  task.mergeConflict
                     ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
-                    : 'border-gunmetal-800/50 bg-zinc-800/60 text-text-chrome-active'
+                    : task.branch
+                      ? 'border-gunmetal-800/50 bg-zinc-800/60 text-text-chrome-active'
+                      : 'border-gunmetal-800/50 bg-zinc-800/60 text-text-chrome-active'
                 }`}>
                   <GitBranchIcon className="w-3 h-3" />
-                  {task.branch || 'main'}
+                  {task.mergeConflict ? task.mergeConflict.branch : (task.branch || 'main')}
                 </span>
               </span>
-              {task.worktreePath && task.branch ? (
-                activeWorktreeTaskId === task.id ? (
-                  <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-yellow-500/30 text-yellow-400/80">
-                    Viewing this worktree
-                  </span>
-                ) : onSwitchWorktree ? (
-                  <button
-                    onClick={() => onSwitchWorktree(task.id)}
-                    className="ml-2 text-[11px] font-medium px-2 py-1 rounded border border-steel/30 text-steel hover:bg-steel/10 transition-colors"
-                  >
-                    Switch to this worktree
-                  </button>
-                ) : null
-              ) : null}
             </div>
           )}
 
@@ -386,6 +374,37 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
               </div>
             )}
 
+            {/* Merge conflict banner */}
+            {task.mergeConflict && (
+              <div className="bg-red-500/8 border border-red-500/20 rounded-md p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangleIcon className="w-3.5 h-3.5 text-red-400" />
+                  <span className="text-xs font-medium text-red-400 uppercase tracking-wide">
+                    Merge conflict
+                  </span>
+                  <span className="text-xs font-mono text-red-400/70">
+                    {task.mergeConflict.branch}
+                  </span>
+                </div>
+                {task.mergeConflict.files.length > 0 && (
+                  <ul className="space-y-0.5 mb-2">
+                    {task.mergeConflict.files.map((file) => (
+                      <li key={file} className="text-xs font-mono text-gunmetal-700 dark:text-zinc-400 flex items-start">
+                        <span className="mr-2 text-red-400 shrink-0">-</span>
+                        <span>{file}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button
+                  onClick={() => setShowConflictModal(true)}
+                  className="text-[11px] font-medium text-red-400 hover:text-red-300 transition-colors"
+                >
+                  View Details
+                </button>
+              </div>
+            )}
+
             {/* Human steps banner */}
             {steps.length > 0 && (
               <div className="bg-gold/8 border border-gold/20 rounded-md p-3">
@@ -422,6 +441,29 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
           )}
         </div>
       </div>
+
+      {showConflictModal && task.mergeConflict && (
+        <ConflictModal
+          branch={task.mergeConflict.branch}
+          files={task.mergeConflict.files}
+          onRedispatch={async () => {
+            setShowConflictModal(false);
+            // Move task to todo then to in-progress to re-dispatch
+            await fetch(`/api/projects/${projectId}/tasks/${task.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: 'todo' }),
+            });
+            await fetch(`/api/projects/${projectId}/tasks/reorder`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ taskId: task.id, toColumn: 'in-progress', toIndex: 0 }),
+            });
+            onClose();
+          }}
+          onDismiss={() => setShowConflictModal(false)}
+        />
+      )}
     </div>
   );
 }

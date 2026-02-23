@@ -300,7 +300,7 @@ export async function moveTask(
 export async function updateTask(
   projectId: string,
   taskId: string,
-  data: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "findings" | "humanSteps" | "agentLog" | "dispatch" | "attachments" | "mode" | "worktreePath" | "branch">>
+  data: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "findings" | "humanSteps" | "agentLog" | "dispatch" | "attachments" | "mode" | "worktreePath" | "branch" | "mergeConflict">>
 ): Promise<Task | null> {
   return withWriteLock(`project:${projectId}`, async () => {
     const state = getProjectData(projectId);
@@ -410,23 +410,6 @@ export async function setExecutionMode(projectId: string, mode: ExecutionMode): 
   return withWriteLock(`project:${projectId}`, async () => {
     const data = getProjectData(projectId);
     data.executionMode = mode;
-    writeProject(projectId, data);
-  });
-}
-
-// ═══════════════════════════════════════════════════════════
-// ACTIVE WORKTREE
-// ═══════════════════════════════════════════════════════════
-
-export async function getActiveWorktreeTaskId(projectId: string): Promise<string | null> {
-  const data = getProjectData(projectId);
-  return data.activeWorktreeTaskId ?? null;
-}
-
-export async function setActiveWorktreeTaskId(projectId: string, taskId: string | null): Promise<void> {
-  return withWriteLock(`project:${projectId}`, async () => {
-    const data = getProjectData(projectId);
-    data.activeWorktreeTaskId = taskId ?? undefined;
     writeProject(projectId, data);
   });
 }

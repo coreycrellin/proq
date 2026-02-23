@@ -29,37 +29,12 @@ export default function ProjectPage() {
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('sequential');
   const [cleanupTimes, setCleanupTimes] = useState<Record<string, number>>({});
   const [undoEntry, setUndoEntry] = useState<{ task: Task; column: TaskStatus } | null>(null);
-  const [activeWorktreeTaskId, setActiveWorktreeTaskId] = useState<string | null>(null);
   const [showParallelModal, setShowParallelModal] = useState(false);
   const [showModeBlockedModal, setShowModeBlockedModal] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const project = projects.find((p) => p.id === projectId);
   const columns: TaskColumns = tasksByProject[projectId] || emptyColumns();
-
-  // Derive effective project for worktree view
-  const activeWorktreeTask = activeWorktreeTaskId
-    ? Object.values(columns).flat().find(t => t.id === activeWorktreeTaskId)
-    : null;
-  const effectivePath = activeWorktreeTask?.worktreePath || project?.path;
-  const effectiveProject = project && effectivePath !== project.path
-    ? { ...project, path: effectivePath! }
-    : project;
-
-  // Clear worktree view when task moves to done/todo (worktree removed)
-  useEffect(() => {
-    if (!activeWorktreeTaskId) return;
-    const task = Object.values(columns).flat().find(t => t.id === activeWorktreeTaskId);
-    if (!task || !task.worktreePath) {
-      setActiveWorktreeTaskId(null);
-    }
-  }, [columns, activeWorktreeTaskId]);
-
-  // Reset worktree view when switching projects (will be restored from server)
-  useEffect(() => {
-    setActiveWorktreeTaskId(null);
-    initialLoadRef.current = true;
-  }, [projectId]);
 
   // Update document title with project id (slug)
   useEffect(() => {
@@ -80,19 +55,12 @@ export default function ProjectPage() {
       .catch(() => {});
   }, [projectId]);
 
-  const initialLoadRef = useRef(true);
-
   const fetchExecutionMode = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${projectId}/execution-mode`);
       const data = await res.json();
       setExecutionMode(data.mode);
       setCleanupTimes(data.cleanupTimes || {});
-      // Restore persisted worktree selection on initial load only
-      if (initialLoadRef.current) {
-        initialLoadRef.current = false;
-        setActiveWorktreeTaskId(data.activeWorktreeTaskId || null);
-      }
     } catch (e) {
       console.error('Failed to fetch execution mode:', e);
     }
@@ -152,15 +120,6 @@ export default function ProjectPage() {
       }
     }
   }, [columns]);
-
-  const switchWorktree = useCallback((taskId: string | null) => {
-    setActiveWorktreeTaskId(taskId);
-    fetch(`/api/projects/${projectId}/active-worktree`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ taskId }),
-    }).catch(() => {});
-  }, [projectId]);
 
   const deleteTask = async (taskId: string) => {
     await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
@@ -296,8 +255,6 @@ export default function ProjectPage() {
         project={project}
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        worktreeBranch={executionMode === 'parallel' ? (activeWorktreeTask?.branch || 'main') : undefined}
-        onExitWorktree={activeWorktreeTaskId ? () => switchWorktree(null) : undefined}
       />
 
       <main ref={containerRef} className="flex-1 flex flex-col overflow-hidden relative">
@@ -337,7 +294,7 @@ export default function ProjectPage() {
 
             <TerminalPanel
               projectId={projectId}
-              projectPath={effectivePath}
+              projectPath={project.path}
               style={{ flexBasis: `${chatPercent}%` }}
               collapsed={terminalCollapsed}
               onToggleCollapsed={toggleTerminalCollapsed}
@@ -346,8 +303,8 @@ export default function ProjectPage() {
           </>
         )}
 
-        {activeTab === 'live' && effectiveProject && <LiveTab project={effectiveProject} />}
-        {activeTab === 'code' && effectiveProject && <CodeTab project={effectiveProject} />}
+        {activeTab === 'live' && project && <LiveTab project={project} />}
+        {activeTab === 'code' && project && <CodeTab project={project} />}
       </main>
 
       {isDragging && <div className="fixed inset-0 z-50 cursor-row-resize" />}
@@ -364,8 +321,6 @@ export default function ProjectPage() {
             setAgentModalTask(null);
           }}
           parallelMode={executionMode === 'parallel'}
-          activeWorktreeTaskId={activeWorktreeTaskId}
-          onSwitchWorktree={(taskId) => switchWorktree(taskId)}
         />
       )}
 

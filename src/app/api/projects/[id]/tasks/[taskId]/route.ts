@@ -38,33 +38,58 @@ export async function PATCH(request: Request, { params }: Params) {
           removeWorktree(projectPath, prevTask.id.slice(0, 8));
         }
       }
-      const resetFields = { dispatch: null as Task["dispatch"], findings: "", humanSteps: "", agentLog: "", worktreePath: undefined as string | undefined, branch: undefined as string | undefined };
+      const resetFields = { dispatch: null as Task["dispatch"], findings: "", humanSteps: "", agentLog: "", worktreePath: undefined as string | undefined, branch: undefined as string | undefined, mergeConflict: undefined as Task["mergeConflict"] };
       await updateTask(id, taskId, resetFields);
       Object.assign(updated, resetFields);
       if (prevStatus === "in-progress") {
         await abortTask(id, taskId);
       }
     } else if (prevStatus === "in-progress" && (body.status === "verify" || body.status === "done")) {
+      // Auto-merge worktree when leaving in-progress
+      if (prevTask?.worktreePath) {
+        const proj = await getProject(id);
+        if (proj) {
+          const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
+          const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
+          if (result.success) {
+            await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
+          } else {
+            // Store conflict details but still move to verify
+            await updateTask(id, taskId, {
+              mergeConflict: {
+                error: result.error || "Merge conflict",
+                files: result.conflictFiles || [],
+                branch: prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`,
+              },
+            });
+          }
+        }
+      }
       if (body.status === "done") {
         scheduleCleanup(id, taskId);
       }
       notify(`✅ *${(updated.title || updated.description.slice(0, 40)).replace(/"/g, '\\"')}* → ${body.status}`);
     } else if (body.status === "done" && prevStatus === "verify") {
-      // Merge worktree if task has one
+      // Re-attempt merge if task still has a worktree (conflict case)
       if (prevTask?.worktreePath) {
         const proj = await getProject(id);
         if (proj) {
           const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
           const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
           if (!result.success) {
-            // Keep task in verify, explain the conflict
-            await updateTask(id, taskId, { status: "verify", findings: result.error });
+            await updateTask(id, taskId, {
+              status: "verify",
+              mergeConflict: {
+                error: result.error || "Merge conflict",
+                files: result.conflictFiles || [],
+                branch: prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`,
+              },
+            });
             const fresh = await getTask(id, taskId);
             if (fresh) return NextResponse.json(fresh);
             return NextResponse.json(updated);
           }
-          // Merge succeeded — clear worktree fields
-          await updateTask(id, taskId, { worktreePath: undefined, branch: undefined });
+          await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
         }
       }
       scheduleCleanup(id, taskId);

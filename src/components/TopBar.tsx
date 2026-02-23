@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { XIcon, GitBranchIcon } from 'lucide-react';
 import type { Project, ProjectTab } from '@/lib/types';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -11,11 +10,9 @@ interface TopBarProps {
   project: Project;
   activeTab: TabOption;
   onTabChange: (tab: TabOption) => void;
-  worktreeBranch?: string;
-  onExitWorktree?: () => void;
 }
 
-export function TopBar({ project, activeTab, onTabChange, worktreeBranch, onExitWorktree }: TopBarProps) {
+export function TopBar({ project, activeTab, onTabChange }: TopBarProps) {
   const tabs: { id: TabOption; label: string }[] = [
     { id: 'project', label: 'Project' },
     { id: 'live', label: 'Live' },
@@ -34,28 +31,6 @@ export function TopBar({ project, activeTab, onTabChange, worktreeBranch, onExit
       </div>
 
       <div className="flex items-center gap-3">
-        {worktreeBranch && (
-          <div className="flex items-center gap-1.5 text-xs text-gunmetal-500 dark:text-zinc-500">
-            <span>worktree:</span>
-            <span className={`inline-flex items-center gap-1 font-mono px-1.5 py-0.5 rounded border ${
-              worktreeBranch === 'main'
-                ? 'border-gunmetal-800/50 bg-zinc-800/60 text-text-chrome-active'
-                : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
-            }`}>
-              <GitBranchIcon className="w-3 h-3" />
-              {worktreeBranch}
-            </span>
-            {onExitWorktree && (
-              <button
-                onClick={onExitWorktree}
-                className="p-0.5 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
-                title="Exit worktree view"
-              >
-                <XIcon className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        )}
         <div className="bg-surface-secondary p-1 rounded-lg flex items-center border border-border-default">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
