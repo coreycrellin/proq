@@ -204,7 +204,7 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
                   e.stopPropagation();
                   setMenuTabId(menuTabId === tab.id ? null : tab.id);
                 }}
-                className="absolute right-1 inset-y-0 flex items-center opacity-0 group-hover/tab:opacity-100 transition-opacity cursor-pointer text-zinc-500 hover:text-zinc-300"
+                className="absolute right-0 inset-y-0 flex items-center pl-4 pr-2 opacity-0 group-hover/tab:opacity-100 transition-opacity cursor-pointer text-zinc-500 hover:text-zinc-300 bg-gradient-to-l from-zinc-900/90 from-50% to-transparent"
               >
                 <MoreHorizontal className="w-3.5 h-3.5" />
               </span>
