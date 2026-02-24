@@ -165,13 +165,13 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
           {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
         {tabs.map((tab) => (
-          <div key={tab.id} className="flex items-stretch shrink-0 relative">
+          <div key={tab.id} className="group/tab flex items-stretch shrink-0 relative">
             <button
               onClick={() => {
                 setActiveTabId(projectId, tab.id);
                 if (collapsed) onToggleCollapsed();
               }}
-              className={`flex items-center gap-1.5 px-3 self-stretch text-xs transition-colors ${
+              className={`relative flex items-center gap-1.5 px-3 self-stretch text-xs transition-colors ${
                 activeTabId === tab.id
                   ? 'bg-gunmetal-300/60 dark:bg-zinc-800/60 ' + tabAccentColor(tab)
                   : 'text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-gunmetal-300/30 dark:hover:bg-zinc-800/30'
@@ -197,19 +197,17 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
                   {tab.label}
                 </span>
               )}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuTabId(menuTabId === tab.id ? null : tab.id);
-              }}
-              className={`flex items-center justify-center px-1.5 self-stretch text-zinc-500 hover:text-zinc-300 transition-colors ${
-                activeTabId === tab.id
-                  ? 'bg-gunmetal-300/60 dark:bg-zinc-800/60'
-                  : 'hover:bg-gunmetal-300/30 dark:hover:bg-zinc-800/30'
-              }`}
-            >
-              <MoreHorizontal className="w-3.5 h-3.5" />
+              {/* Dots overlay — hidden until hover */}
+              <span
+                data-clickable
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuTabId(menuTabId === tab.id ? null : tab.id);
+                }}
+                className="absolute right-1 inset-y-0 flex items-center opacity-0 group-hover/tab:opacity-100 transition-opacity cursor-pointer text-zinc-500 hover:text-zinc-300"
+              >
+                <MoreHorizontal className="w-3.5 h-3.5" />
+              </span>
             </button>
             {menuTabId === tab.id && (
               <div
