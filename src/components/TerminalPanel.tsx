@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useState,
 } from 'react';
-import { Plus, X, TerminalIcon, ChevronUp, ChevronDown, GripHorizontal } from 'lucide-react';
+import { Plus, X, TerminalIcon, ChevronUp, ChevronDown } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useTerminalTabs, type TerminalTab } from './TerminalTabsProvider';
 import { TerminalPane } from './TerminalPane';
@@ -176,10 +176,8 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
           <Plus className="w-3.5 h-3.5" />
         </button>
 
-        {/* Grip indicator — fills remaining space */}
-        <div className="flex-1 flex items-center justify-center">
-          <GripHorizontal className="w-4 h-4 text-zinc-700/40" />
-        </div>
+        {/* Spacer — fills remaining space for grab target */}
+        <div className="flex-1" />
       </div>
 
       {/* Terminal Panes — each manages its own xterm lifecycle */}
