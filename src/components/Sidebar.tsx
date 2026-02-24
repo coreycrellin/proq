@@ -21,7 +21,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   PlusIcon,
-  LayoutGridIcon,
   SquareChevronUpIcon,
   RefreshCwIcon,
   CheckCircle2Icon,
@@ -378,9 +377,10 @@ export function Sidebar({ onAddProject, onMissingPath }: SidebarProps) {
   return (
     <aside className="w-[260px] h-full bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0">
       {/* Header */}
-      <div className="h-16 flex items-center px-4 border-b border-border-subtle">
-        <LayoutGridIcon className="w-5 h-5 text-zinc-400 mr-3" />
-        <span className="text-sm font-bold tracking-wide text-gunmetal-900 dark:text-zinc-100 uppercase">
+      <div className="h-16 flex items-center gap-2.5 px-4 pl-[18px] border-b border-border-subtle group/logo cursor-default hover:bg-gunmetal-100/60 dark:hover:bg-zinc-800/40 transition-colors">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/proq-logo.png" alt="proq" width={12} height={12} className="translate-y-[3px]" />
+        <span className="text-lg font-[var(--font-gemunu-libre)] text-gunmetal-900 dark:text-zinc-100 lowercase" style={{ fontFamily: 'var(--font-gemunu-libre)' }}>
           proq
         </span>
       </div>

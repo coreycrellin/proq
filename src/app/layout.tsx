@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Gemunu_Libre } from "next/font/google";
 import { ClientShell } from "@/components/ClientShell";
 import "./globals.css";
+
+const gemunuLibre = Gemunu_Libre({
+  subsets: ["latin"],
+  weight: "800",
+  variable: "--font-gemunu-libre",
+});
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -34,7 +41,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${gemunuLibre.variable} antialiased`}
       >
         <ClientShell>{children}</ClientShell>
       </body>
