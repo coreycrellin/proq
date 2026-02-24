@@ -17,6 +17,7 @@ interface TerminalPanelProps {
   style?: React.CSSProperties;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  onExpand?: () => void;
   cleanupTimes?: Record<string, number>;
   onResizeStart?: (e: React.MouseEvent) => void;
   isDragging?: boolean;
@@ -53,7 +54,7 @@ function useCleanupCountdown(expiresAt: number | undefined): string | null {
   return `process will be terminated in ${mins}m`;
 }
 
-export default function TerminalPanel({ projectId, projectPath, style, collapsed, onToggleCollapsed, cleanupTimes, onResizeStart, isDragging }: TerminalPanelProps) {
+export default function TerminalPanel({ projectId, projectPath, style, collapsed, onToggleCollapsed, onExpand, cleanupTimes, onResizeStart, isDragging }: TerminalPanelProps) {
   const { getTabs, getActiveTabId, setActiveTabId, openTab, closeTab, renameTab, hydrateProject } = useTerminalTabs();
   const panelRef = useRef<HTMLDivElement>(null);
   const [menuTabId, setMenuTabId] = useState<string | null>(null);
@@ -179,7 +180,7 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
             <button
               onClick={() => {
                 setActiveTabId(projectId, tab.id);
-                if (collapsed) onToggleCollapsed();
+                if (collapsed) (onExpand ?? onToggleCollapsed)();
               }}
               onDoubleClick={(e) => {
                 e.stopPropagation();
@@ -262,7 +263,7 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
         <button
           onClick={() => {
             addShellTab();
-            if (collapsed) onToggleCollapsed();
+            if (collapsed) (onExpand ?? onToggleCollapsed)();
           }}
           className="flex items-center justify-center w-12 self-stretch text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-bronze-300/30 dark:hover:bg-zinc-800/30 shrink-0"
           title="New terminal"

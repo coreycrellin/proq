@@ -218,6 +218,19 @@ export default function ProjectPage() {
     });
   }, [projectId]);
 
+  const expandTerminal = useCallback(() => {
+    setTerminalCollapsed((prev) => {
+      if (!prev) return prev; // already open
+      fetch(`/api/projects/${projectId}/terminal-open`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ open: true }),
+      }).catch(() => {});
+      return false;
+    });
+    setChatPercent((prev) => Math.max(prev, 25));
+  }, [projectId]);
+
   // Resize handle (tab bar is the drag target)
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -306,6 +319,7 @@ export default function ProjectPage() {
               style={{ flexBasis: `${chatPercent}%` }}
               collapsed={terminalCollapsed}
               onToggleCollapsed={toggleTerminalCollapsed}
+              onExpand={expandTerminal}
               cleanupTimes={cleanupTimes}
               onResizeStart={handleResizeStart}
               isDragging={isDragging}
