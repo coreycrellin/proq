@@ -115,7 +115,7 @@ export default function SupervisorPage() {
 
   return (
     <>
-      <header className="h-16 border-b border-gunmetal-300 dark:border-zinc-800 bg-gunmetal-50 dark:bg-zinc-950 flex items-center justify-between px-6 flex-shrink-0">
+      <header className="h-16 bg-gunmetal-50 dark:bg-zinc-950 flex items-center justify-between px-6 flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <SquareChevronUpIcon className="w-5 h-5 text-gunmetal-500" />
           <h1 className="text-lg font-semibold text-gunmetal-900 dark:text-zinc-100 leading-tight">Supervisor</h1>

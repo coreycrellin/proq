@@ -213,7 +213,7 @@ function SortableProject({
         }}
         className={`w-full text-left py-3 px-4 relative group block cursor-grab active:cursor-grabbing
           ${isActive ? "bg-gunmetal-300 dark:bg-zinc-800/50" : "hover:bg-gunmetal-300/60 dark:hover:bg-zinc-800/40"}
-          ${index > 0 ? "border-t border-gunmetal-300/60 dark:border-zinc-800/60" : ""}`}
+          `}
       >
         {isActive && (
           <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gunmetal-600 dark:bg-gunmetal-500" />
@@ -377,9 +377,9 @@ export function Sidebar({ onAddProject, onMissingPath }: SidebarProps) {
   return (
     <aside className="w-[260px] h-full bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0">
       {/* Header */}
-      <div className="h-16 flex items-center gap-2.5 px-4 pl-[18px] border-b border-border-subtle group/logo cursor-default hover:bg-gunmetal-100/60 dark:hover:bg-zinc-800/40 transition-colors">
+      <div className="h-16 flex items-center gap-2.5 px-4 pl-[18px] group/logo cursor-default hover:bg-gunmetal-100/60 dark:hover:bg-zinc-800/40 transition-colors">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/proq-logo.png" alt="proq" width={12} height={12} className="translate-y-[3px]" />
+        <img src="/proq-logo-vector.svg" alt="proq" width={12} height={12} className="translate-y-[3px]" />
         <span className="text-lg font-[var(--font-gemunu-libre)] text-gunmetal-900 dark:text-zinc-100 lowercase" style={{ fontFamily: 'var(--font-gemunu-libre)' }}>
           proq
         </span>
@@ -388,7 +388,7 @@ export function Sidebar({ onAddProject, onMissingPath }: SidebarProps) {
       {/* Main Chat Item */}
       <Link
         href="/supervisor"
-        className={`w-full text-left p-3 px-4 relative group py-4 border-b border-gunmetal-300/60 dark:border-zinc-800/60 block
+        className={`w-full text-left p-3 px-4 relative group py-4 block
           ${isChatActive ? "bg-gunmetal-300 dark:bg-zinc-800" : "hover:bg-gunmetal-300/60 dark:hover:bg-zinc-800/40"}`}
       >
         {isChatActive && (
