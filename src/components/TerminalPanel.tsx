@@ -183,25 +183,27 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
               }`}
             >
               <TerminalIcon className="w-3 h-3" />
-              {renamingTabId === tab.id ? (
-                <input
-                  ref={renameInputRef}
-                  value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') submitRename();
-                    if (e.key === 'Escape') { setRenamingTabId(null); setRenameValue(''); }
-                  }}
-                  onBlur={submitRename}
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-transparent border border-zinc-600 rounded px-1 py-0 text-xs w-24 outline-none focus:border-zinc-400"
-                />
-              ) : (
-                <span className="max-w-[120px] truncate">
+              <span className="relative">
+                {/* Always rendered to preserve tab width */}
+                <span className={`max-w-[120px] truncate block ${renamingTabId === tab.id ? 'invisible' : ''}`}>
                   {tab.status === 'done' ? '\u2705 ' : ''}
                   {tab.label}
                 </span>
-              )}
+                {renamingTabId === tab.id && (
+                  <input
+                    ref={renameInputRef}
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') submitRename();
+                      if (e.key === 'Escape') { setRenamingTabId(null); setRenameValue(''); }
+                    }}
+                    onBlur={submitRename}
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute inset-0 bg-transparent border border-zinc-600 rounded px-1 text-xs outline-none focus:border-zinc-400"
+                  />
+                )}
+              </span>
               {/* Dots overlay — hidden until hover */}
               <span
                 data-clickable
