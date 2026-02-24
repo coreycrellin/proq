@@ -9,16 +9,31 @@ export default function SupervisorPage() {
   const [messages, setMessages] = useState<ChatLogEntry[]>([]);
   const [streamingMessage, setStreamingMessage] = useState<StreamingMessage | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [draft, setDraft] = useState('');
   const abortRef = useRef<AbortController | null>(null);
+  const draftTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load history on mount
+  // Load history + draft on mount
   useEffect(() => {
     fetch('/api/supervisor')
       .then((res) => res.json())
       .then((data) => {
         if (data.chatLog) setMessages(data.chatLog);
+        if (data.draft) setDraft(data.draft);
       })
       .catch(console.error);
+  }, []);
+
+  // Debounced draft persistence
+  const handleDraftChange = useCallback((value: string) => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      fetch('/api/supervisor', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draft: value }),
+      }).catch(console.error);
+    }, 500);
   }, []);
 
   const handleSendMessage = useCallback(async (text: string) => {
@@ -31,6 +46,14 @@ export default function SupervisorPage() {
     setMessages((prev) => [...prev, userEntry]);
     setIsLoading(true);
     setStreamingMessage({ toolCalls: [], text: '' });
+
+    // Clear persisted draft immediately
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    fetch('/api/supervisor', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ draft: '' }),
+    }).catch(console.error);
 
     try {
       const controller = new AbortController();
@@ -135,6 +158,8 @@ export default function SupervisorPage() {
           onSendMessage={handleSendMessage}
           streamingMessage={streamingMessage}
           isLoading={isLoading}
+          initialValue={draft}
+          onDraftChange={handleDraftChange}
           style={{ flex: 1 }}
         />
       </main>

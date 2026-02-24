@@ -3,13 +3,25 @@ import {
   getSupervisorChatLog,
   addSupervisorMessage,
   clearSupervisorChatLog,
+  getSupervisorDraft,
+  setSupervisorDraft,
 } from "@/lib/db";
 import { runSupervisor, type SupervisorChunk } from "@/lib/supervisor";
 import type { ToolCall } from "@/lib/types";
 
 export async function GET() {
-  const chatLog = await getSupervisorChatLog();
-  return NextResponse.json({ chatLog });
+  const [chatLog, draft] = await Promise.all([
+    getSupervisorChatLog(),
+    getSupervisorDraft(),
+  ]);
+  return NextResponse.json({ chatLog, draft });
+}
+
+export async function PATCH(req: NextRequest) {
+  const body = await req.json();
+  const draft = typeof body.draft === "string" ? body.draft : "";
+  await setSupervisorDraft(draft);
+  return NextResponse.json({ ok: true });
 }
 
 export async function POST(req: NextRequest) {

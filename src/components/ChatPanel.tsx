@@ -17,6 +17,8 @@ interface ChatPanelProps {
   style?: React.CSSProperties;
   streamingMessage?: StreamingMessage | null;
   isLoading?: boolean;
+  initialValue?: string;
+  onDraftChange?: (value: string) => void;
 }
 
 // Tool call icon + label mapping
@@ -224,9 +226,18 @@ function ScrambleText({ text, className }: { text: string; className?: string })
   );
 }
 
-export function ChatPanel({ messages, onSendMessage, style, streamingMessage, isLoading }: ChatPanelProps) {
-  const [inputValue, setInputValue] = useState('');
+export function ChatPanel({ messages, onSendMessage, style, streamingMessage, isLoading, initialValue, onDraftChange }: ChatPanelProps) {
+  const [inputValue, setInputValue] = useState(initialValue || '');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Sync when initialValue changes (e.g. restored from persistence)
+  const initialValueApplied = useRef(false);
+  useEffect(() => {
+    if (initialValue && !initialValueApplied.current) {
+      setInputValue(initialValue);
+      initialValueApplied.current = true;
+    }
+  }, [initialValue]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
@@ -241,6 +252,7 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
     if (!inputValue.trim() || isLoading) return;
     onSendMessage(inputValue);
     setInputValue('');
+    onDraftChange?.('');
   };
 
   const formatTimestamp = (ts: string) => {
@@ -321,7 +333,10 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
           <input
             type="text"
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              onDraftChange?.(e.target.value);
+            }}
             placeholder={isLoading ? "waiting for response..." : "message..."}
             disabled={isLoading}
             className="flex-1 bg-transparent text-sm text-bronze-800 dark:text-zinc-200 placeholder:text-bronze-500 dark:placeholder:text-zinc-700 focus:outline-none caret-steel disabled:opacity-50"

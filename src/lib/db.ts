@@ -479,6 +479,7 @@ export async function addChatMessage(
 
 interface SupervisorData {
   chatLog: ChatLogEntry[];
+  draft?: string;
 }
 
 const SUPERVISOR_FILE = path.join(DATA_DIR, "supervisor.json");
@@ -515,6 +516,18 @@ export async function addSupervisorMessage(
 export async function clearSupervisorChatLog(): Promise<void> {
   return withWriteLock("supervisor", async () => {
     writeSupervisorData({ chatLog: [] });
+  });
+}
+
+export async function getSupervisorDraft(): Promise<string> {
+  return readSupervisorData().draft || "";
+}
+
+export async function setSupervisorDraft(draft: string): Promise<void> {
+  return withWriteLock("supervisor", async () => {
+    const state = readSupervisorData();
+    state.draft = draft || undefined;
+    writeSupervisorData(state);
   });
 }
 
