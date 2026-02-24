@@ -170,7 +170,7 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
             addShellTab();
             if (collapsed) onToggleCollapsed();
           }}
-          className="flex items-center justify-center px-2.5 self-stretch text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-gunmetal-300/30 dark:hover:bg-zinc-800/30 shrink-0"
+          className="flex items-center justify-center w-12 self-stretch text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-gunmetal-300/30 dark:hover:bg-zinc-800/30 shrink-0"
           title="New terminal"
         >
           <Plus className="w-3.5 h-3.5" />
