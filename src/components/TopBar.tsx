@@ -52,16 +52,16 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
 
   return (
     <header className="h-16 bg-surface-base flex items-center justify-between px-6 flex-shrink-0">
-      <div className="flex items-center gap-4">
-        <div className="flex flex-col justify-center">
-          <h1 className="text-lg font-semibold text-bronze-900 dark:text-zinc-100 leading-tight">
-            {project.path.replace(/\/+$/, "").split("/").pop() || project.name}
-          </h1>
-          <span className="text-xs font-mono text-zinc-500 mt-0.5">
-            {project.path}
-          </span>
-        </div>
+      <div className="flex flex-col justify-center">
+        <h1 className="text-lg font-semibold text-bronze-900 dark:text-zinc-100 leading-tight">
+          {project.path.replace(/\/+$/, "").split("/").pop() || project.name}
+        </h1>
+        <span className="text-xs font-mono text-zinc-500 mt-0.5">
+          {project.path}
+        </span>
+      </div>
 
+      <div className="flex items-center gap-3">
         {/* Branch indicator + switcher */}
         {currentBranch && branches && branches.length > 0 && (
           <div className="relative" ref={dropdownRef}>
@@ -77,7 +77,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
             </button>
 
             {dropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 w-72 max-h-64 overflow-y-auto rounded-lg border border-border-default bg-surface-base shadow-xl shadow-black/30 z-50">
+              <div className="absolute top-full right-0 mt-1 w-72 max-h-64 overflow-y-auto rounded-lg border border-border-default bg-surface-base shadow-xl shadow-black/30 z-50">
                 {sortedBranches.map((branch) => {
                   const isCurrent = branch === currentBranch;
                   const taskTitle = taskBranchMap?.[branch];
@@ -112,9 +112,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
             )}
           </div>
         )}
-      </div>
 
-      <div className="flex items-center gap-3">
         <div className="bg-surface-secondary p-1 rounded-lg flex items-center border border-border-default">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
