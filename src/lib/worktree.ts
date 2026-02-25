@@ -99,21 +99,6 @@ export function getCurrentBranch(
       return { branch, detached: false };
     }
 
-    // Detached HEAD — try to find which proq/* ref we're on
-    const refs = execSync(
-      `git -C '${projectPath}' log -1 --format=%D HEAD`,
-      { timeout: 10_000, encoding: "utf-8" },
-    ).trim();
-
-    // Format: "HEAD, proq/abc12345" or "HEAD -> main, origin/main"
-    const parts = refs.split(",").map((s) => s.trim());
-    for (const part of parts) {
-      const cleaned = part.replace(/^HEAD\s*->\s*/, "");
-      if (cleaned.startsWith("proq/")) {
-        return { branch: cleaned, detached: true };
-      }
-    }
-
     return { branch: "HEAD", detached: true };
   } catch {
     return { branch: "main", detached: false };
@@ -133,11 +118,30 @@ export function listBranches(projectPath: string): string[] {
 }
 
 const PROQ_STASH_MSG = "proq-auto-stash";
+const PREVIEW_PREFIX = "preview/";
+
+/** Convert a proq/* branch name to its preview/* equivalent */
+export function previewBranchName(proqBranch: string): string {
+  // proq/abc12345 → preview/abc12345
+  return PREVIEW_PREFIX + proqBranch.replace(/^proq\//, "");
+}
+
+/** Check if a branch is a preview branch */
+export function isPreviewBranch(branch: string): boolean {
+  return branch.startsWith(PREVIEW_PREFIX);
+}
+
+/** Get the source proq/* branch for a preview branch */
+export function sourceProqBranch(previewBranch: string): string {
+  return "proq/" + previewBranch.replace(/^preview\//, "");
+}
 
 export function checkoutBranch(
   projectPath: string,
   branch: string,
 ): void {
+  const current = getCurrentBranch(projectPath);
+
   // Check if working tree is dirty and stash if needed
   const status = execSync(
     `git -C '${projectPath}' status --porcelain`,
@@ -153,20 +157,38 @@ export function checkoutBranch(
     console.log("[git] auto-stashed dirty working tree");
   }
 
+  // If we're leaving a preview branch, clean it up after checkout
+  const oldPreviewBranch = (isPreviewBranch(current.branch) && branch !== current.branch)
+    ? current.branch
+    : null;
+
   try {
     if (branch.startsWith("proq/")) {
-      // Detached checkout to avoid conflict with worktree holding the branch
+      // Create a preview branch pointing at the proq/* branch tip
+      const preview = previewBranchName(branch);
+      const commitHash = execSync(
+        `git -C '${projectPath}' rev-parse '${branch}'`,
+        { timeout: 10_000, encoding: "utf-8" },
+      ).trim();
+
+      // Delete existing preview branch if any (force, it's disposable)
+      try {
+        execSync(`git -C '${projectPath}' branch -D '${preview}'`, { timeout: 10_000 });
+      } catch { /* may not exist */ }
+
+      // Create and checkout the preview branch
       execSync(
-        `git -C '${projectPath}' checkout --detach '${branch}'`,
+        `git -C '${projectPath}' checkout -b '${preview}' '${commitHash}'`,
         { timeout: 15_000 },
       );
+      console.log(`[git] checked out ${preview} (tracking ${branch})`);
     } else {
       execSync(
         `git -C '${projectPath}' checkout '${branch}'`,
         { timeout: 15_000 },
       );
+      console.log(`[git] checked out ${branch}`);
     }
-    console.log(`[git] checked out ${branch}`);
   } catch (err) {
     // On failure, try to pop stash if we pushed one
     if (needsStash) {
@@ -177,10 +199,17 @@ export function checkoutBranch(
     throw err;
   }
 
-  // Pop auto-stash if we pushed one and we're now on a regular branch
+  // Clean up old preview branch now that we've moved away
+  if (oldPreviewBranch) {
+    try {
+      execSync(`git -C '${projectPath}' branch -D '${oldPreviewBranch}'`, { timeout: 10_000 });
+      console.log(`[git] deleted old preview branch ${oldPreviewBranch}`);
+    } catch { /* best effort */ }
+  }
+
+  // Pop auto-stash if we pushed one and we're now on a non-preview branch
   if (needsStash && !branch.startsWith("proq/")) {
     try {
-      // Check if the top stash is ours
       const stashMsg = execSync(
         `git -C '${projectPath}' stash list -1 --format=%s`,
         { timeout: 10_000, encoding: "utf-8" },
@@ -195,32 +224,52 @@ export function checkoutBranch(
   }
 }
 
-export function refreshDetachedHead(
+/**
+ * Refresh a preview branch to pick up new commits from the source proq/* branch.
+ * Returns true if files changed (new commits picked up).
+ */
+export function refreshPreviewBranch(
   projectPath: string,
-  branch: string,
+  previewBranch: string,
 ): boolean {
+  if (!isPreviewBranch(previewBranch)) return false;
+
+  const source = sourceProqBranch(previewBranch);
   try {
     const headHash = execSync(
       `git -C '${projectPath}' rev-parse HEAD`,
       { timeout: 10_000, encoding: "utf-8" },
     ).trim();
 
-    const branchHash = execSync(
-      `git -C '${projectPath}' rev-parse '${branch}'`,
+    const sourceHash = execSync(
+      `git -C '${projectPath}' rev-parse '${source}'`,
       { timeout: 10_000, encoding: "utf-8" },
     ).trim();
 
-    if (headHash === branchHash) return false;
+    if (headHash === sourceHash) return false;
 
+    // Fast-forward the preview branch to the source branch tip
     execSync(
-      `git -C '${projectPath}' checkout --detach '${branch}'`,
+      `git -C '${projectPath}' merge --ff-only '${source}'`,
       { timeout: 15_000 },
     );
-    console.log(`[git] refreshed detached HEAD to ${branch} tip`);
+    console.log(`[git] refreshed ${previewBranch} to ${source} tip`);
     return true;
   } catch {
     return false;
   }
+}
+
+/** Delete a preview branch (cleanup helper) */
+export function deletePreviewBranch(
+  projectPath: string,
+  proqBranch: string,
+): void {
+  const preview = previewBranchName(proqBranch);
+  try {
+    execSync(`git -C '${projectPath}' branch -D '${preview}'`, { timeout: 10_000 });
+    console.log(`[git] deleted preview branch ${preview}`);
+  } catch { /* may not exist */ }
 }
 
 export function ensureGitignore(projectPath: string): void {

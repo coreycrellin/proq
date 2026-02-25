@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
 import { moveTask, getProject, getTask, updateTask } from "@/lib/db";
 import { abortTask, processQueue, getInitialDispatch, scheduleCleanup, cancelCleanup } from "@/lib/agent-dispatch";
-import { mergeWorktree, removeWorktree } from "@/lib/worktree";
+import { mergeWorktree, removeWorktree, getCurrentBranch, checkoutBranch, isPreviewBranch, sourceProqBranch, deletePreviewBranch } from "@/lib/worktree";
 import type { TaskStatus } from "@/lib/types";
 
 type Params = { params: Promise<{ id: string }> };
+
+/** Check if the main project directory is currently on a task's branch (or its preview) and switch to main if so */
+function ensureNotOnTaskBranch(projectPath: string, taskBranch: string): void {
+  const cur = getCurrentBranch(projectPath);
+  const isOnTask = cur.branch === taskBranch
+    || (isPreviewBranch(cur.branch) && sourceProqBranch(cur.branch) === taskBranch);
+  if (isOnTask) {
+    checkoutBranch(projectPath, "main");
+  }
+  deletePreviewBranch(projectPath, taskBranch);
+}
 
 export async function PUT(request: Request, { params }: Params) {
   const { id } = await params;
@@ -49,14 +60,8 @@ export async function PUT(request: Request, { params }: Params) {
       // Remove worktree if task had one (no merge — work is discarded)
       if (prevTask?.worktreePath) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
-        // If currently on this task's branch, go back to main first
         try {
-          const { getCurrentBranch, checkoutBranch } = await import("@/lib/worktree");
-          const cur = getCurrentBranch(projectPath);
-          const taskBranch = prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`;
-          if (cur.branch === taskBranch || cur.detached) {
-            checkoutBranch(projectPath, "main");
-          }
+          ensureNotOnTaskBranch(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
         } catch { /* best effort */ }
         removeWorktree(projectPath, prevTask.id.slice(0, 8));
       }
@@ -71,14 +76,8 @@ export async function PUT(request: Request, { params }: Params) {
       // Merge worktree when skipping verify
       if (prevTask?.worktreePath) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
-        // Checkout main first in case we're on this branch
         try {
-          const { getCurrentBranch, checkoutBranch } = await import("@/lib/worktree");
-          const cur = getCurrentBranch(projectPath);
-          const taskBranch = prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`;
-          if (cur.branch === taskBranch || cur.detached) {
-            checkoutBranch(projectPath, "main");
-          }
+          ensureNotOnTaskBranch(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
         } catch { /* best effort */ }
         const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
         if (result.success) {
@@ -102,14 +101,8 @@ export async function PUT(request: Request, { params }: Params) {
       // Merge worktree branch into main on completion
       if (prevTask?.worktreePath || prevTask?.branch) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
-        // Checkout main first in case we're previewing this branch
         try {
-          const { getCurrentBranch, checkoutBranch } = await import("@/lib/worktree");
-          const cur = getCurrentBranch(projectPath);
-          const taskBranch = prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`;
-          if (cur.branch === taskBranch || cur.detached) {
-            checkoutBranch(projectPath, "main");
-          }
+          ensureNotOnTaskBranch(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
         } catch { /* best effort */ }
         if (prevTask.worktreePath) {
           const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));

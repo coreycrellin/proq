@@ -4,7 +4,9 @@ import {
   getCurrentBranch,
   listBranches,
   checkoutBranch,
-  refreshDetachedHead,
+  refreshPreviewBranch,
+  isPreviewBranch,
+  sourceProqBranch,
 } from "@/lib/worktree";
 
 type Params = { params: Promise<{ id: string }> };
@@ -23,10 +25,19 @@ export async function GET(_request: Request, { params }: Params) {
 
   const projectPath = resolveProjectPath(project.path);
   const current = getCurrentBranch(projectPath);
-  const branches = listBranches(projectPath);
+  const allBranches = listBranches(projectPath);
+
+  // Filter out preview/* branches — they're internal implementation detail
+  const branches = allBranches.filter((b) => !isPreviewBranch(b));
+
+  // If we're on a preview branch, report the source proq/* branch as current
+  let currentName = current.branch;
+  if (isPreviewBranch(current.branch)) {
+    currentName = sourceProqBranch(current.branch);
+  }
 
   return NextResponse.json({
-    current: current.branch,
+    current: currentName,
     detached: current.detached,
     branches,
   });
@@ -52,8 +63,15 @@ export async function POST(request: Request, { params }: Params) {
   try {
     checkoutBranch(projectPath, branch);
     const result = getCurrentBranch(projectPath);
+
+    // Report proq/* name, not preview/* name
+    let currentName = result.branch;
+    if (isPreviewBranch(result.branch)) {
+      currentName = sourceProqBranch(result.branch);
+    }
+
     return NextResponse.json({
-      current: result.branch,
+      current: currentName,
       detached: result.detached,
     });
   } catch (err) {
@@ -62,8 +80,8 @@ export async function POST(request: Request, { params }: Params) {
   }
 }
 
-/** PATCH — refresh detached HEAD (for polling) */
-export async function PATCH(request: Request, { params }: Params) {
+/** PATCH — refresh preview branch to pick up new agent commits */
+export async function PATCH(_request: Request, { params }: Params) {
   const { id } = await params;
   const project = await getProject(id);
   if (!project) {
@@ -73,7 +91,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const projectPath = resolveProjectPath(project.path);
   const current = getCurrentBranch(projectPath);
 
-  if (!current.detached || !current.branch.startsWith("proq/")) {
+  if (!isPreviewBranch(current.branch)) {
     return NextResponse.json({
       current: current.branch,
       detached: current.detached,
@@ -81,12 +99,11 @@ export async function PATCH(request: Request, { params }: Params) {
     });
   }
 
-  const updated = refreshDetachedHead(projectPath, current.branch);
-  const after = getCurrentBranch(projectPath);
+  const updated = refreshPreviewBranch(projectPath, current.branch);
 
   return NextResponse.json({
-    current: after.branch,
-    detached: after.detached,
+    current: sourceProqBranch(current.branch),
+    detached: false,
     updated,
   });
 }
