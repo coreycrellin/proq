@@ -49,10 +49,15 @@ export default function ProjectPage() {
 
   // Restore terminal open/closed state and height from project
   useEffect(() => {
-    if (!project) return;
-    setTerminalCollapsed(!project.terminalOpen);
-    if (typeof project.terminalHeight === 'number') setChatPercent(project.terminalHeight);
-  }, [project?.id]);
+    if (!projectId) return;
+    fetch(`/api/projects/${projectId}/terminal-state`)
+      .then((res) => res.json())
+      .then((data) => {
+        setTerminalCollapsed(!data.open);
+        if (typeof data.height === 'number') setChatPercent(data.height);
+      })
+      .catch(() => {});
+  }, [projectId]);
 
   const fetchExecutionMode = useCallback(async () => {
     try {
@@ -204,8 +209,8 @@ export default function ProjectPage() {
     }).catch(() => {});
   }, [projectId]);
 
-  const patchProject = useCallback((data: Record<string, unknown>) => {
-    fetch(`/api/projects/${projectId}`, {
+  const patchTerminalState = useCallback((data: { open?: boolean; height?: number }) => {
+    fetch(`/api/projects/${projectId}/terminal-state`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -215,19 +220,19 @@ export default function ProjectPage() {
   const toggleTerminalCollapsed = useCallback(() => {
     setTerminalCollapsed((prev) => {
       const next = !prev;
-      patchProject({ terminalOpen: !next });
+      patchTerminalState({ open: !next });
       return next;
     });
-  }, [patchProject]);
+  }, [patchTerminalState]);
 
   const expandTerminal = useCallback(() => {
     setTerminalCollapsed((prev) => {
       if (!prev) return prev; // already open
-      patchProject({ terminalOpen: true });
+      patchTerminalState({ open: true });
       return false;
     });
     setChatPercent((prev) => Math.max(prev, 25));
-  }, [patchProject]);
+  }, [patchTerminalState]);
 
   // Resize handle (tab bar is the drag target)
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -261,7 +266,7 @@ export default function ProjectPage() {
         } else {
           // Persist the terminal height
           const finalPercent = Math.min(85, Math.max(3, ((rect.height - y) / rect.height) * 100));
-          patchProject({ terminalHeight: finalPercent });
+          patchTerminalState({ height: finalPercent });
         }
       }
       setIsDragging(false);
@@ -272,7 +277,7 @@ export default function ProjectPage() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, terminalCollapsed, toggleTerminalCollapsed, patchProject]);
+  }, [isDragging, terminalCollapsed, toggleTerminalCollapsed, patchTerminalState]);
 
   if (!project) {
     return (

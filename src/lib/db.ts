@@ -174,7 +174,7 @@ export async function createProject(
 
 export async function updateProject(
   id: string,
-  data: Partial<Pick<Project, "name" | "path" | "status" | "serverUrl" | "activeTab" | "terminalOpen" | "terminalHeight">>
+  data: Partial<Pick<Project, "name" | "path" | "status" | "serverUrl" | "activeTab">>
 ): Promise<Project | null> {
   return withWriteLock('workspace', async () => {
     const ws = getWorkspaceData();
@@ -418,6 +418,20 @@ export async function setExecutionMode(projectId: string, mode: ExecutionMode): 
 // ═══════════════════════════════════════════════════════════
 // TERMINAL STATE
 // ═══════════════════════════════════════════════════════════
+
+export async function getTerminalState(projectId: string): Promise<{ open: boolean; height: number | null }> {
+  const data = getProjectData(projectId);
+  return { open: data.terminalOpen ?? false, height: data.terminalHeight ?? null };
+}
+
+export async function setTerminalState(projectId: string, state: { open?: boolean; height?: number }): Promise<void> {
+  return withWriteLock(`project:${projectId}`, async () => {
+    const data = getProjectData(projectId);
+    if (state.open !== undefined) data.terminalOpen = state.open;
+    if (state.height !== undefined) data.terminalHeight = state.height;
+    writeProject(projectId, data);
+  });
+}
 
 export async function getTerminalTabs(projectId: string): Promise<{ tabs: import("./types").TerminalTabInfo[]; activeTabId?: string }> {
   const data = getProjectData(projectId);
