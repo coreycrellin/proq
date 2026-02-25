@@ -118,23 +118,24 @@ export function listBranches(projectPath: string): string[] {
 }
 
 const PROQ_STASH_MSG = "proq-auto-stash";
-const PREVIEW_SUFFIX = "-preview";
+const PROQ_PREFIX = "proq/";
+const PREVIEW_PREFIX = "proq-preview/";
 
 /** Convert a proq/* branch name to its preview equivalent */
 export function previewBranchName(proqBranch: string): string {
-  // proq/abc12345 → proq/abc12345-preview
-  return proqBranch + PREVIEW_SUFFIX;
+  // proq/abc12345 → proq-preview/abc12345
+  return PREVIEW_PREFIX + proqBranch.slice(PROQ_PREFIX.length);
 }
 
 /** Check if a branch is a preview branch */
 export function isPreviewBranch(branch: string): boolean {
-  return branch.startsWith("proq/") && branch.endsWith(PREVIEW_SUFFIX);
+  return branch.startsWith(PREVIEW_PREFIX);
 }
 
 /** Get the source proq/* branch for a preview branch */
 export function sourceProqBranch(previewBranch: string): string {
-  // proq/abc12345-preview → proq/abc12345
-  return previewBranch.slice(0, -PREVIEW_SUFFIX.length);
+  // proq-preview/abc12345 → proq/abc12345
+  return PROQ_PREFIX + previewBranch.slice(PREVIEW_PREFIX.length);
 }
 
 export function checkoutBranch(

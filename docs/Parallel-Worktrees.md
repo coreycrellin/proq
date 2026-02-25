@@ -40,9 +40,9 @@ The agent commits its work to the `proq/a1b2c3d4` branch. When finished, it curl
 
 ```
 todo ── in-progress ── verify ── done
-         │                │        │
-         │ worktree        │ keep    │ merge into
-         │ created         │ alive   │ main, remove
+         │                │         │
+         │ worktree       │ keep    │ merge into
+         │ created        │ alive   │ main, remove
          │                │ for     │ worktree
          │                │ preview │
 ```
@@ -85,8 +85,8 @@ Same as discard -- clean up worktree/branch, abort if running.
 Git won't let two worktrees check out the same branch, so the user can't `git checkout proq/a1b2c3d4` in the main project directory while the worktree holds it. Instead, proq creates a **preview branch**:
 
 ```
-proq/a1b2c3d4           <-- worktree branch (agent commits here)
-proq/a1b2c3d4-preview   <-- preview branch (user views here)
+proq/a1b2c3d4            <-- worktree branch (agent commits here)
+proq-preview/a1b2c3d4    <-- preview branch (user views here)
 ```
 
 ### How it works
@@ -95,7 +95,7 @@ When the user clicks "Preview" or selects a `proq/*` branch from the TopBar drop
 
 1. Stashes any uncommitted changes (`proq-auto-stash`).
 2. Resolves the commit hash at the tip of `proq/a1b2c3d4`.
-3. Creates `proq/a1b2c3d4-preview` pointing at that commit.
+3. Creates `proq-preview/a1b2c3d4` pointing at that commit.
 4. Checks out the preview branch normally.
 5. If leaving a different preview branch, deletes the old one.
 
@@ -113,8 +113,8 @@ The dev server picks up the new files via hot-reload.
 
 Preview branches are an implementation detail. The git API:
 
-- Filters `proq/*-preview` from the branch list.
-- Reports `proq/a1b2c3d4` as the current branch even when actually on `proq/a1b2c3d4-preview`.
+- Filters `proq-preview/*` from the branch list.
+- Reports `proq/a1b2c3d4` as the current branch even when actually on `proq-preview/a1b2c3d4`.
 
 The user sees "I'm on proq/a1b2c3d4" and never needs to know about the preview branch.
 
@@ -149,19 +149,19 @@ main (dirty)
   ├─ checkoutBranch("proq/A")
   │   1. git status --porcelain → dirty
   │   2. Check top stash — no existing proq-auto-stash → push one
-  │   3. Checkout proq/A-preview (clean working tree)
+  │   3. Checkout proq-preview/A (clean working tree)
   │   4. Target is proq/* → skip pop
   │
   ├─ checkoutBranch("proq/B")    (switching between previews)
   │   1. git status → clean
   │   2. No stash needed
-  │   3. Checkout proq/B-preview, delete proq/A-preview
+  │   3. Checkout proq-preview/B, delete proq-preview/A
   │   4. Target is proq/* → skip pop
   │
   └─ checkoutBranch("main")
       1. git status → clean
       2. No stash needed
-      3. Checkout main, delete proq/B-preview
+      3. Checkout main, delete proq-preview/B
       4. Target is not proq/* → check top stash → "proq-auto-stash" → pop
       5. Main is dirty again ✓
 ```
@@ -207,25 +207,25 @@ The timer is cancelled if the task re-enters in-progress (e.g., moved back from 
 
 ## Sequential Mode Comparison
 
-| Aspect | Sequential | Parallel |
-|---|---|---|
-| Worktrees | No | Yes, one per task |
-| Branches | No task branches | `proq/<shortId>` per task |
-| Concurrency | One task at a time | All tasks dispatched immediately |
-| Agent directory | Main project dir | `.proq-worktrees/<shortId>/` |
-| Merge timing | N/A (commits go to main) | Deferred to done |
-| Preview | N/A | Via `proq/*-preview` branches |
-| Mode switch | Allowed when idle | Blocked while tasks are in-flight |
+| Aspect          | Sequential               | Parallel                          |
+| --------------- | ------------------------ | --------------------------------- |
+| Worktrees       | No                       | Yes, one per task                 |
+| Branches        | No task branches         | `proq/<shortId>` per task         |
+| Concurrency     | One task at a time       | All tasks dispatched immediately  |
+| Agent directory | Main project dir         | `.proq-worktrees/<shortId>/`      |
+| Merge timing    | N/A (commits go to main) | Deferred to done                  |
+| Preview         | N/A                      | Via `proq-preview/*` branches     |
+| Mode switch     | Allowed when idle        | Blocked while tasks are in-flight |
 
 ## Relevant Files
 
-| File | Role |
-|---|---|
-| `src/lib/worktree.ts` | All git operations: create/remove/merge worktrees, checkout/preview/refresh branches, auto-stash |
-| `src/lib/agent-dispatch.ts` | Task dispatch, processQueue, parallel vs sequential logic |
-| `src/app/api/projects/[id]/git/route.ts` | Branch API: list, switch, refresh preview |
-| `src/app/api/projects/[id]/tasks/[taskId]/route.ts` | Status transition logic, merge/discard on transitions |
-| `src/app/api/projects/[id]/tasks/reorder/route.ts` | Same transitions for drag-drop moves |
-| `src/components/TopBar.tsx` | Branch switcher dropdown |
-| `src/components/TaskAgentModal.tsx` | Preview/merge controls in task detail |
-| `src/app/projects/[id]/page.tsx` | Dashboard wiring: branch state, polling, taskBranchMap |
+| File                                                | Role                                                                                             |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `src/lib/worktree.ts`                               | All git operations: create/remove/merge worktrees, checkout/preview/refresh branches, auto-stash |
+| `src/lib/agent-dispatch.ts`                         | Task dispatch, processQueue, parallel vs sequential logic                                        |
+| `src/app/api/projects/[id]/git/route.ts`            | Branch API: list, switch, refresh preview                                                        |
+| `src/app/api/projects/[id]/tasks/[taskId]/route.ts` | Status transition logic, merge/discard on transitions                                            |
+| `src/app/api/projects/[id]/tasks/reorder/route.ts`  | Same transitions for drag-drop moves                                                             |
+| `src/components/TopBar.tsx`                         | Branch switcher dropdown                                                                         |
+| `src/components/TaskAgentModal.tsx`                 | Preview/merge controls in task detail                                                            |
+| `src/app/projects/[id]/page.tsx`                    | Dashboard wiring: branch state, polling, taskBranchMap                                           |
