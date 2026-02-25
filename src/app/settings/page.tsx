@@ -226,10 +226,12 @@ export default function SettingsPage() {
               <p className="text-sm text-bronze-700 dark:text-zinc-400 leading-relaxed mb-4">
                 proq is a vibe coding IDE built for shipping quality software.
                 It's a kanban board for CLI-based agentic coding agents. It was
-                designed to make us better at our job: defining what we want.
-                Under the hood it's a tmux task runner that bolts up to your
-                favorite command line agent. It works out of the box with
-                subagents, git, worktrees, and whatever config you bring along.
+                designed to make sense of multi-agent capability and make us
+                better at our real job: defining what we want. Under the hood
+                it's a tmux task runner that bolts up to your favorite command
+                line agent. It works out of the box with subagents, MCPs,
+                worktrees, and whatever config you bring along. You can also
+                edit proq using proq.
               </p>
               <p className="text-xs text-zinc-500 dark:text-zinc-500 mb-1">
                 This is version 0.1.0
