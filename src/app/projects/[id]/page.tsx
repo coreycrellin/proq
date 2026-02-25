@@ -252,7 +252,7 @@ export default function ProjectPage() {
         toggleTerminalCollapsed();
       }
       // Allow dragging down to 3% so snap-to-close is visible
-      setChatPercent(Math.min(85, Math.max(3, percent)));
+      setChatPercent(Math.min(100, Math.max(3, percent)));
     };
     const handleMouseUp = (e: MouseEvent) => {
       // Snap closed if terminal height < 200px
@@ -265,7 +265,7 @@ export default function ProjectPage() {
           setChatPercent(25); // reset for next open
         } else {
           // Persist the terminal height
-          const finalPercent = Math.min(85, Math.max(3, ((rect.height - y) / rect.height) * 100));
+          const finalPercent = Math.min(100, Math.max(3, ((rect.height - y) / rect.height) * 100));
           patchTerminalState({ height: finalPercent });
         }
       }
