@@ -47,17 +47,12 @@ export default function ProjectPage() {
     if (project) setActiveTab(project.activeTab || 'project');
   }, [project?.id]);
 
-  // Fetch terminal open/closed state and height from server
+  // Restore terminal open/closed state and height from project
   useEffect(() => {
-    if (!projectId) return;
-    fetch(`/api/projects/${projectId}/terminal-open`)
-      .then((res) => res.json())
-      .then((data) => {
-        setTerminalCollapsed(!data.open);
-        if (typeof data.height === 'number') setChatPercent(data.height);
-      })
-      .catch(() => {});
-  }, [projectId]);
+    if (!project) return;
+    setTerminalCollapsed(!project.terminalOpen);
+    if (typeof project.terminalHeight === 'number') setChatPercent(project.terminalHeight);
+  }, [project?.id]);
 
   const fetchExecutionMode = useCallback(async () => {
     try {
@@ -209,30 +204,30 @@ export default function ProjectPage() {
     }).catch(() => {});
   }, [projectId]);
 
+  const patchProject = useCallback((data: Record<string, unknown>) => {
+    fetch(`/api/projects/${projectId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).catch(() => {});
+  }, [projectId]);
+
   const toggleTerminalCollapsed = useCallback(() => {
     setTerminalCollapsed((prev) => {
       const next = !prev;
-      fetch(`/api/projects/${projectId}/terminal-open`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ open: !next }),
-      }).catch(() => {});
+      patchProject({ terminalOpen: !next });
       return next;
     });
-  }, [projectId]);
+  }, [patchProject]);
 
   const expandTerminal = useCallback(() => {
     setTerminalCollapsed((prev) => {
       if (!prev) return prev; // already open
-      fetch(`/api/projects/${projectId}/terminal-open`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ open: true }),
-      }).catch(() => {});
+      patchProject({ terminalOpen: true });
       return false;
     });
     setChatPercent((prev) => Math.max(prev, 25));
-  }, [projectId]);
+  }, [patchProject]);
 
   // Resize handle (tab bar is the drag target)
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -266,11 +261,7 @@ export default function ProjectPage() {
         } else {
           // Persist the terminal height
           const finalPercent = Math.min(85, Math.max(3, ((rect.height - y) / rect.height) * 100));
-          fetch(`/api/projects/${projectId}/terminal-open`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ height: finalPercent }),
-          }).catch(() => {});
+          patchProject({ terminalHeight: finalPercent });
         }
       }
       setIsDragging(false);
@@ -281,7 +272,7 @@ export default function ProjectPage() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, terminalCollapsed, toggleTerminalCollapsed, projectId]);
+  }, [isDragging, terminalCollapsed, toggleTerminalCollapsed, patchProject]);
 
   if (!project) {
     return (

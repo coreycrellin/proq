@@ -13,6 +13,8 @@ export interface Project {
   pathValid?: boolean;
   activeTab?: ProjectTab;
   liveViewport?: 'desktop' | 'tablet' | 'mobile';
+  terminalOpen?: boolean;
+  terminalHeight?: number;
   createdAt: string;
 }
 
@@ -132,8 +134,6 @@ export interface ProjectState {
   chatLog: ChatLogEntry[];
   agentSession?: AgentSession;
   executionMode?: ExecutionMode;
-  terminalOpen?: boolean;
-  terminalHeight?: number;
   terminalTabs?: TerminalTabInfo[];
   terminalActiveTabId?: string;
   recentlyDeleted?: DeletedTaskEntry[];
