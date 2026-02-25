@@ -139,11 +139,40 @@ When a task is in verify and has a `branch`:
 
 ## Auto-Stash
 
-If the main project directory has uncommitted changes when switching branches:
+The auto-stash system preserves uncommitted changes on main when the user switches to a task preview branch, and restores them when they return.
 
-1. `git stash push -m 'proq-auto-stash'` before checkout.
-2. Stash is popped automatically when returning to a non-proq branch (e.g., main).
-3. Stash is **not** popped when switching between task previews (stays stashed until you leave proq/ branches entirely).
+### Lifecycle
+
+```
+main (dirty)
+  │
+  ├─ checkoutBranch("proq/A")
+  │   1. git status --porcelain → dirty
+  │   2. Check top stash — no existing proq-auto-stash → push one
+  │   3. Checkout proq/A-preview (clean working tree)
+  │   4. Target is proq/* → skip pop
+  │
+  ├─ checkoutBranch("proq/B")    (switching between previews)
+  │   1. git status → clean
+  │   2. No stash needed
+  │   3. Checkout proq/B-preview, delete proq/A-preview
+  │   4. Target is proq/* → skip pop
+  │
+  └─ checkoutBranch("main")
+      1. git status → clean
+      2. No stash needed
+      3. Checkout main, delete proq/B-preview
+      4. Target is not proq/* → check top stash → "proq-auto-stash" → pop
+      5. Main is dirty again ✓
+```
+
+### Key behaviors
+
+- **Push**: Only if the working tree is dirty AND there isn't already a `proq-auto-stash` on top. This prevents stacking duplicates from repeated branch switches.
+- **Pop on user switch**: When `checkoutBranch` arrives on a non-proq branch (e.g., main via the branch dropdown), it unconditionally checks the top stash and pops if it's a `proq-auto-stash`. The check is unconditional — the stash may have been pushed in a different `checkoutBranch` call.
+- **Skip pop on system switch**: When the system switches to main for merge/cleanup (via `ensureNotOnTaskBranch`), it passes `{ skipStashPop: true }` to avoid dirtying the working tree before `git merge`. After the merge or worktree removal completes, `popAutoStash()` is called explicitly.
+- **Stash stays parked between previews**: Switching proq/A → proq/B doesn't push or pop — the original stash remains safely on the stack until the user returns to main.
+- **Error rollback**: If checkout fails and we're still on the original branch, the stash is popped immediately so the user's changes aren't lost.
 
 ## Merge Conflicts
 
@@ -192,7 +221,7 @@ The timer is cancelled if the task re-enters in-progress (e.g., moved back from 
 
 | File | Role |
 |---|---|
-| `src/lib/worktree.ts` | All git operations: create/remove/merge worktrees, checkout/preview/refresh branches |
+| `src/lib/worktree.ts` | All git operations: create/remove/merge worktrees, checkout/preview/refresh branches, auto-stash |
 | `src/lib/agent-dispatch.ts` | Task dispatch, processQueue, parallel vs sequential logic |
 | `src/app/api/projects/[id]/git/route.ts` | Branch API: list, switch, refresh preview |
 | `src/app/api/projects/[id]/tasks/[taskId]/route.ts` | Status transition logic, merge/discard on transitions |

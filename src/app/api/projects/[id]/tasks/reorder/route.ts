@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { moveTask, getProject, getTask, updateTask } from "@/lib/db";
 import { abortTask, processQueue, getInitialDispatch, scheduleCleanup, cancelCleanup } from "@/lib/agent-dispatch";
-import { mergeWorktree, removeWorktree, getCurrentBranch, checkoutBranch, isPreviewBranch, sourceProqBranch, deletePreviewBranch } from "@/lib/worktree";
+import { mergeWorktree, removeWorktree, getCurrentBranch, checkoutBranch, isPreviewBranch, sourceProqBranch, deletePreviewBranch, popAutoStash } from "@/lib/worktree";
 import type { TaskStatus } from "@/lib/types";
 
 type Params = { params: Promise<{ id: string }> };
@@ -12,7 +12,7 @@ function ensureNotOnTaskBranch(projectPath: string, taskBranch: string): void {
   const isOnTask = cur.branch === taskBranch
     || (isPreviewBranch(cur.branch) && sourceProqBranch(cur.branch) === taskBranch);
   if (isOnTask) {
-    checkoutBranch(projectPath, "main");
+    checkoutBranch(projectPath, "main", { skipStashPop: true });
   }
   deletePreviewBranch(projectPath, taskBranch);
 }
@@ -64,6 +64,7 @@ export async function PUT(request: Request, { params }: Params) {
           ensureNotOnTaskBranch(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
         } catch { /* best effort */ }
         removeWorktree(projectPath, prevTask.id.slice(0, 8));
+        popAutoStash(projectPath);
       }
       await updateTask(id, taskId, { dispatch: null, findings: "", humanSteps: "", agentLog: "", worktreePath: undefined, branch: undefined, mergeConflict: undefined });
       if (prevStatus === "in-progress") {
@@ -80,6 +81,7 @@ export async function PUT(request: Request, { params }: Params) {
           ensureNotOnTaskBranch(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
         } catch { /* best effort */ }
         const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
+        popAutoStash(projectPath);
         if (result.success) {
           await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
         } else {
@@ -106,6 +108,7 @@ export async function PUT(request: Request, { params }: Params) {
         } catch { /* best effort */ }
         if (prevTask.worktreePath) {
           const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
+          popAutoStash(projectPath);
           if (!result.success) {
             await moveTask(id, taskId, "verify", 0);
             await updateTask(id, taskId, {
@@ -119,6 +122,8 @@ export async function PUT(request: Request, { params }: Params) {
             return NextResponse.json({ success: false, error: result.error });
           }
           await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
+        } else {
+          popAutoStash(projectPath);
         }
       }
       scheduleCleanup(id, taskId);

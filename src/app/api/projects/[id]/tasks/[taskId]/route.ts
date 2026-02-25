@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getTask, getProject, updateTask, deleteTask } from "@/lib/db";
 import type { Task } from "@/lib/types";
 import { abortTask, processQueue, getInitialDispatch, scheduleCleanup, cancelCleanup, notify } from "@/lib/agent-dispatch";
-import { mergeWorktree, removeWorktree, getCurrentBranch, checkoutBranch, isPreviewBranch, sourceProqBranch, deletePreviewBranch } from "@/lib/worktree";
+import { mergeWorktree, removeWorktree, getCurrentBranch, checkoutBranch, isPreviewBranch, sourceProqBranch, deletePreviewBranch, popAutoStash } from "@/lib/worktree";
 
 /** Check if the main project directory is currently on a task's branch (or its preview) and switch to main if so */
 function ensureNotOnTaskBranch(projectPath: string, taskBranch: string): void {
@@ -10,7 +10,7 @@ function ensureNotOnTaskBranch(projectPath: string, taskBranch: string): void {
   const isOnTask = cur.branch === taskBranch
     || (isPreviewBranch(cur.branch) && sourceProqBranch(cur.branch) === taskBranch);
   if (isOnTask) {
-    checkoutBranch(projectPath, "main");
+    checkoutBranch(projectPath, "main", { skipStashPop: true });
   }
   // Also clean up any leftover preview branch for this task
   deletePreviewBranch(projectPath, taskBranch);
@@ -51,6 +51,7 @@ export async function PATCH(request: Request, { params }: Params) {
             ensureNotOnTaskBranch(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
           } catch { /* best effort */ }
           removeWorktree(projectPath, prevTask.id.slice(0, 8));
+          popAutoStash(projectPath);
         }
       }
       const resetFields = { dispatch: null as Task["dispatch"], findings: "", humanSteps: "", agentLog: "", worktreePath: undefined as string | undefined, branch: undefined as string | undefined, mergeConflict: undefined as Task["mergeConflict"] };
@@ -73,6 +74,7 @@ export async function PATCH(request: Request, { params }: Params) {
             ensureNotOnTaskBranch(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
           } catch { /* best effort */ }
           const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
+          popAutoStash(projectPath);
           if (result.success) {
             await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
           } else {
@@ -104,6 +106,7 @@ export async function PATCH(request: Request, { params }: Params) {
           } catch { /* best effort */ }
           if (prevTask.worktreePath) {
             const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
+            popAutoStash(projectPath);
             if (!result.success) {
               await updateTask(id, taskId, {
                 status: "verify",
@@ -118,6 +121,8 @@ export async function PATCH(request: Request, { params }: Params) {
               return NextResponse.json(updated);
             }
             await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
+          } else {
+            popAutoStash(projectPath);
           }
         }
       }
@@ -151,6 +156,7 @@ export async function DELETE(_request: Request, { params }: Params) {
         ensureNotOnTaskBranch(projectPath, task.branch || `proq/${task.id.slice(0, 8)}`);
       } catch { /* best effort */ }
       removeWorktree(projectPath, task.id.slice(0, 8));
+      popAutoStash(projectPath);
     }
   }
 

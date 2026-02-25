@@ -140,16 +140,31 @@ export function sourceProqBranch(previewBranch: string): string {
 export function checkoutBranch(
   projectPath: string,
   branch: string,
+  options?: { skipStashPop?: boolean },
 ): void {
   const current = getCurrentBranch(projectPath);
 
   // Check if working tree is dirty and stash if needed
+  // Only stash if there isn't already a proq-auto-stash on top (avoid stacking duplicates)
   const status = execSync(
     `git -C '${projectPath}' status --porcelain`,
     { timeout: 10_000, encoding: "utf-8" },
   ).trim();
 
-  const needsStash = status.length > 0;
+  let needsStash = status.length > 0;
+  if (needsStash) {
+    try {
+      const topStash = execSync(
+        `git -C '${projectPath}' stash list -1 --format=%s`,
+        { timeout: 10_000, encoding: "utf-8" },
+      ).trim();
+      if (topStash.includes(PROQ_STASH_MSG)) {
+        // Already have an auto-stash on top — don't stack another
+        needsStash = false;
+        console.log("[git] skipping stash — proq-auto-stash already on top");
+      }
+    } catch { /* no stash list — proceed with stash */ }
+  }
   if (needsStash) {
     execSync(
       `git -C '${projectPath}' stash push -m '${PROQ_STASH_MSG}'`,
@@ -211,8 +226,10 @@ export function checkoutBranch(
     } catch { /* best effort */ }
   }
 
-  // Pop auto-stash if we pushed one and we're now on a non-preview branch
-  if (needsStash && !branch.startsWith("proq/")) {
+  // Pop auto-stash when arriving on a non-proq branch (e.g., main).
+  // Check unconditionally — the stash may have been pushed in a previous checkoutBranch call.
+  // Skip when caller will do merge/cleanup before the pop is safe (e.g., ensureNotOnTaskBranch).
+  if (!branch.startsWith("proq/") && !options?.skipStashPop) {
     try {
       const stashMsg = execSync(
         `git -C '${projectPath}' stash list -1 --format=%s`,
@@ -225,6 +242,22 @@ export function checkoutBranch(
     } catch {
       console.error("[git] failed to pop auto-stash");
     }
+  }
+}
+
+/** Pop the top proq-auto-stash if one exists. Call after merge/cleanup completes. */
+export function popAutoStash(projectPath: string): void {
+  try {
+    const stashMsg = execSync(
+      `git -C '${projectPath}' stash list -1 --format=%s`,
+      { timeout: 10_000, encoding: "utf-8" },
+    ).trim();
+    if (stashMsg.includes(PROQ_STASH_MSG)) {
+      execSync(`git -C '${projectPath}' stash pop`, { timeout: 10_000 });
+      console.log("[git] popped auto-stash");
+    }
+  } catch {
+    console.error("[git] failed to pop auto-stash");
   }
 }
 
