@@ -86,7 +86,7 @@ Git won't let two worktrees check out the same branch, so the user can't `git ch
 
 ```
 proq/a1b2c3d4           <-- worktree branch (agent commits here)
-proq/a1b2c3d4/preview   <-- preview branch (user views here)
+proq/a1b2c3d4-preview   <-- preview branch (user views here)
 ```
 
 ### How it works
@@ -95,7 +95,7 @@ When the user clicks "Preview" or selects a `proq/*` branch from the TopBar drop
 
 1. Stashes any uncommitted changes (`proq-auto-stash`).
 2. Resolves the commit hash at the tip of `proq/a1b2c3d4`.
-3. Creates `proq/a1b2c3d4/preview` pointing at that commit.
+3. Creates `proq/a1b2c3d4-preview` pointing at that commit.
 4. Checks out the preview branch normally.
 5. If leaving a different preview branch, deletes the old one.
 
@@ -113,8 +113,8 @@ The dev server picks up the new files via hot-reload.
 
 Preview branches are an implementation detail. The git API:
 
-- Filters `proq/*/preview` from the branch list.
-- Reports `proq/a1b2c3d4` as the current branch even when actually on `proq/a1b2c3d4/preview`.
+- Filters `proq/*-preview` from the branch list.
+- Reports `proq/a1b2c3d4` as the current branch even when actually on `proq/a1b2c3d4-preview`.
 
 The user sees "I'm on proq/a1b2c3d4" and never needs to know about the preview branch.
 
@@ -185,7 +185,7 @@ The timer is cancelled if the task re-enters in-progress (e.g., moved back from 
 | Concurrency | One task at a time | All tasks dispatched immediately |
 | Agent directory | Main project dir | `.proq-worktrees/<shortId>/` |
 | Merge timing | N/A (commits go to main) | Deferred to done |
-| Preview | N/A | Via `proq/*/preview` branches |
+| Preview | N/A | Via `proq/*-preview` branches |
 | Mode switch | Allowed when idle | Blocked while tasks are in-flight |
 
 ## Relevant Files

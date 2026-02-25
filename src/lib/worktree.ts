@@ -118,11 +118,11 @@ export function listBranches(projectPath: string): string[] {
 }
 
 const PROQ_STASH_MSG = "proq-auto-stash";
-const PREVIEW_SUFFIX = "/preview";
+const PREVIEW_SUFFIX = "-preview";
 
 /** Convert a proq/* branch name to its preview equivalent */
 export function previewBranchName(proqBranch: string): string {
-  // proq/abc12345 → proq/abc12345/preview
+  // proq/abc12345 → proq/abc12345-preview
   return proqBranch + PREVIEW_SUFFIX;
 }
 
@@ -133,7 +133,7 @@ export function isPreviewBranch(branch: string): boolean {
 
 /** Get the source proq/* branch for a preview branch */
 export function sourceProqBranch(previewBranch: string): string {
-  // proq/abc12345/preview → proq/abc12345
+  // proq/abc12345-preview → proq/abc12345
   return previewBranch.slice(0, -PREVIEW_SUFFIX.length);
 }
 
@@ -191,11 +191,14 @@ export function checkoutBranch(
       console.log(`[git] checked out ${branch}`);
     }
   } catch (err) {
-    // On failure, try to pop stash if we pushed one
+    // On failure, try to pop stash only if we're still on the original branch
     if (needsStash) {
-      try {
-        execSync(`git -C '${projectPath}' stash pop`, { timeout: 10_000 });
-      } catch { /* stash pop may fail */ }
+      const now = getCurrentBranch(projectPath);
+      if (now.branch === current.branch) {
+        try {
+          execSync(`git -C '${projectPath}' stash pop`, { timeout: 10_000 });
+        } catch { /* stash pop may fail */ }
+      }
     }
     throw err;
   }
