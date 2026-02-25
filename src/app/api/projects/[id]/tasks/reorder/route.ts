@@ -49,6 +49,15 @@ export async function PUT(request: Request, { params }: Params) {
       // Remove worktree if task had one (no merge — work is discarded)
       if (prevTask?.worktreePath) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
+        // If currently on this task's branch, go back to main first
+        try {
+          const { getCurrentBranch, checkoutBranch } = await import("@/lib/worktree");
+          const cur = getCurrentBranch(projectPath);
+          const taskBranch = prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`;
+          if (cur.branch === taskBranch || cur.detached) {
+            checkoutBranch(projectPath, "main");
+          }
+        } catch { /* best effort */ }
         removeWorktree(projectPath, prevTask.id.slice(0, 8));
       }
       await updateTask(id, taskId, { dispatch: null, findings: "", humanSteps: "", agentLog: "", worktreePath: undefined, branch: undefined, mergeConflict: undefined });
@@ -56,26 +65,21 @@ export async function PUT(request: Request, { params }: Params) {
         await abortTask(id, taskId);
       }
     } else if (toColumn === "verify" && prevStatus === "in-progress") {
-      // Auto-merge worktree when leaving in-progress
-      if (prevTask?.worktreePath) {
-        const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
-        const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
-        if (result.success) {
-          await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
-        } else {
-          await updateTask(id, taskId, {
-            mergeConflict: {
-              error: result.error || "Merge conflict",
-              files: result.conflictFiles || [],
-              branch: prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`,
-            },
-          });
-        }
-      }
+      // Deferred merge: keep worktree alive for branch preview
+      // No merge here — branch stays available for preview until "done"
     } else if (toColumn === "done" && prevStatus === "in-progress") {
-      // Auto-merge worktree when skipping verify
+      // Merge worktree when skipping verify
       if (prevTask?.worktreePath) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
+        // Checkout main first in case we're on this branch
+        try {
+          const { getCurrentBranch, checkoutBranch } = await import("@/lib/worktree");
+          const cur = getCurrentBranch(projectPath);
+          const taskBranch = prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`;
+          if (cur.branch === taskBranch || cur.detached) {
+            checkoutBranch(projectPath, "main");
+          }
+        } catch { /* best effort */ }
         const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
         if (result.success) {
           await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
@@ -95,23 +99,34 @@ export async function PUT(request: Request, { params }: Params) {
       }
       scheduleCleanup(id, taskId);
     } else if (toColumn === "done" && prevStatus === "verify") {
-      // Re-attempt merge if task still has a worktree (conflict case)
-      if (prevTask?.worktreePath) {
+      // Merge worktree branch into main on completion
+      if (prevTask?.worktreePath || prevTask?.branch) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
-        const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
-        if (!result.success) {
-          await moveTask(id, taskId, "verify", 0);
-          await updateTask(id, taskId, {
-            mergeConflict: {
-              error: result.error || "Merge conflict",
-              files: result.conflictFiles || [],
-              branch: prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`,
-            },
-          });
-          await processQueue(id);
-          return NextResponse.json({ success: false, error: result.error });
+        // Checkout main first in case we're previewing this branch
+        try {
+          const { getCurrentBranch, checkoutBranch } = await import("@/lib/worktree");
+          const cur = getCurrentBranch(projectPath);
+          const taskBranch = prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`;
+          if (cur.branch === taskBranch || cur.detached) {
+            checkoutBranch(projectPath, "main");
+          }
+        } catch { /* best effort */ }
+        if (prevTask.worktreePath) {
+          const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
+          if (!result.success) {
+            await moveTask(id, taskId, "verify", 0);
+            await updateTask(id, taskId, {
+              mergeConflict: {
+                error: result.error || "Merge conflict",
+                files: result.conflictFiles || [],
+                branch: prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`,
+              },
+            });
+            await processQueue(id);
+            return NextResponse.json({ success: false, error: result.error });
+          }
+          await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
         }
-        await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
       }
       scheduleCleanup(id, taskId);
     }

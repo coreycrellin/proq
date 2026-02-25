@@ -32,6 +32,8 @@ export default function ProjectPage() {
   const [undoEntry, setUndoEntry] = useState<{ task: Task; column: TaskStatus } | null>(null);
   const [showParallelModal, setShowParallelModal] = useState(false);
   const [showModeBlockedModal, setShowModeBlockedModal] = useState(false);
+  const [currentBranch, setCurrentBranch] = useState<string>('main');
+  const [branches, setBranches] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const project = projects.find((p) => p.id === projectId);
@@ -70,15 +72,41 @@ export default function ProjectPage() {
     }
   }, [projectId]);
 
+  const fetchBranchState = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/git`);
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentBranch(data.current || 'main');
+        setBranches(data.branches || []);
+      }
+    } catch {
+      // git API may not be available for non-git projects
+    }
+  }, [projectId]);
+
+  const refreshDetachedHead = useCallback(async () => {
+    try {
+      await fetch(`/api/projects/${projectId}/git`, { method: 'PATCH' });
+    } catch {
+      // best effort
+    }
+  }, [projectId]);
+
   const refresh = useCallback(() => {
     refreshTasks(projectId);
     fetchExecutionMode();
-  }, [projectId, refreshTasks, fetchExecutionMode]);
+    fetchBranchState();
+    refreshDetachedHead();
+  }, [projectId, refreshTasks, fetchExecutionMode, fetchBranchState, refreshDetachedHead]);
 
-  // Fetch execution mode on project load
+  // Fetch execution mode and branch state on project load
   useEffect(() => {
-    if (projectId) fetchExecutionMode();
-  }, [projectId, fetchExecutionMode]);
+    if (projectId) {
+      fetchExecutionMode();
+      fetchBranchState();
+    }
+  }, [projectId, fetchExecutionMode, fetchBranchState]);
 
   // Auto-refresh tasks every 5 seconds
   useEffect(() => {
@@ -155,6 +183,32 @@ export default function ProjectPage() {
     });
     refresh();
   };
+
+  // Build map of proq/* branch → task title for the branch switcher
+  const taskBranchMap: Record<string, string> = {};
+  for (const col of Object.values(columns)) {
+    for (const t of col) {
+      if (t.branch) {
+        taskBranchMap[t.branch] = t.title || t.description.slice(0, 40);
+      }
+    }
+  }
+
+  const handleSwitchBranch = useCallback(async (branch: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/git`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentBranch(data.current || branch);
+      }
+    } catch {
+      // best effort
+    }
+  }, [projectId]);
 
   const hasTasksInFlight = columns['in-progress'].length > 0 || columns['verify'].length > 0;
 
@@ -293,6 +347,10 @@ export default function ProjectPage() {
         project={project}
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        currentBranch={currentBranch}
+        branches={branches}
+        taskBranchMap={taskBranchMap}
+        onSwitchBranch={handleSwitchBranch}
       />
 
       <main ref={containerRef} className="flex-1 flex flex-col overflow-hidden relative">
@@ -350,8 +408,11 @@ export default function ProjectPage() {
           onComplete={async (taskId) => {
             await updateTask(taskId, { status: 'done' });
             setAgentModalTask(null);
+            fetchBranchState();
           }}
           parallelMode={executionMode === 'parallel'}
+          currentBranch={currentBranch}
+          onSwitchBranch={handleSwitchBranch}
         />
       )}
 

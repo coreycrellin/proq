@@ -35,6 +35,15 @@ export async function PATCH(request: Request, { params }: Params) {
         const proj = await getProject(id);
         if (proj) {
           const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
+          // If currently on this task's branch, go back to main first
+          try {
+            const { getCurrentBranch, checkoutBranch } = await import("@/lib/worktree");
+            const cur = getCurrentBranch(projectPath);
+            const taskBranch = prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`;
+            if (cur.branch === taskBranch || cur.detached) {
+              checkoutBranch(projectPath, "main");
+            }
+          } catch { /* best effort */ }
           removeWorktree(projectPath, prevTask.id.slice(0, 8));
         }
       }
@@ -44,39 +53,30 @@ export async function PATCH(request: Request, { params }: Params) {
       if (prevStatus === "in-progress") {
         await abortTask(id, taskId);
       }
-    } else if (prevStatus === "in-progress" && (body.status === "verify" || body.status === "done")) {
-      // Auto-merge worktree when leaving in-progress
+    } else if (prevStatus === "in-progress" && body.status === "verify") {
+      // Deferred merge: keep worktree alive for branch preview
+      // No merge here — branch stays available for preview until "done"
+      notify(`✅ *${(updated.title || updated.description.slice(0, 40)).replace(/"/g, '\\"')}* → verify`);
+    } else if (prevStatus === "in-progress" && body.status === "done") {
+      // Merge worktree when skipping verify
       if (prevTask?.worktreePath) {
         const proj = await getProject(id);
         if (proj) {
           const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
+          // Checkout main first in case we're on this branch
+          try {
+            const { getCurrentBranch, checkoutBranch } = await import("@/lib/worktree");
+            const cur = getCurrentBranch(projectPath);
+            const taskBranch = prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`;
+            if (cur.branch === taskBranch || cur.detached) {
+              checkoutBranch(projectPath, "main");
+            }
+          } catch { /* best effort */ }
           const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
           if (result.success) {
             await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
           } else {
-            // Store conflict details but still move to verify
-            await updateTask(id, taskId, {
-              mergeConflict: {
-                error: result.error || "Merge conflict",
-                files: result.conflictFiles || [],
-                branch: prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`,
-              },
-            });
-          }
-        }
-      }
-      if (body.status === "done") {
-        scheduleCleanup(id, taskId);
-      }
-      notify(`✅ *${(updated.title || updated.description.slice(0, 40)).replace(/"/g, '\\"')}* → ${body.status}`);
-    } else if (body.status === "done" && prevStatus === "verify") {
-      // Re-attempt merge if task still has a worktree (conflict case)
-      if (prevTask?.worktreePath) {
-        const proj = await getProject(id);
-        if (proj) {
-          const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
-          const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
-          if (!result.success) {
+            // Can't complete with conflict — stay in verify
             await updateTask(id, taskId, {
               status: "verify",
               mergeConflict: {
@@ -89,7 +89,42 @@ export async function PATCH(request: Request, { params }: Params) {
             if (fresh) return NextResponse.json(fresh);
             return NextResponse.json(updated);
           }
-          await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
+        }
+      }
+      scheduleCleanup(id, taskId);
+      notify(`✅ *${(updated.title || updated.description.slice(0, 40)).replace(/"/g, '\\"')}* → done`);
+    } else if (body.status === "done" && prevStatus === "verify") {
+      // Merge worktree branch into main on completion
+      if (prevTask?.worktreePath || prevTask?.branch) {
+        const proj = await getProject(id);
+        if (proj) {
+          const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
+          // Checkout main first in case we're previewing this branch
+          try {
+            const { getCurrentBranch, checkoutBranch } = await import("@/lib/worktree");
+            const cur = getCurrentBranch(projectPath);
+            const taskBranch = prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`;
+            if (cur.branch === taskBranch || cur.detached) {
+              checkoutBranch(projectPath, "main");
+            }
+          } catch { /* best effort */ }
+          if (prevTask.worktreePath) {
+            const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
+            if (!result.success) {
+              await updateTask(id, taskId, {
+                status: "verify",
+                mergeConflict: {
+                  error: result.error || "Merge conflict",
+                  files: result.conflictFiles || [],
+                  branch: prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`,
+                },
+              });
+              const fresh = await getTask(id, taskId);
+              if (fresh) return NextResponse.json(fresh);
+              return NextResponse.json(updated);
+            }
+            await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
+          }
         }
       }
       scheduleCleanup(id, taskId);
@@ -111,6 +146,23 @@ export async function DELETE(_request: Request, { params }: Params) {
   const deleted = await deleteTask(id, taskId);
   if (!deleted) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
+
+  // Clean up worktree/branch if present
+  if (task?.worktreePath) {
+    const proj = await getProject(id);
+    if (proj) {
+      const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
+      try {
+        const { getCurrentBranch, checkoutBranch } = await import("@/lib/worktree");
+        const cur = getCurrentBranch(projectPath);
+        const taskBranch = task.branch || `proq/${task.id.slice(0, 8)}`;
+        if (cur.branch === taskBranch || cur.detached) {
+          checkoutBranch(projectPath, "main");
+        }
+      } catch { /* best effort */ }
+      removeWorktree(projectPath, task.id.slice(0, 8));
+    }
   }
 
   // If deleted task was in-progress, abort and process queue for next

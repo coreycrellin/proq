@@ -29,9 +29,11 @@ interface TaskAgentModalProps {
   onClose: () => void;
   onComplete?: (taskId: string) => void;
   parallelMode?: boolean;
+  currentBranch?: string;
+  onSwitchBranch?: (branch: string) => void;
 }
 
-export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, onClose, onComplete, parallelMode }: TaskAgentModalProps) {
+export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, onClose, onComplete, parallelMode, currentBranch, onSwitchBranch }: TaskAgentModalProps) {
   const shortId = task.id.slice(0, 8);
   const terminalTabId = `task-${shortId}`;
   const steps = parseLines(task.humanSteps);
@@ -130,7 +132,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
         <div className="flex-1 min-h-0 flex flex-col">
           {/* Worktree status — only in parallel mode */}
           {parallelMode && (
-            <div className="shrink-0 flex items-center justify-end px-3 py-2 border-b border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-zinc-900/50">
+            <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-zinc-900/50">
               <span className="flex items-center gap-1.5 text-xs text-bronze-500 dark:text-zinc-500">
                 <span>worktree:</span>
                 <span className={`inline-flex items-center gap-1 font-mono px-1.5 py-0.5 rounded border ${
@@ -144,6 +146,29 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
                   {task.mergeConflict ? task.mergeConflict.branch : (task.branch || 'main')}
                 </span>
               </span>
+              {/* Preview / Viewing controls for verify tasks with a branch */}
+              {task.status === 'verify' && task.branch && onSwitchBranch && (
+                <span className="flex items-center gap-2">
+                  {currentBranch === task.branch ? (
+                    <>
+                      <span className="text-[10px] text-patina font-medium uppercase tracking-wide">Viewing</span>
+                      <button
+                        onClick={() => onSwitchBranch('main')}
+                        className="text-[10px] font-medium text-text-chrome hover:text-text-chrome-hover transition-colors px-1.5 py-0.5 rounded border border-border-default hover:bg-surface-hover"
+                      >
+                        Back to main
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => onSwitchBranch(task.branch!)}
+                      className="text-[10px] font-medium text-steel hover:text-steel/80 transition-colors px-1.5 py-0.5 rounded border border-steel/30 hover:bg-steel/10"
+                    >
+                      Preview
+                    </button>
+                  )}
+                </span>
+              )}
             </div>
           )}
 
@@ -435,7 +460,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
                 className="flex items-center justify-center gap-1.5 w-full px-3 py-5 text-xs font-medium text-patina/80 hover:text-patina hover:bg-patina/10 transition-colors"
               >
                 <CheckCircle2Icon className="w-3.5 h-3.5" />
-                Complete
+                {task.branch ? 'Merge & Complete' : 'Complete'}
               </button>
             </div>
           )}
