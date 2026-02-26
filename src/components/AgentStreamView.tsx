@@ -543,25 +543,40 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     // Reset exited so we show loading for the follow-up
     setExited(false);
 
+    const forceReconnect = () => {
+      setBlocks([]);
+      setRawText('');
+      blockIdCounter.current = 0;
+      toolBlockMap.current.clear();
+      bufferRef.current = '';
+      gotValidEventRef.current = false;
+      setReconnectKey(prev => prev + 1);
+    };
+
     try {
       const result = await onSendFollowUp(msg);
-      if (result?.bridgeRestarted) {
-        // Bridge was dead and restarted — reset state and reconnect WebSocket.
+      if (result?.bridgeRestarted || !connected) {
+        // Bridge was restarted or WebSocket is disconnected — reset state and reconnect.
         // The bridge will replay the full jsonl (including user-follow-up event).
-        setBlocks([]);
-        setRawText('');
-        blockIdCounter.current = 0;
-        toolBlockMap.current.clear();
-        bufferRef.current = '';
-        gotValidEventRef.current = false;
-        setReconnectKey(prev => prev + 1);
+        forceReconnect();
+      } else {
+        // WebSocket appears connected but data may not be flowing (stale connection).
+        // If no new blocks arrive within 8s, force reconnection as a fallback.
+        const countAtSend = blockIdCounter.current;
+        setTimeout(() => {
+          if (blockIdCounter.current <= countAtSend) {
+            console.log('[AgentStreamView] no new data after follow-up, forcing reconnect');
+            forceReconnect();
+          }
+        }, 8000);
       }
     } catch (err) {
       console.error('[AgentStreamView] follow-up failed:', err);
+      forceReconnect();
     } finally {
       setSendingFollowUp(false);
     }
-  }, [followUpInput, onSendFollowUp, sendingFollowUp, nextBlockId]);
+  }, [followUpInput, onSendFollowUp, sendingFollowUp, nextBlockId, connected]);
 
   // Process a single stream-json event
   const processEvent = useCallback((event: StreamMessage) => {
