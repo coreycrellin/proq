@@ -215,11 +215,11 @@ function processInlineFormatting(text: string): React.ReactNode[] {
     }
     if (match[2]) {
       // Bold
-      parts.push(<strong key={match.index} className="font-semibold text-zinc-200">{match[2]}</strong>);
+      parts.push(<strong key={match.index} className="font-semibold text-bronze-800 dark:text-zinc-200">{match[2]}</strong>);
     } else if (match[3]) {
       // Inline code
       parts.push(
-        <code key={match.index} className="px-1 py-0.5 rounded bg-zinc-800 text-amber-300/80 text-[11px] font-mono">
+        <code key={match.index} className="px-1 py-0.5 rounded bg-bronze-200 dark:bg-zinc-800 text-amber-700 dark:text-amber-300/80 text-[11px] font-mono">
           {match[3]}
         </code>
       );
@@ -260,7 +260,7 @@ function CollapsibleOutput({
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => setOpen(!open)}
-          className="flex items-center gap-1 text-[10px] font-medium text-zinc-500 hover:text-zinc-400 transition-colors uppercase tracking-wider"
+          className="flex items-center gap-1 text-[10px] font-medium text-text-chrome hover:text-text-chrome-hover transition-colors uppercase tracking-wider"
         >
           {open ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
           {label}
@@ -272,17 +272,17 @@ function CollapsibleOutput({
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
             }}
-            className="ml-auto text-zinc-600 hover:text-zinc-400 transition-colors p-0.5"
+            className="ml-auto text-text-chrome hover:text-text-chrome-hover transition-colors p-0.5"
           >
-            {copied ? <CheckIcon className="w-3 h-3 text-green-400" /> : <CopyIcon className="w-3 h-3" />}
+            {copied ? <CheckIcon className="w-3 h-3 text-patina dark:text-green-400" /> : <CopyIcon className="w-3 h-3" />}
           </button>
         )}
       </div>
       {open && (
-        <pre className={`mt-1 text-[11px] font-mono leading-relaxed whitespace-pre-wrap break-all ${isError ? 'text-red-400/80' : 'text-zinc-400'}`}>
+        <pre className={`mt-1 text-[11px] font-mono leading-relaxed whitespace-pre-wrap break-all ${isError ? 'text-crimson dark:text-red-400/80' : 'text-bronze-600 dark:text-zinc-400'}`}>
           {displayContent}
           {truncated && (
-            <span className="text-zinc-600 italic">{`\n... ${lines.length - maxLines} more lines`}</span>
+            <span className="text-text-chrome italic">{`\n... ${lines.length - maxLines} more lines`}</span>
           )}
         </pre>
       )}
@@ -307,19 +307,19 @@ function TextBlock({ block, collapseSignal }: { block: RenderBlock; collapseSign
   return (
     <div className="flex gap-3 py-2.5">
       <div className="shrink-0 mt-1.5">
-        <div className={`w-2 h-2 rounded-full ${block.status === 'active' ? 'bg-blue-400 animate-pulse' : 'bg-emerald-400'}`} />
+        <div className={`w-2 h-2 rounded-full ${block.status === 'active' ? 'bg-steel dark:bg-blue-400 animate-pulse' : 'bg-patina dark:bg-emerald-400'}`} />
       </div>
       <div className="min-w-0 flex-1">
         {isLong && (
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors mb-1 flex items-center gap-1"
+            className="text-[10px] text-text-chrome hover:text-text-chrome-hover transition-colors mb-1 flex items-center gap-1"
           >
             {collapsed ? <ChevronRightIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />}
             {collapsed ? 'Show more' : 'Collapse'}
           </button>
         )}
-        <div className="text-[13px] text-zinc-300 leading-relaxed">
+        <div className="text-[13px] text-bronze-700 dark:text-zinc-300 leading-relaxed">
           {collapsed
             ? renderFormattedText(text.split('\n').slice(0, 3).join('\n') + '...')
             : renderFormattedText(text)
@@ -348,12 +348,12 @@ function ToolBlock({ block, collapseSignal }: { block: RenderBlock; collapseSign
     <div className="flex gap-3 py-2.5">
       <div className="shrink-0 mt-1">
         {isActive ? (
-          <Loader2Icon className="w-3.5 h-3.5 text-blue-400 animate-spin" />
+          <Loader2Icon className="w-3.5 h-3.5 text-steel dark:text-blue-400 animate-spin" />
         ) : block.toolError ? (
-          <AlertCircleIcon className="w-3.5 h-3.5 text-red-400" />
+          <AlertCircleIcon className="w-3.5 h-3.5 text-crimson dark:text-red-400" />
         ) : (
           <div className="w-3.5 h-3.5 flex items-center justify-center">
-            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            <div className="w-2 h-2 rounded-full bg-patina dark:bg-emerald-400" />
           </div>
         )}
       </div>
@@ -363,21 +363,21 @@ function ToolBlock({ block, collapseSignal }: { block: RenderBlock; collapseSign
           onClick={() => setCollapsed(!collapsed)}
           className="flex items-center gap-2 group w-full text-left"
         >
-          <Icon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-          <span className="text-[13px] font-semibold text-zinc-200">{block.toolName}</span>
-          <span className="text-[12px] text-zinc-500 truncate">{description}</span>
-          <span className="ml-auto shrink-0 text-zinc-600 group-hover:text-zinc-400 transition-colors">
+          <Icon className="w-3.5 h-3.5 text-text-chrome shrink-0" />
+          <span className="text-[13px] font-semibold text-bronze-800 dark:text-zinc-200">{block.toolName}</span>
+          <span className="text-[12px] text-text-chrome truncate">{description}</span>
+          <span className="ml-auto shrink-0 text-text-chrome group-hover:text-text-chrome-hover transition-colors">
             {collapsed ? <ChevronRightIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
           </span>
         </button>
 
         {/* Tool details (collapsible) */}
         {!collapsed && (
-          <div className="mt-2 rounded-md border border-zinc-800 bg-zinc-900/50 overflow-hidden">
+          <div className="mt-2 rounded-md border border-border-default bg-surface-secondary overflow-hidden">
             {inputDisplay && (
-              <div className="px-3 py-2 border-b border-zinc-800/60">
-                <span className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider mr-2">IN</span>
-                <pre className="mt-1 text-[11px] font-mono text-zinc-400 whitespace-pre-wrap break-all leading-relaxed">
+              <div className="px-3 py-2 border-b border-border-subtle">
+                <span className="text-[10px] font-medium text-text-chrome uppercase tracking-wider mr-2">IN</span>
+                <pre className="mt-1 text-[11px] font-mono text-bronze-600 dark:text-zinc-400 whitespace-pre-wrap break-all leading-relaxed">
                   {inputDisplay}
                 </pre>
               </div>
@@ -395,8 +395,8 @@ function ToolBlock({ block, collapseSignal }: { block: RenderBlock; collapseSign
             )}
             {isActive && (
               <div className="px-3 py-2 flex items-center gap-2">
-                <Loader2Icon className="w-3 h-3 text-blue-400 animate-spin" />
-                <span className="text-[11px] text-blue-400/80">Running...</span>
+                <Loader2Icon className="w-3 h-3 text-steel dark:text-blue-400 animate-spin" />
+                <span className="text-[11px] text-steel dark:text-blue-400/80">Running...</span>
               </div>
             )}
           </div>
@@ -420,21 +420,21 @@ function ThinkingBlock({ block, collapseSignal }: { block: RenderBlock; collapse
     <div className="flex gap-3 py-2">
       <div className="shrink-0 mt-1">
         {isActive ? (
-          <Loader2Icon className="w-3.5 h-3.5 text-zinc-500 animate-spin" />
+          <Loader2Icon className="w-3.5 h-3.5 text-text-chrome animate-spin" />
         ) : (
-          <BrainIcon className="w-3.5 h-3.5 text-zinc-600" />
+          <BrainIcon className="w-3.5 h-3.5 text-text-chrome" />
         )}
       </div>
       <div className="min-w-0 flex-1">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1.5 text-[12px] text-zinc-500 hover:text-zinc-400 transition-colors"
+          className="flex items-center gap-1.5 text-[12px] text-text-chrome hover:text-text-chrome-hover transition-colors"
         >
           {expanded ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
           <span className="italic">{isActive ? 'Thinking...' : 'Thinking'}</span>
         </button>
         {expanded && block.thinking && (
-          <pre className="mt-1.5 text-[11px] font-mono text-zinc-600 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+          <pre className="mt-1.5 text-[11px] font-mono text-text-chrome whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
             {block.thinking}
           </pre>
         )}
@@ -448,22 +448,22 @@ function ResultBlock({ block }: { block: RenderBlock }) {
   const cost = block.costUsd ? `$${block.costUsd.toFixed(4)}` : null;
 
   return (
-    <div className="flex gap-3 py-2.5 border-t border-zinc-800/50 mt-1">
+    <div className="flex gap-3 py-2.5 border-t border-border-subtle mt-1">
       <div className="shrink-0 mt-1">
         {block.isError ? (
-          <AlertCircleIcon className="w-3.5 h-3.5 text-red-400" />
+          <AlertCircleIcon className="w-3.5 h-3.5 text-crimson dark:text-red-400" />
         ) : (
-          <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald-400" />
+          <CheckCircle2Icon className="w-3.5 h-3.5 text-patina dark:text-emerald-400" />
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <span className={`text-[12px] font-medium ${block.isError ? 'text-red-400' : 'text-emerald-400'}`}>
+        <span className={`text-[12px] font-medium ${block.isError ? 'text-crimson dark:text-red-400' : 'text-patina dark:text-emerald-400'}`}>
           {block.isError ? 'Failed' : 'Complete'}
         </span>
         <div className="flex items-center gap-3 mt-0.5">
-          {duration && <span className="text-[11px] text-zinc-600">{duration}</span>}
-          {block.numTurns != null && <span className="text-[11px] text-zinc-600">{block.numTurns} turns</span>}
-          {cost && <span className="text-[11px] text-zinc-600">{cost}</span>}
+          {duration && <span className="text-[11px] text-text-chrome">{duration}</span>}
+          {block.numTurns != null && <span className="text-[11px] text-text-chrome">{block.numTurns} turns</span>}
+          {cost && <span className="text-[11px] text-text-chrome">{cost}</span>}
         </div>
       </div>
     </div>
@@ -472,11 +472,11 @@ function ResultBlock({ block }: { block: RenderBlock }) {
 
 function UserMessageBlock({ block }: { block: RenderBlock }) {
   return (
-    <div className="flex gap-3 py-2.5 border-t border-zinc-800/50 mt-1">
+    <div className="flex gap-3 py-2.5 border-t border-border-subtle mt-1">
       <div className="shrink-0 mt-1">
         <UserIcon className="w-3.5 h-3.5 text-steel" />
       </div>
-      <div className="text-[13px] text-zinc-200 leading-relaxed">
+      <div className="text-[13px] text-bronze-800 dark:text-zinc-200 leading-relaxed">
         {renderFormattedText(block.userMessage || '')}
       </div>
     </div>
@@ -773,13 +773,13 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
       <div
         ref={rawContainerRef}
         onScroll={handleRawScroll}
-        className="absolute inset-0 overflow-y-auto bg-black p-4"
+        className="absolute inset-0 overflow-y-auto bg-surface-base p-4"
       >
         {!hasData && !exited && (
           <div className="flex items-center justify-center h-full">
             <div className="flex items-center gap-2.5">
-              <Loader2Icon className="w-4 h-4 text-zinc-600 animate-spin" />
-              <span className="text-sm text-zinc-600">
+              <Loader2Icon className="w-4 h-4 text-text-chrome animate-spin" />
+              <span className="text-sm text-text-chrome">
                 {connected ? 'Waiting for agent output...' : 'Connecting...'}
               </span>
             </div>
@@ -787,11 +787,11 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
         )}
         {!hasData && exited && (
           <div className="flex items-center justify-center h-full">
-            <span className="text-sm text-zinc-600">No output captured</span>
+            <span className="text-sm text-text-chrome">No output captured</span>
           </div>
         )}
         {hasData && (
-          <pre className="text-[12px] font-mono text-zinc-400 whitespace-pre-wrap leading-relaxed break-all">
+          <pre className="text-[12px] font-mono text-bronze-600 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed break-all">
             {rawText}
           </pre>
         )}
@@ -800,13 +800,13 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
   }
 
   return (
-    <div className="absolute inset-0 flex flex-col bg-[#0A0A0A]">
+    <div className="absolute inset-0 flex flex-col bg-surface-base">
       {/* Collapse-all toggle */}
       {blocks.length > 0 && (
         <div className="absolute top-2 right-5 z-10">
           <button
             onClick={() => setCollapseSignal(prev => prev > 0 ? -Math.abs(prev) - 1 : Math.abs(prev) + 1)}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-zinc-500 hover:text-zinc-300 bg-zinc-900/80 hover:bg-zinc-800/80 border border-zinc-800 backdrop-blur-sm transition-colors"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-text-chrome hover:text-text-chrome-active bg-surface-primary/80 hover:bg-surface-hover/80 border border-border-default backdrop-blur-sm transition-colors"
             title={isCollapsed ? 'Expand all' : 'Collapse all'}
           >
             {isCollapsed ? (
@@ -825,8 +825,8 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
         {blocks.length === 0 && !exited && (
           <div className="flex items-center justify-center h-full">
             <div className="flex items-center gap-2.5">
-              <Loader2Icon className="w-4 h-4 text-zinc-600 animate-spin" />
-              <span className="text-sm text-zinc-600">
+              <Loader2Icon className="w-4 h-4 text-text-chrome animate-spin" />
+              <span className="text-sm text-text-chrome">
                 {connected ? 'Waiting for agent output...' : 'Connecting...'}
               </span>
             </div>
@@ -834,7 +834,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
         )}
         {blocks.length === 0 && exited && (
           <div className="flex items-center justify-center h-full">
-            <span className="text-sm text-zinc-600">No output captured</span>
+            <span className="text-sm text-text-chrome">No output captured</span>
           </div>
         )}
         <div className="max-w-4xl">
@@ -847,8 +847,8 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
           if (lastBlock?.type === 'user-message') {
             return (
               <div className="max-w-4xl flex items-center gap-2 py-3 pl-5">
-                <Loader2Icon className="w-3.5 h-3.5 text-zinc-600 animate-spin" />
-                <span className="text-xs text-zinc-600">Agent thinking...</span>
+                <Loader2Icon className="w-3.5 h-3.5 text-text-chrome animate-spin" />
+                <span className="text-xs text-text-chrome">Agent thinking...</span>
               </div>
             );
           }
@@ -857,9 +857,9 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
             return (
               <div className="max-w-4xl flex items-center gap-1.5 py-3 pl-5">
                 <span className="flex items-center gap-[3px]">
-                  <span className="w-1 h-1 rounded-full bg-zinc-600 animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1.2s' }} />
-                  <span className="w-1 h-1 rounded-full bg-zinc-600 animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1.2s' }} />
-                  <span className="w-1 h-1 rounded-full bg-zinc-600 animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1.2s' }} />
+                  <span className="w-1 h-1 rounded-full bg-bronze-500 dark:bg-zinc-600 animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1.2s' }} />
+                  <span className="w-1 h-1 rounded-full bg-bronze-500 dark:bg-zinc-600 animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1.2s' }} />
+                  <span className="w-1 h-1 rounded-full bg-bronze-500 dark:bg-zinc-600 animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1.2s' }} />
                 </span>
               </div>
             );
@@ -869,7 +869,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
       </div>
       {/* Follow-up input — shown whenever callback is available (even mid-stream) */}
       {onSendFollowUp && !staticData && (
-        <div className="shrink-0 border-t border-zinc-800 bg-[#0A0A0A] px-4 py-3">
+        <div className="shrink-0 border-t border-border-default bg-surface-base px-4 py-3">
           <div className="max-w-4xl flex gap-2">
             <textarea
               ref={followUpRef}
@@ -883,7 +883,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
               }}
               placeholder={exited ? "Reply to the agent..." : "Send a message..."}
               rows={1}
-              className="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-steel/50 resize-none"
+              className="flex-1 bg-surface-primary border border-border-default rounded-md px-3 py-2 text-sm text-bronze-800 dark:text-zinc-200 placeholder-text-chrome focus:outline-none focus:border-steel/50 resize-none"
             />
             <button
               onClick={handleSendFollowUp}
