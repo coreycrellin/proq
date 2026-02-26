@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { XIcon, PaperclipIcon, FileIcon, PlayIcon, Loader2Icon } from 'lucide-react';
-import type { Task, TaskAttachment, TaskMode } from '@/lib/types';
+import type { Task, TaskAttachment, TaskMode, TaskOutputMode } from '@/lib/types';
 
 interface TaskModalProps {
   task: Task;
@@ -33,6 +33,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
   const [title, setTitle] = useState(task.title || '');
   const [description, setDescription] = useState(task.description);
   const [mode, setMode] = useState<TaskMode>(task.mode || 'code');
+  const [outputMode, setOutputMode] = useState<TaskOutputMode>(task.outputMode || 'pretty');
   const [attachments, setAttachments] = useState<TaskAttachment[]>(
     task.attachments || [],
   );
@@ -42,25 +43,26 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
   const titleRef = useRef<HTMLInputElement>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingCursor = useRef<number | null>(null);
 
   useEffect(() => {
     setTitle(task.title || '');
     setDescription(task.description);
     setMode(task.mode || 'code');
+    setOutputMode(task.outputMode || 'pretty');
     setAttachments(task.attachments || []);
   }, [task.id]);
 
   const wasOpen = useRef(false);
   useEffect(() => {
     if (isOpen && !wasOpen.current) {
-      const isNew = !task.title && !task.description;
-      setTimeout(() => (isNew ? titleRef : descriptionRef).current?.focus(), 50);
+      setTimeout(() => descriptionRef.current?.focus(), 50);
     }
     wasOpen.current = isOpen;
   }, [isOpen, task.id]);
 
   const autosave = useCallback(
-    (newTitle: string, newDesc: string, newAttachments: TaskAttachment[], newMode?: TaskMode) => {
+    (newTitle: string, newDesc: string, newAttachments: TaskAttachment[], newMode?: TaskMode, newOutputMode?: TaskOutputMode) => {
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       saveTimeout.current = setTimeout(() => {
         onSave(task.id, {
@@ -68,6 +70,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
           description: newDesc,
           attachments: newAttachments,
           mode: newMode,
+          outputMode: newOutputMode,
         });
       }, 400);
     },
@@ -105,6 +108,14 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
     };
   }, []);
 
+  // Set cursor position after description state updates (for bullet list manipulation)
+  useEffect(() => {
+    if (pendingCursor.current !== null && descriptionRef.current) {
+      descriptionRef.current.setSelectionRange(pendingCursor.current, pendingCursor.current);
+      pendingCursor.current = null;
+    }
+  }, [description]);
+
   // Cmd+Enter to trigger "Start Now", Cmd+Shift+A to attach file
   useEffect(() => {
     if (!isOpen) return;
@@ -128,17 +139,17 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
 
   const handleTitleChange = (val: string) => {
     setTitle(val);
-    autosave(val, description, attachments, mode);
+    autosave(val, description, attachments, mode, outputMode);
   };
 
   const handleDescriptionChange = (val: string) => {
     setDescription(val);
-    autosave(title, val, attachments, mode);
+    autosave(title, val, attachments, mode, outputMode);
   };
 
   const handleModeChange = (newMode: TaskMode) => {
     setMode(newMode);
-    autosave(title, description, attachments, newMode);
+    autosave(title, description, attachments, newMode, outputMode);
   };
 
   const addFiles = (files: FileList | File[]) => {
@@ -155,7 +166,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
           att.dataUrl = e.target?.result as string;
           setAttachments((prev) => {
             const updated = [...prev, att];
-            autosave(title, description, updated, mode);
+            autosave(title, description, updated, mode, outputMode);
             return updated;
           });
         };
@@ -163,7 +174,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
       } else {
         setAttachments((prev) => {
           const updated = [...prev, att];
-          autosave(title, description, updated);
+          autosave(title, description, updated, mode, outputMode);
           return updated;
         });
       }
@@ -173,7 +184,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
   const removeAttachment = (id: string) => {
     const updated = attachments.filter((a) => a.id !== id);
     setAttachments(updated);
-    autosave(title, description, updated);
+    autosave(title, description, updated, mode, outputMode);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -219,6 +230,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
           {/* Mode selector */}
           <div className="bg-surface-secondary p-0.5 rounded-md flex items-center border border-border-default w-fit mb-3">
             {([
+              ['auto', 'Auto', 'Auto mode. Claude decides the approach.'],
               ['code', 'Code', 'Coding mode. Bypass permissions.'],
               ['plan', 'Plan', 'Planning mode. Agent proposes, you approve.'],
               ['answer', 'Answer', 'Answer mode. Research only, no code changes.'],
@@ -263,6 +275,83 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
             value={description}
             onChange={(e) => handleDescriptionChange(e.target.value)}
             onKeyDown={(e) => {
+              const textarea = descriptionRef.current;
+              if (!textarea) return;
+
+              const { selectionStart, selectionEnd, value } = textarea;
+              const noSelection = selectionStart === selectionEnd;
+
+              // Find current line boundaries
+              const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+              const lineEndIdx = value.indexOf('\n', selectionStart);
+              const lineEnd = lineEndIdx === -1 ? value.length : lineEndIdx;
+              const currentLine = value.substring(lineStart, lineEnd);
+              const bulletMatch = currentLine.match(/^(\s*)- /);
+
+              // Enter on a bullet line
+              if (e.key === 'Enter' && !e.metaKey && !e.shiftKey && !e.ctrlKey && bulletMatch && noSelection) {
+                e.preventDefault();
+                const indent = bulletMatch[1];
+                const bulletPrefixEnd = lineStart + bulletMatch[0].length;
+                const contentAfterBullet = value.substring(bulletPrefixEnd, lineEnd).trim();
+
+                if (!contentAfterBullet) {
+                  // Empty bullet — remove it (exit list mode)
+                  const newValue = value.substring(0, lineStart) + value.substring(lineEnd);
+                  pendingCursor.current = lineStart;
+                  handleDescriptionChange(newValue);
+                } else {
+                  // Continue list — split at cursor
+                  const insertion = `\n${indent}- `;
+                  const newValue = value.substring(0, selectionStart) + insertion + value.substring(selectionStart);
+                  pendingCursor.current = selectionStart + insertion.length;
+                  handleDescriptionChange(newValue);
+                }
+                return;
+              }
+
+              // Tab / Shift+Tab on bullet line — indent/outdent
+              if (e.key === 'Tab' && bulletMatch && noSelection) {
+                e.preventDefault();
+                if (e.shiftKey) {
+                  // Outdent — remove up to 2 spaces
+                  if (bulletMatch[1].length >= 2) {
+                    const newValue = value.substring(0, lineStart) + currentLine.substring(2) + value.substring(lineEnd);
+                    pendingCursor.current = Math.max(lineStart, selectionStart - 2);
+                    handleDescriptionChange(newValue);
+                  }
+                } else {
+                  // Indent — add 2 spaces
+                  const newValue = value.substring(0, lineStart) + '  ' + currentLine + value.substring(lineEnd);
+                  pendingCursor.current = selectionStart + 2;
+                  handleDescriptionChange(newValue);
+                }
+                return;
+              }
+
+              // Backspace at start of bullet content — outdent or remove bullet
+              if (e.key === 'Backspace' && bulletMatch && noSelection) {
+                const indent = bulletMatch[1];
+                const bulletPrefixEnd = lineStart + bulletMatch[0].length;
+
+                if (selectionStart === bulletPrefixEnd) {
+                  e.preventDefault();
+                  if (indent.length >= 2) {
+                    // Outdent first
+                    const newValue = value.substring(0, lineStart) + currentLine.substring(2) + value.substring(lineEnd);
+                    pendingCursor.current = selectionStart - 2;
+                    handleDescriptionChange(newValue);
+                  } else {
+                    // Remove bullet entirely
+                    const newValue = value.substring(0, lineStart) + currentLine.substring(bulletMatch[0].length) + value.substring(lineEnd);
+                    pendingCursor.current = lineStart;
+                    handleDescriptionChange(newValue);
+                  }
+                  return;
+                }
+              }
+
+              // Backspace on empty description — focus title
               if (e.key === 'Backspace' && description === '') {
                 e.preventDefault();
                 const input = titleRef.current;
@@ -352,6 +441,30 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
             <span>Attach file</span>
           </button>
 
+          {/* Output mode toggle */}
+          <div className="flex items-center gap-0.5 px-2 border-l border-bronze-300/60 dark:border-zinc-800/60">
+            <button
+              onClick={() => { setOutputMode('pretty'); autosave(title, description, attachments, mode, 'pretty'); }}
+              className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                outputMode === 'pretty'
+                  ? 'bg-zinc-700 text-zinc-200'
+                  : 'text-zinc-500 hover:text-zinc-400'
+              }`}
+            >
+              Pretty
+            </button>
+            <button
+              onClick={() => { setOutputMode('raw'); autosave(title, description, attachments, mode, 'raw'); }}
+              className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                outputMode === 'raw'
+                  ? 'bg-zinc-700 text-zinc-200'
+                  : 'text-zinc-500 hover:text-zinc-400'
+              }`}
+            >
+              Raw
+            </button>
+          </div>
+
           <div className="flex-1" />
 
           {onMoveToInProgress && (
@@ -359,7 +472,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
               onClick={async () => {
                 if (saveTimeout.current) clearTimeout(saveTimeout.current);
                 setDispatching(true);
-                await onMoveToInProgress(task.id, { title, description, attachments, mode });
+                await onMoveToInProgress(task.id, { title, description, attachments, mode, outputMode });
               }}
               disabled={!description.trim() || dispatching}
               className={`flex items-center gap-1.5 px-4 py-3 text-xs font-medium text-steel/80 border-l border-border-default transition-colors ${dispatching ? 'pointer-events-none' : 'hover:text-steel hover:border-steel/50 hover:bg-steel/10 disabled:opacity-30 disabled:pointer-events-none'}`}
