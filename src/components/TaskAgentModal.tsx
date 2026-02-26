@@ -40,21 +40,28 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
   const steps = parseLines(task.humanSteps);
   const findings = parseLines(task.findings);
   const isDispatched = task.dispatch === 'running' || task.dispatch === 'starting';
-  // Show terminal for done tasks too; fall back to static log only after cleanup has captured agentLog
-  const showStaticLog = task.status === 'done' && !cleanupExpiresAt && !!task.agentLog;
-  const showTerminal = (task.status === 'in-progress' || task.status === 'verify' || (task.status === 'done' && !showStaticLog)) && !isQueued;
   const [viewMode, setViewMode] = useState<'pretty' | 'raw'>('pretty');
   const [countdownText, setCountdownText] = useState('');
   const [dispatching, setDispatching] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showConflictModal, setShowConflictModal] = useState(false);
-
-  const handleSendFollowUp = useCallback(async (message: string) => {
-    await fetch(`/api/projects/${projectId}/tasks/${task.id}/reply`, {
+  // forceShowLive overrides static mode when a follow-up reply restarts the bridge
+  const [forceShowLive, setForceShowLive] = useState(false);
+  // Show terminal for done tasks too; fall back to static log only after cleanup has captured agentLog
+  const showStaticLog = task.status === 'done' && !cleanupExpiresAt && !!task.agentLog && !forceShowLive;
+  const showTerminal = (task.status === 'in-progress' || task.status === 'verify' || (task.status === 'done' && !showStaticLog)) && !isQueued;
+  const handleSendFollowUp = useCallback(async (message: string): Promise<{ bridgeRestarted?: boolean } | void> => {
+    const res = await fetch(`/api/projects/${projectId}/tasks/${task.id}/reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message }),
     });
+    const data = await res.json();
+    if (data.bridgeRestarted) {
+      // Bridge was dead and restarted — switch from static log to live terminal view
+      setForceShowLive(true);
+    }
+    return data;
   }, [projectId, task.id]);
   const [topPanelPercent, setTopPanelPercent] = useState(30);
   const rightPanelRef = useRef<HTMLDivElement>(null);

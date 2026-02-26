@@ -494,8 +494,8 @@ interface AgentStreamViewProps {
   staticData?: string;
   /** 'pretty' renders parsed blocks (default), 'raw' shows raw text */
   mode?: 'pretty' | 'raw';
-  /** Called when user sends a follow-up message after agent exits */
-  onSendFollowUp?: (message: string) => Promise<void>;
+  /** Called when user sends a follow-up message after agent exits. Returns bridgeRestarted if session was dead and bridge was restarted. */
+  onSendFollowUp?: (message: string) => Promise<{ bridgeRestarted?: boolean } | void>;
 }
 
 export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', onSendFollowUp }: AgentStreamViewProps) {
@@ -509,6 +509,8 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
   // Default is 1 so blocks start collapsed (auto-collapse)
   const [collapseSignal, setCollapseSignal] = useState(1);
   const isCollapsed = collapseSignal > 0;
+  // Incremented to force WebSocket reconnection (e.g. after bridge restart)
+  const [reconnectKey, setReconnectKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const rawContainerRef = useRef<HTMLDivElement>(null);
   const followUpRef = useRef<HTMLTextAreaElement>(null);
@@ -530,7 +532,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     setFollowUpInput('');
     setSendingFollowUp(true);
 
-    // Add user message block
+    // Add user message block (instant feedback)
     setBlocks(prev => [...prev, {
       id: nextBlockId(),
       type: 'user-message',
@@ -542,7 +544,18 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     setExited(false);
 
     try {
-      await onSendFollowUp(msg);
+      const result = await onSendFollowUp(msg);
+      if (result?.bridgeRestarted) {
+        // Bridge was dead and restarted — reset state and reconnect WebSocket.
+        // The bridge will replay the full jsonl (including user-follow-up event).
+        setBlocks([]);
+        setRawText('');
+        blockIdCounter.current = 0;
+        toolBlockMap.current.clear();
+        bufferRef.current = '';
+        gotValidEventRef.current = false;
+        setReconnectKey(prev => prev + 1);
+      }
     } catch (err) {
       console.error('[AgentStreamView] follow-up failed:', err);
     } finally {
@@ -651,6 +664,25 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
           continue;
         }
 
+        // Handle user follow-up events (persisted in jsonl by reply route)
+        if ((event as unknown as { type: string; message?: string }).type === 'user-follow-up') {
+          const msg = (event as unknown as { message: string }).message;
+          setBlocks(prev => {
+            // Skip duplicate if last block is already this user message (added locally)
+            const last = prev[prev.length - 1];
+            if (last?.type === 'user-message' && last?.userMessage === msg) {
+              return prev;
+            }
+            return [...prev, {
+              id: nextBlockId(),
+              type: 'user-message',
+              userMessage: msg,
+              status: 'complete' as const,
+            }];
+          });
+          continue;
+        }
+
         processEvent(event);
       } catch {
         // Not valid JSON — ignore (could be stderr noise)
@@ -717,7 +749,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
       if (reconnectTimer) clearTimeout(reconnectTimer);
       try { ws?.close(); } catch {}
     };
-  }, [tabId, staticData, processBuffer]);
+  }, [tabId, staticData, processBuffer, reconnectKey]);
 
   // Auto-scroll to bottom
   useEffect(() => {

@@ -366,9 +366,8 @@ function shutdown() {
     fs.unlinkSync(socketPath);
   } catch {}
 
-  // Clean up jsonl file and pending reply file
+  // Clean up pending reply file (keep jsonl for potential follow-up replies)
   if (jsonlPath) {
-    try { fs.unlinkSync(jsonlPath); } catch {}
     try { fs.unlinkSync(jsonlPath.replace(/\.jsonl$/, ".pending-reply")); } catch {}
   }
 

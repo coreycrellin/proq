@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { execSync, spawn } from "child_process";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { getTask, getAllProjects } from "@/lib/db";
@@ -48,72 +48,61 @@ export async function POST(request: Request, { params }: Params) {
   const shortId = taskId.slice(0, 8);
   const tmuxSession = `mc-${shortId}`;
   const jsonlPath = `/tmp/proq/${tmuxSession}.jsonl`;
+  const pendingReplyPath = `/tmp/proq/${tmuxSession}.pending-reply`;
+  const promptDir = join(tmpdir(), "proq-prompts");
+  mkdirSync(promptDir, { recursive: true });
+  mkdirSync("/tmp/proq", { recursive: true });
 
+  // If the jsonl file doesn't exist, try to recreate from agentLog
   if (!existsSync(jsonlPath)) {
-    return NextResponse.json({ error: "No session file found" }, { status: 400 });
+    if (task.agentLog?.trimStart().startsWith("{")) {
+      writeFileSync(jsonlPath, task.agentLog + "\n", "utf-8");
+    } else {
+      // No history to restore — create empty file
+      writeFileSync(jsonlPath, "", "utf-8");
+    }
   }
+
+  // Append user follow-up event to jsonl for history persistence
+  appendFileSync(
+    jsonlPath,
+    JSON.stringify({ type: "user-follow-up", message }) + "\n",
+    "utf-8",
+  );
 
   // If the agent's tmux session is still alive, write a pending reply file
   // for the bridge to pick up after the current process exits
-  const pendingReplyPath = `/tmp/proq/${tmuxSession}.pending-reply`;
   if (isSessionAlive(tmuxSession)) {
     writeFileSync(pendingReplyPath, message, "utf-8");
     console.log(`[reply] queued pending reply for task ${shortId} (agent still running)`);
     return NextResponse.json({ success: true, queued: true });
   }
 
-  // Extract session_id from the jsonl file (first system event)
-  let sessionId: string | null = null;
+  // Session is dead — restart the bridge in a new tmux session
+  console.log(`[reply] session ${tmuxSession} is dead, restarting bridge for reply`);
+
+  // Write pending-reply for the bridge to pick up after the no-op launcher exits
+  writeFileSync(pendingReplyPath, message, "utf-8");
+
+  // Create a no-op launcher (bridge requires one; it exits immediately)
+  const noopLauncher = join(promptDir, `${tmuxSession}-noop.sh`);
+  writeFileSync(noopLauncher, "#!/bin/bash\nexit 0\n", "utf-8");
+
+  const bridgePath = join(process.cwd(), "src/lib/proq-bridge.js");
+  const socketPath = `/tmp/proq/${tmuxSession}.sock`;
+
+  const tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' node '${bridgePath}' '${socketPath}' '${noopLauncher}' --json --jsonl '${jsonlPath}'`;
+
   try {
-    const content = readFileSync(jsonlPath, "utf-8");
-    for (const line of content.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      try {
-        const event = JSON.parse(trimmed);
-        if (event.session_id) {
-          sessionId = event.session_id;
-          break;
-        }
-      } catch {
-        // skip non-JSON lines
-      }
-    }
-  } catch {
-    // couldn't read file
+    execSync(tmuxCmd, { timeout: 10_000 });
+    console.log(`[reply] restarted bridge in tmux session ${tmuxSession} for follow-up`);
+  } catch (err) {
+    console.error(`[reply] failed to restart bridge for ${shortId}:`, err);
+    return NextResponse.json(
+      { error: "Failed to restart agent session" },
+      { status: 500 },
+    );
   }
 
-  // Build the follow-up command
-  const promptDir = join(tmpdir(), "proq-prompts");
-  mkdirSync(promptDir, { recursive: true });
-
-  const replyPromptFile = join(promptDir, `${tmuxSession}-reply.md`);
-  writeFileSync(replyPromptFile, message, "utf-8");
-
-  const resumeFlag = sessionId ? `--resume '${sessionId}'` : "-c";
-  const launcherFile = join(promptDir, `${tmuxSession}-reply.sh`);
-  writeFileSync(
-    launcherFile,
-    `#!/bin/bash\nexec env -u CLAUDECODE -u PORT ${CLAUDE} ${resumeFlag} -p --verbose --output-format stream-json --dangerously-skip-permissions "$(cat '${replyPromptFile}')" >> '${jsonlPath}' 2>&1\n`,
-    "utf-8",
-  );
-
-  // Clean env for the child
-  const env = { ...process.env };
-  delete env.CLAUDECODE;
-  delete env.PORT;
-
-  const child = spawn("bash", [launcherFile], {
-    cwd: effectivePath,
-    env,
-    stdio: ["ignore", "ignore", "ignore"],
-    detached: true,
-  });
-  child.unref();
-
-  console.log(
-    `[reply] spawned follow-up for task ${shortId} (session: ${sessionId || "none"})`,
-  );
-
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, bridgeRestarted: true });
 }
