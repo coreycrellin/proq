@@ -221,13 +221,13 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
               ) : (
                 /* Pretty output mode: stream view with Pretty/Raw toggle */
                 <>
-                  <div className="shrink-0 flex items-center justify-end gap-1 px-3 py-1.5 border-b border-zinc-800 bg-[#0a0a0a]">
+                  <div className="shrink-0 flex items-center justify-end gap-1 px-3 py-1.5 border-b border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-[#0a0a0a]">
                     <button
                       onClick={() => setViewMode('pretty')}
                       className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
                         viewMode === 'pretty'
-                          ? 'bg-zinc-700 text-zinc-200'
-                          : 'text-zinc-500 hover:text-zinc-400'
+                          ? 'bg-bronze-300 text-bronze-800 dark:bg-zinc-700 dark:text-zinc-200'
+                          : 'text-bronze-500 hover:text-bronze-700 dark:text-zinc-500 dark:hover:text-zinc-400'
                       }`}
                     >
                       Pretty
@@ -236,8 +236,8 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
                       onClick={() => setViewMode('raw')}
                       className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
                         viewMode === 'raw'
-                          ? 'bg-zinc-700 text-zinc-200'
-                          : 'text-zinc-500 hover:text-zinc-400'
+                          ? 'bg-bronze-300 text-bronze-800 dark:bg-zinc-700 dark:text-zinc-200'
+                          : 'text-bronze-500 hover:text-bronze-700 dark:text-zinc-500 dark:hover:text-zinc-400'
                       }`}
                     >
                       Raw
@@ -249,7 +249,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
                 </>
               )}
               {countdownText && (
-                <div className="shrink-0 px-3 py-1.5 text-[11px] text-zinc-600 font-mono border-t border-zinc-800 bg-[#0a0a0a]">
+                <div className="shrink-0 px-3 py-1.5 text-[11px] text-bronze-500 dark:text-zinc-600 font-mono border-t border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-[#0a0a0a]">
                   {countdownText}
                 </div>
               )}
@@ -259,13 +259,13 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
               {task.agentLog && task.agentLog.trimStart().startsWith('{') ? (
                 <>
                   {/* View mode toggle */}
-                  <div className="shrink-0 flex items-center justify-end gap-1 px-3 py-1.5 border-b border-zinc-800 bg-[#0a0a0a]">
+                  <div className="shrink-0 flex items-center justify-end gap-1 px-3 py-1.5 border-b border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-[#0a0a0a]">
                     <button
                       onClick={() => setViewMode('pretty')}
                       className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
                         viewMode === 'pretty'
-                          ? 'bg-zinc-700 text-zinc-200'
-                          : 'text-zinc-500 hover:text-zinc-400'
+                          ? 'bg-bronze-300 text-bronze-800 dark:bg-zinc-700 dark:text-zinc-200'
+                          : 'text-bronze-500 hover:text-bronze-700 dark:text-zinc-500 dark:hover:text-zinc-400'
                       }`}
                     >
                       Pretty
@@ -274,8 +274,8 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
                       onClick={() => setViewMode('raw')}
                       className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
                         viewMode === 'raw'
-                          ? 'bg-zinc-700 text-zinc-200'
-                          : 'text-zinc-500 hover:text-zinc-400'
+                          ? 'bg-bronze-300 text-bronze-800 dark:bg-zinc-700 dark:text-zinc-200'
+                          : 'text-bronze-500 hover:text-bronze-700 dark:text-zinc-500 dark:hover:text-zinc-400'
                       }`}
                     >
                       Raw
@@ -286,11 +286,11 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
                   </div>
                 </>
               ) : (
-                <pre className="flex-1 min-h-0 overflow-y-auto p-4 text-[12px] font-mono text-zinc-400 whitespace-pre-wrap leading-relaxed bg-black">
+                <pre className="flex-1 min-h-0 overflow-y-auto p-4 text-[12px] font-mono text-bronze-700 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed bg-bronze-100/50 dark:bg-black">
                   {task.agentLog}
                 </pre>
               )}
-              <div className="shrink-0 px-3 py-1.5 text-[11px] text-zinc-600 font-mono border-t border-zinc-800 bg-[#0a0a0a]">
+              <div className="shrink-0 px-3 py-1.5 text-[11px] text-bronze-500 dark:text-zinc-600 font-mono border-t border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-[#0a0a0a]">
                 Session ended
               </div>
             </div>
