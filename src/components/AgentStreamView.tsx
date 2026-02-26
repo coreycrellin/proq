@@ -848,8 +848,8 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
           </div>
         )}
       </div>
-      {/* Follow-up input — shown when agent has exited and callback is available */}
-      {exited && onSendFollowUp && !staticData && (
+      {/* Follow-up input — shown whenever callback is available (even mid-stream) */}
+      {onSendFollowUp && !staticData && (
         <div className="shrink-0 border-t border-zinc-800 bg-[#0A0A0A] px-4 py-3">
           <div className="max-w-4xl flex gap-2">
             <textarea
@@ -862,7 +862,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
                   handleSendFollowUp();
                 }
               }}
-              placeholder="Reply to the agent..."
+              placeholder={exited ? "Reply to the agent..." : "Send a message..."}
               rows={1}
               className="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-steel/50 resize-none"
             />

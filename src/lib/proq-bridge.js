@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // proq-bridge.js — Runs inside a tmux session, exposes the agent's PTY over a unix domain socket.
-// Usage: node proq-bridge.js <socket-path> <launcher-script> [--json]
+// Usage: node proq-bridge.js <socket-path> <launcher-script> [--json --jsonl <path>]
 //
 // PTY mode (default): xterm.js connects directly to the PTY for full terminal emulation.
-// JSON mode (--json): Uses child_process.spawn for clean stdout (no PTY wrapping artifacts).
-//   Designed for `claude --output-format stream-json` where output is newline-delimited JSON.
+// JSON mode (--json --jsonl <path>): Spawns the launcher (which redirects stdout to the jsonl file),
+//   then tails the file and broadcasts new data over the socket.
 
 const net = require("net");
 const fs = require("fs");
@@ -15,10 +15,19 @@ const SCROLLBACK_LIMIT = 50 * 1024; // 50 KB ring buffer
 
 const socketPath = process.argv[2];
 const launcherScript = process.argv[3];
-const jsonMode = process.argv[4] === "--json";
+
+// Parse flags
+let jsonMode = false;
+let jsonlPath = null;
+for (let i = 4; i < process.argv.length; i++) {
+  if (process.argv[i] === "--json") jsonMode = true;
+  if (process.argv[i] === "--jsonl" && process.argv[i + 1]) {
+    jsonlPath = process.argv[++i];
+  }
+}
 
 if (!socketPath || !launcherScript) {
-  console.error("Usage: node proq-bridge.js <socket-path> <launcher-script> [--json]");
+  console.error("Usage: node proq-bridge.js <socket-path> <launcher-script> [--json --jsonl <path>]");
   process.exit(1);
 }
 
@@ -74,8 +83,137 @@ function handleExit(code) {
   }
 }
 
-if (jsonMode) {
-  // JSON mode: use child_process.spawn for clean stdout (no PTY line wrapping)
+if (jsonMode && jsonlPath) {
+  // JSON mode: spawn the launcher (it redirects stdout to jsonlPath itself),
+  // then tail the file to capture stream-json output.
+  console.log(`[proq-bridge] starting in JSON mode (file tail: ${jsonlPath})`);
+
+  // Ensure jsonl file exists (launcher will write to it)
+  try { fs.writeFileSync(jsonlPath, "", "utf-8"); } catch {}
+
+  const child = spawn("bash", [launcherScript], {
+    cwd: process.cwd(),
+    env,
+    stdio: ["ignore", "ignore", "ignore"],
+  });
+
+  // Pending reply support: after process exit, check for a .pending-reply file
+  // and spawn a continuation process to handle it.
+  const pendingReplyPath = jsonlPath.replace(/\.jsonl$/, ".pending-reply");
+  let replyChild = null;
+
+  function checkPendingReply() {
+    if (replyChild) return; // already handling a reply
+    if (!fs.existsSync(pendingReplyPath)) return;
+
+    let message;
+    try {
+      message = fs.readFileSync(pendingReplyPath, "utf-8").trim();
+      fs.unlinkSync(pendingReplyPath);
+    } catch { return; }
+
+    if (!message) return;
+
+    // Extract session_id from jsonl for --resume
+    let sessionId = null;
+    try {
+      const content = fs.readFileSync(jsonlPath, "utf-8");
+      for (const line of content.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const event = JSON.parse(trimmed);
+          if (event.session_id) { sessionId = event.session_id; break; }
+        } catch {}
+      }
+    } catch {}
+
+    const claudeBin = process.env.CLAUDE_BIN || "claude";
+    const resumeFlag = sessionId ? `--resume '${sessionId}'` : "-c";
+
+    // Write reply prompt + launcher
+    const promptDir = path.join(require("os").tmpdir(), "proq-prompts");
+    try { fs.mkdirSync(promptDir, { recursive: true }); } catch {}
+    const replyPromptFile = path.join(promptDir, `${path.basename(socketPath, ".sock")}-reply.md`);
+    const replyLauncherFile = path.join(promptDir, `${path.basename(socketPath, ".sock")}-reply.sh`);
+    fs.writeFileSync(replyPromptFile, message, "utf-8");
+    fs.writeFileSync(
+      replyLauncherFile,
+      `#!/bin/bash\nexec env -u CLAUDECODE -u PORT ${claudeBin} ${resumeFlag} -p --verbose --output-format stream-json --dangerously-skip-permissions "$(cat '${replyPromptFile}')" >> '${jsonlPath}' 2>&1\n`,
+      "utf-8",
+    );
+
+    // Reset processExited so clients know a new turn is active
+    processExited = false;
+
+    console.log(`[proq-bridge] spawning reply continuation (session: ${sessionId || "none"})`);
+    replyChild = spawn("bash", [replyLauncherFile], {
+      cwd: process.cwd(),
+      env,
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+
+    replyChild.on("exit", (rCode) => {
+      console.log(`[proq-bridge] reply process exited with code ${rCode}`);
+      replyChild = null;
+      // Do a final read then check for more pending replies or send exit
+      setTimeout(() => {
+        tailFile();
+        if (fs.existsSync(pendingReplyPath)) {
+          checkPendingReply();
+        } else {
+          handleExit(rCode);
+        }
+      }, 500);
+    });
+  }
+
+  child.on("exit", (code) => {
+    // Do a final read of the file to capture any remaining data
+    setTimeout(() => {
+      tailFile();
+      // Check for pending reply before sending exit
+      if (fs.existsSync(pendingReplyPath)) {
+        checkPendingReply();
+      } else {
+        handleExit(code);
+      }
+    }, 500);
+  });
+
+  proc = {
+    write: () => {},
+    resize: () => {},
+    kill: () => {
+      try { child.kill(); } catch {}
+      if (replyChild) { try { replyChild.kill(); } catch {} }
+    },
+  };
+
+  // Tail the jsonl file by polling for new content
+  let fileOffset = 0;
+  function tailFile() {
+    try {
+      const stat = fs.statSync(jsonlPath);
+      if (stat.size > fileOffset) {
+        const fd = fs.openSync(jsonlPath, "r");
+        const buf = Buffer.alloc(stat.size - fileOffset);
+        fs.readSync(fd, buf, 0, buf.length, fileOffset);
+        fs.closeSync(fd);
+        fileOffset = stat.size;
+        handleData(buf.toString());
+      }
+    } catch {}
+  }
+
+  // Poll for new data and pending replies
+  setInterval(() => {
+    tailFile();
+    if (processExited && !replyChild) checkPendingReply();
+  }, 300);
+
+} else if (jsonMode) {
+  // Legacy JSON mode (fallback if no --jsonl): pipe-based capture
   console.log("[proq-bridge] starting in JSON mode (child_process.spawn)");
   const child = spawn("bash", [launcherScript], {
     cwd: process.cwd(),
@@ -88,8 +226,8 @@ if (jsonMode) {
   child.on("exit", (code) => handleExit(code));
 
   proc = {
-    write: () => {}, // no interactive input in JSON mode
-    resize: () => {}, // no terminal to resize
+    write: () => {},
+    resize: () => {},
     kill: () => { try { child.kill(); } catch {} },
   };
 } else {
@@ -227,6 +365,12 @@ function shutdown() {
   try {
     fs.unlinkSync(socketPath);
   } catch {}
+
+  // Clean up jsonl file and pending reply file
+  if (jsonlPath) {
+    try { fs.unlinkSync(jsonlPath); } catch {}
+    try { fs.unlinkSync(jsonlPath.replace(/\.jsonl$/, ".pending-reply")); } catch {}
+  }
 
   if (!processExited) {
     proc.kill();
