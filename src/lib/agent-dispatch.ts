@@ -46,6 +46,7 @@ export function scheduleCleanup(projectId: string, taskId: string) {
   const timer = setTimeout(async () => {
     try {
       const socketLogPath = `/tmp/proq/${tmuxSession}.sock.log`;
+      const jsonlPath = `/tmp/proq/${tmuxSession}.jsonl`;
 
       // Kill tmux session first — this sends SIGTERM to bridge, which writes .log file
       try {
@@ -58,16 +59,19 @@ export function scheduleCleanup(projectId: string, taskId: string) {
       // Wait for bridge to write the log file
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      // Read scrollback from bridge's log file (JSON lines from stream-json mode)
+      // Read scrollback from bridge's log file or jsonl (prefer jsonl for stream-json mode)
       let output = "";
       try {
-        if (existsSync(socketLogPath)) {
+        if (existsSync(jsonlPath)) {
+          output = readFileSync(jsonlPath, "utf-8");
+          unlinkSync(jsonlPath);
+        } else if (existsSync(socketLogPath)) {
           output = readFileSync(socketLogPath, "utf-8");
-          unlinkSync(socketLogPath);
         }
       } catch {
-        // Log file may not exist
+        // Files may not exist
       }
+      try { if (existsSync(socketLogPath)) unlinkSync(socketLogPath); } catch {}
 
       // Save to agentLog
       if (output.trim()) {
