@@ -211,7 +211,7 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
                     }}
                     onBlur={submitRename}
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute inset-0 bg-transparent border border-zinc-600 rounded px-1 text-xs outline-none focus:border-zinc-400"
+                    className="absolute inset-0 bg-transparent border border-bronze-400 dark:border-zinc-600 rounded px-1 text-xs outline-none focus:border-bronze-600 dark:focus:border-zinc-400"
                   />
                 )}
               </span>
@@ -222,7 +222,7 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
                   e.stopPropagation();
                   setMenuTabId(menuTabId === tab.id ? null : tab.id);
                 }}
-                className="absolute right-0 inset-y-0 flex items-center pl-4 pr-2 opacity-0 group-hover/tab:opacity-100 transition-opacity cursor-pointer text-zinc-500 hover:text-zinc-300 bg-gradient-to-l from-zinc-900/90 from-50% to-transparent"
+                className="absolute right-0 inset-y-0 flex items-center pl-4 pr-2 opacity-0 group-hover/tab:opacity-100 transition-opacity cursor-pointer text-bronze-500 hover:text-bronze-700 dark:text-zinc-500 dark:hover:text-zinc-300 bg-gradient-to-l from-bronze-300/90 dark:from-zinc-900/90 from-50% to-transparent"
               >
                 <MoreHorizontal className="w-3.5 h-3.5" />
               </span>
