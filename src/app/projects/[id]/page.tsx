@@ -439,6 +439,9 @@ export default function ProjectPage() {
           onClose={async (isEmpty: boolean) => {
             if (isEmpty) {
               await deleteTask(modalTask.id);
+            } else if (modalTask.description?.trim() && !modalTask.title?.trim()) {
+              // Background-generate a title from the description
+              fetch(`/api/projects/${projectId}/tasks/${modalTask.id}/generate-title`, { method: 'POST' });
             }
             setModalTask(null);
             refresh();
@@ -451,6 +454,10 @@ export default function ProjectPage() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(currentData),
             });
+            // Background-generate a title if missing
+            if (currentData.description?.trim() && !currentData.title?.trim()) {
+              fetch(`/api/projects/${projectId}/tasks/${taskId}/generate-title`, { method: 'POST' });
+            }
             // Close modal and optimistically update
             setModalTask(null);
             setTasksByProject((prev) => {

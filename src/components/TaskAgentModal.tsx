@@ -18,8 +18,8 @@ import {
   GitBranchIcon,
 } from 'lucide-react';
 import type { Task } from '@/lib/types';
-import { TerminalPane } from './TerminalPane';
 import { AgentStreamView } from './AgentStreamView';
+import { TerminalPane } from './TerminalPane';
 import { ConflictModal } from './ConflictModal';
 
 interface TaskAgentModalProps {
@@ -43,10 +43,19 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
   // Show terminal for done tasks too; fall back to static log only after cleanup has captured agentLog
   const showStaticLog = task.status === 'done' && !cleanupExpiresAt && !!task.agentLog;
   const showTerminal = (task.status === 'in-progress' || task.status === 'verify' || (task.status === 'done' && !showStaticLog)) && !isQueued;
+  const [viewMode, setViewMode] = useState<'pretty' | 'raw'>('pretty');
   const [countdownText, setCountdownText] = useState('');
   const [dispatching, setDispatching] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showConflictModal, setShowConflictModal] = useState(false);
+
+  const handleSendFollowUp = useCallback(async (message: string) => {
+    await fetch(`/api/projects/${projectId}/tasks/${task.id}/reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    });
+  }, [projectId, task.id]);
   const [topPanelPercent, setTopPanelPercent] = useState(30);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const bottomPanelRef = useRef<HTMLDivElement>(null);
@@ -204,9 +213,41 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
             </div>
           ) : showTerminal ? (
             <div className="flex-1 relative min-h-0 flex flex-col">
-              <div className="flex-1 min-h-0 relative">
-                <AgentStreamView tabId={terminalTabId} visible={true} />
-              </div>
+              {task.outputMode === 'raw' ? (
+                /* Raw output mode: xterm.js terminal */
+                <div className="flex-1 min-h-0 relative">
+                  <TerminalPane tabId={terminalTabId} visible={true} />
+                </div>
+              ) : (
+                /* Pretty output mode: stream view with Pretty/Raw toggle */
+                <>
+                  <div className="shrink-0 flex items-center justify-end gap-1 px-3 py-1.5 border-b border-zinc-800 bg-[#0a0a0a]">
+                    <button
+                      onClick={() => setViewMode('pretty')}
+                      className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                        viewMode === 'pretty'
+                          ? 'bg-zinc-700 text-zinc-200'
+                          : 'text-zinc-500 hover:text-zinc-400'
+                      }`}
+                    >
+                      Pretty
+                    </button>
+                    <button
+                      onClick={() => setViewMode('raw')}
+                      className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                        viewMode === 'raw'
+                          ? 'bg-zinc-700 text-zinc-200'
+                          : 'text-zinc-500 hover:text-zinc-400'
+                      }`}
+                    >
+                      Raw
+                    </button>
+                  </div>
+                  <div className="flex-1 min-h-0 relative">
+                    <AgentStreamView tabId={terminalTabId} visible={true} mode={viewMode} onSendFollowUp={handleSendFollowUp} />
+                  </div>
+                </>
+              )}
               {countdownText && (
                 <div className="shrink-0 px-3 py-1.5 text-[11px] text-zinc-600 font-mono border-t border-zinc-800 bg-[#0a0a0a]">
                   {countdownText}
@@ -215,11 +256,35 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
             </div>
           ) : showStaticLog ? (
             <div className="flex-1 relative min-h-0 flex flex-col">
-              {/* Detect if agentLog is JSON lines (stream-json) or plain text (legacy) */}
               {task.agentLog && task.agentLog.trimStart().startsWith('{') ? (
-                <div className="flex-1 min-h-0 relative">
-                  <AgentStreamView tabId={terminalTabId} visible={true} staticData={task.agentLog} />
-                </div>
+                <>
+                  {/* View mode toggle */}
+                  <div className="shrink-0 flex items-center justify-end gap-1 px-3 py-1.5 border-b border-zinc-800 bg-[#0a0a0a]">
+                    <button
+                      onClick={() => setViewMode('pretty')}
+                      className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                        viewMode === 'pretty'
+                          ? 'bg-zinc-700 text-zinc-200'
+                          : 'text-zinc-500 hover:text-zinc-400'
+                      }`}
+                    >
+                      Pretty
+                    </button>
+                    <button
+                      onClick={() => setViewMode('raw')}
+                      className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                        viewMode === 'raw'
+                          ? 'bg-zinc-700 text-zinc-200'
+                          : 'text-zinc-500 hover:text-zinc-400'
+                      }`}
+                    >
+                      Raw
+                    </button>
+                  </div>
+                  <div className="flex-1 min-h-0 relative">
+                    <AgentStreamView tabId={terminalTabId} visible={true} staticData={task.agentLog} mode={viewMode} />
+                  </div>
+                </>
               ) : (
                 <pre className="flex-1 min-h-0 overflow-y-auto p-4 text-[12px] font-mono text-zinc-400 whitespace-pre-wrap leading-relaxed bg-black">
                   {task.agentLog}

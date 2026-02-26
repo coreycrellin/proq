@@ -31,7 +31,8 @@ export interface TaskAttachment {
   dataUrl?: string;
 }
 
-export type TaskMode = 'code' | 'plan' | 'answer';
+export type TaskMode = 'code' | 'plan' | 'answer' | 'auto';
+export type TaskOutputMode = 'pretty' | 'raw';
 
 export interface Task {
   id: string;
@@ -53,6 +54,7 @@ export interface Task {
     branch: string;
   };
   attachments?: TaskAttachment[];
+  outputMode?: TaskOutputMode;
   createdAt: string;
   updatedAt: string;
 }

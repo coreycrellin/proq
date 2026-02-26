@@ -5,7 +5,7 @@ import { tmpdir } from "os";
 import { getAllProjects, getAllTasks, getExecutionMode, getTask, updateTask } from "./db";
 import { stripAnsi } from "./utils";
 import { createWorktree, removeWorktree } from "./worktree";
-import type { TaskAttachment, TaskMode } from "./types";
+import type { TaskAttachment, TaskMode, TaskOutputMode } from "./types";
 
 const MC_API = "http://localhost:1337";
 const CLAUDE = process.env.CLAUDE_BIN || "claude";
@@ -112,6 +112,7 @@ export async function dispatchTask(
   taskDescription: string,
   mode?: TaskMode,
   attachments?: TaskAttachment[],
+  outputMode?: TaskOutputMode,
 ): Promise<string | undefined> {
   // Look up project path
   const projects = await getAllProjects();
@@ -214,15 +215,22 @@ ${callbackCurl}
   const promptFile = join(promptDir, `${tmuxSession}.md`);
   const launcherFile = join(promptDir, `${tmuxSession}.sh`);
   writeFileSync(promptFile, prompt, "utf-8");
-  writeFileSync(launcherFile, `#!/bin/bash\nexec env -u CLAUDECODE -u PORT ${CLAUDE} -p --output-format stream-json ${claudeFlags} "$(cat '${promptFile}')"\n`, "utf-8");
-
   // Ensure bridge socket directory exists
   mkdirSync("/tmp/proq", { recursive: true });
   const bridgePath = join(process.cwd(), "src/lib/proq-bridge.js");
   const socketPath = `/tmp/proq/${tmuxSession}.sock`;
 
-  // Launch via tmux with bridge — session survives server restarts, bridge exposes PTY over unix socket
-  const tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' node '${bridgePath}' '${socketPath}' '${launcherFile}' --json`;
+  let tmuxCmd: string;
+  if (outputMode === "raw") {
+    // PTY mode: normal terminal output for xterm.js raw view
+    writeFileSync(launcherFile, `#!/bin/bash\nexec env -u CLAUDECODE -u PORT ${CLAUDE} -p ${claudeFlags} "$(cat '${promptFile}')"\n`, "utf-8");
+    tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' node '${bridgePath}' '${socketPath}' '${launcherFile}'`;
+  } else {
+    // JSON mode: stream-json output for pretty view, tailed from file
+    const jsonlPath = `/tmp/proq/${tmuxSession}.jsonl`;
+    writeFileSync(launcherFile, `#!/bin/bash\nexec env -u CLAUDECODE -u PORT ${CLAUDE} -p --verbose --output-format stream-json ${claudeFlags} "$(cat '${promptFile}')" > '${jsonlPath}' 2>&1\n`, "utf-8");
+    tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' node '${bridgePath}' '${socketPath}' '${launcherFile}' --json --jsonl '${jsonlPath}'`;
+  }
 
   try {
     execSync(tmuxCmd, { timeout: 10_000 });
@@ -344,6 +352,7 @@ export async function processQueue(projectId: string): Promise<void> {
           next.description,
           next.mode,
           next.attachments,
+          next.outputMode,
         );
         if (result) {
           await updateTask(projectId, next.id, { dispatch: "running" });
@@ -368,6 +377,7 @@ export async function processQueue(projectId: string): Promise<void> {
           task.description,
           task.mode,
           task.attachments,
+          task.outputMode,
         );
         if (result) {
           await updateTask(projectId, task.id, { dispatch: "running" });

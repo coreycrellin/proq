@@ -20,7 +20,7 @@ export async function POST(_request: Request, { params }: Params) {
   }
 
   await updateTask(id, taskId, { dispatch: "starting" });
-  const terminalTabId = await dispatchTask(id, taskId, task.title, task.description, task.mode);
+  const terminalTabId = await dispatchTask(id, taskId, task.title, task.description, task.mode, task.attachments, task.outputMode);
 
   if (terminalTabId) {
     await updateTask(id, taskId, { dispatch: "running" });
