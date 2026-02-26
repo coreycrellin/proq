@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import {
   ChevronRightIcon,
   ChevronDownIcon,
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
   Loader2Icon,
   TerminalIcon,
   FileTextIcon,
@@ -18,6 +20,8 @@ import {
   CopyIcon,
   CheckIcon,
   LayersIcon,
+  SendIcon,
+  UserIcon,
 } from 'lucide-react';
 
 /* ─── Types for stream-json events ─── */
@@ -58,7 +62,7 @@ interface StreamMessage {
 
 interface RenderBlock {
   id: string;
-  type: 'text' | 'tool' | 'thinking' | 'result';
+  type: 'text' | 'tool' | 'thinking' | 'result' | 'user-message';
   // text
   text?: string;
   // tool
@@ -75,6 +79,8 @@ interface RenderBlock {
   numTurns?: number;
   resultText?: string;
   isError?: boolean;
+  // user-message
+  userMessage?: string;
   // status
   status: 'active' | 'complete';
 }
@@ -286,11 +292,17 @@ function CollapsibleOutput({
 
 /* ─── Individual block renderers ─── */
 
-function TextBlock({ block }: { block: RenderBlock }) {
-  const [collapsed, setCollapsed] = useState(false);
+function TextBlock({ block, collapseSignal }: { block: RenderBlock; collapseSignal: number }) {
+  const [collapsed, setCollapsed] = useState(collapseSignal > 0);
   const text = block.text || '';
   const lineCount = text.split('\n').length;
   const isLong = lineCount > 8;
+
+  // Sync with global collapse toggle
+  useEffect(() => {
+    if (collapseSignal > 0 && isLong) setCollapsed(true);
+    else if (collapseSignal < 0) setCollapsed(false);
+  }, [collapseSignal, isLong]);
 
   return (
     <div className="flex gap-3 py-2.5">
@@ -318,8 +330,14 @@ function TextBlock({ block }: { block: RenderBlock }) {
   );
 }
 
-function ToolBlock({ block }: { block: RenderBlock }) {
-  const [collapsed, setCollapsed] = useState(false);
+function ToolBlock({ block, collapseSignal }: { block: RenderBlock; collapseSignal: number }) {
+  const [collapsed, setCollapsed] = useState(collapseSignal > 0);
+
+  // Sync with global collapse toggle
+  useEffect(() => {
+    if (collapseSignal > 0) setCollapsed(true);
+    else if (collapseSignal < 0) setCollapsed(false);
+  }, [collapseSignal]);
   const Icon = getToolIcon(block.toolName || '');
   const description = getToolDescription(block.toolName || '', block.toolInput || {});
   const inputDisplay = getToolInputDisplay(block.toolName || '', block.toolInput || {});
@@ -388,9 +406,15 @@ function ToolBlock({ block }: { block: RenderBlock }) {
   );
 }
 
-function ThinkingBlock({ block }: { block: RenderBlock }) {
+function ThinkingBlock({ block, collapseSignal }: { block: RenderBlock; collapseSignal: number }) {
   const [expanded, setExpanded] = useState(false);
   const isActive = block.status === 'active';
+
+  // Sync with global collapse toggle
+  useEffect(() => {
+    if (collapseSignal > 0) setExpanded(false);
+    else if (collapseSignal < 0) setExpanded(true);
+  }, [collapseSignal]);
 
   return (
     <div className="flex gap-3 py-2">
@@ -446,6 +470,19 @@ function ResultBlock({ block }: { block: RenderBlock }) {
   );
 }
 
+function UserMessageBlock({ block }: { block: RenderBlock }) {
+  return (
+    <div className="flex gap-3 py-2.5 border-t border-zinc-800/50 mt-1">
+      <div className="shrink-0 mt-1">
+        <UserIcon className="w-3.5 h-3.5 text-steel" />
+      </div>
+      <div className="text-[13px] text-zinc-200 leading-relaxed">
+        {renderFormattedText(block.userMessage || '')}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main component ─── */
 
 interface AgentStreamViewProps {
@@ -453,22 +490,63 @@ interface AgentStreamViewProps {
   visible: boolean;
   /** If provided, render static JSON lines instead of connecting to WebSocket */
   staticData?: string;
+  /** 'pretty' renders parsed blocks (default), 'raw' shows raw text */
+  mode?: 'pretty' | 'raw';
+  /** Called when user sends a follow-up message after agent exits */
+  onSendFollowUp?: (message: string) => Promise<void>;
 }
 
-export function AgentStreamView({ tabId, visible, staticData }: AgentStreamViewProps) {
+export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', onSendFollowUp }: AgentStreamViewProps) {
   const [blocks, setBlocks] = useState<RenderBlock[]>([]);
+  const [rawText, setRawText] = useState('');
   const [connected, setConnected] = useState(false);
   const [exited, setExited] = useState(false);
+  const [followUpInput, setFollowUpInput] = useState('');
+  const [sendingFollowUp, setSendingFollowUp] = useState(false);
+  // Collapse signal: positive = collapse all, negative = expand all, 0 = initial (auto-collapsed)
+  // Default is 1 so blocks start collapsed (auto-collapse)
+  const [collapseSignal, setCollapseSignal] = useState(1);
+  const isCollapsed = collapseSignal > 0;
   const containerRef = useRef<HTMLDivElement>(null);
+  const rawContainerRef = useRef<HTMLDivElement>(null);
+  const followUpRef = useRef<HTMLTextAreaElement>(null);
   const bufferRef = useRef('');
   const blockIdCounter = useRef(0);
   const toolBlockMap = useRef<Map<string, string>>(new Map()); // toolUseId → blockId
   const autoScrollRef = useRef(true);
+  const rawAutoScrollRef = useRef(true);
+  const gotValidEventRef = useRef(false);
 
   const nextBlockId = useCallback(() => {
     blockIdCounter.current += 1;
     return `block-${blockIdCounter.current}`;
   }, []);
+
+  const handleSendFollowUp = useCallback(async () => {
+    if (!followUpInput.trim() || !onSendFollowUp || sendingFollowUp) return;
+    const msg = followUpInput.trim();
+    setFollowUpInput('');
+    setSendingFollowUp(true);
+
+    // Add user message block
+    setBlocks(prev => [...prev, {
+      id: nextBlockId(),
+      type: 'user-message',
+      userMessage: msg,
+      status: 'complete',
+    }]);
+
+    // Reset exited so we show loading for the follow-up
+    setExited(false);
+
+    try {
+      await onSendFollowUp(msg);
+    } catch (err) {
+      console.error('[AgentStreamView] follow-up failed:', err);
+    } finally {
+      setSendingFollowUp(false);
+    }
+  }, [followUpInput, onSendFollowUp, sendingFollowUp, nextBlockId]);
 
   // Process a single stream-json event
   const processEvent = useCallback((event: StreamMessage) => {
@@ -549,6 +627,7 @@ export function AgentStreamView({ tabId, visible, staticData }: AgentStreamViewP
 
   // Process raw data buffer into events
   const processBuffer = useCallback((data: string) => {
+    setRawText(prev => prev + data);
     bufferRef.current += data;
 
     // Split by newlines and process complete lines
@@ -562,6 +641,7 @@ export function AgentStreamView({ tabId, visible, staticData }: AgentStreamViewP
 
       try {
         const event = JSON.parse(trimmed) as StreamMessage;
+        gotValidEventRef.current = true;
 
         // Handle bridge exit event
         if ((event as unknown as { type: string; code?: number }).type === 'exit') {
@@ -588,29 +668,52 @@ export function AgentStreamView({ tabId, visible, staticData }: AgentStreamViewP
     processBuffer(staticData + '\n');
   }, [staticData, processBuffer]);
 
-  // WebSocket connection (live mode)
+  // WebSocket connection (live mode) with auto-reconnect
   useEffect(() => {
     if (staticData) return; // Skip WS in static mode
 
-    const wsUrl = `ws://${window.location.hostname}:42069/ws/terminal?id=${encodeURIComponent(tabId)}`;
-    const ws = new WebSocket(wsUrl);
+    let cancelled = false;
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
+    const MAX_RETRIES = 12; // ~30s total with backoff
 
-    ws.onopen = () => {
-      setConnected(true);
-      // Send a resize message (required by protocol, even though we don't use terminal)
-      ws.send(JSON.stringify({ type: 'resize', cols: 200, rows: 50 }));
-    };
+    function connect() {
+      if (cancelled) return;
 
-    ws.onmessage = (event) => {
-      processBuffer(event.data);
-    };
+      const wsUrl = `ws://${window.location.hostname}:42069/ws/terminal?id=${encodeURIComponent(tabId)}`;
+      ws = new WebSocket(wsUrl);
 
-    ws.onclose = () => {
-      setConnected(false);
-    };
+      ws.onopen = () => {
+        setConnected(true);
+        ws!.send(JSON.stringify({ type: 'resize', cols: 200, rows: 50 }));
+      };
+
+      ws.onmessage = (event) => {
+        attempt = 0; // reset retries on successful data
+        processBuffer(event.data);
+      };
+
+      ws.onclose = () => {
+        setConnected(false);
+        if (cancelled) return;
+
+        // If we never got a valid JSON event and haven't exhausted retries, reconnect
+        // (bridge socket may not be ready yet, or pty-server sent an ANSI error and closed)
+        if (!gotValidEventRef.current && attempt < MAX_RETRIES) {
+          attempt++;
+          const delay = Math.min(1000 + attempt * 500, 5000);
+          reconnectTimer = setTimeout(connect, delay);
+        }
+      };
+    }
+
+    connect();
 
     return () => {
-      try { ws.close(); } catch {}
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      try { ws?.close(); } catch {}
     };
   }, [tabId, staticData, processBuffer]);
 
@@ -624,6 +727,15 @@ export function AgentStreamView({ tabId, visible, staticData }: AgentStreamViewP
     });
   }, [blocks]);
 
+  // Auto-scroll raw view
+  useEffect(() => {
+    if (mode !== 'raw' || !rawAutoScrollRef.current || !rawContainerRef.current) return;
+    const el = rawContainerRef.current;
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+  }, [rawText, mode]);
+
   // Track scroll position for auto-scroll behavior
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
@@ -632,45 +744,138 @@ export function AgentStreamView({ tabId, visible, staticData }: AgentStreamViewP
     autoScrollRef.current = atBottom;
   }, []);
 
+  const handleRawScroll = useCallback(() => {
+    const el = rawContainerRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    rawAutoScrollRef.current = atBottom;
+  }, []);
+
   // Memoize the rendered blocks to avoid re-rendering unchanged blocks
   const renderedBlocks = useMemo(() => {
     return blocks.map((block) => {
       switch (block.type) {
-        case 'text': return <TextBlock key={block.id} block={block} />;
-        case 'tool': return <ToolBlock key={block.id} block={block} />;
-        case 'thinking': return <ThinkingBlock key={block.id} block={block} />;
+        case 'text': return <TextBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
+        case 'tool': return <ToolBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
+        case 'thinking': return <ThinkingBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
         case 'result': return <ResultBlock key={block.id} block={block} />;
+        case 'user-message': return <UserMessageBlock key={block.id} block={block} />;
         default: return null;
       }
     });
-  }, [blocks]);
+  }, [blocks, collapseSignal]);
 
   if (!visible) return null;
 
+  if (mode === 'raw') {
+    const hasData = rawText.length > 0;
+    return (
+      <div
+        ref={rawContainerRef}
+        onScroll={handleRawScroll}
+        className="absolute inset-0 overflow-y-auto bg-black p-4"
+      >
+        {!hasData && !exited && (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex items-center gap-2.5">
+              <Loader2Icon className="w-4 h-4 text-zinc-600 animate-spin" />
+              <span className="text-sm text-zinc-600">
+                {connected ? 'Waiting for agent output...' : 'Connecting...'}
+              </span>
+            </div>
+          </div>
+        )}
+        {!hasData && exited && (
+          <div className="flex items-center justify-center h-full">
+            <span className="text-sm text-zinc-600">No output captured</span>
+          </div>
+        )}
+        {hasData && (
+          <pre className="text-[12px] font-mono text-zinc-400 whitespace-pre-wrap leading-relaxed break-all">
+            {rawText}
+          </pre>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div
-      ref={containerRef}
-      onScroll={handleScroll}
-      className="absolute inset-0 overflow-y-auto bg-[#0A0A0A] px-4 py-3"
-    >
-      {blocks.length === 0 && !exited && (
-        <div className="flex items-center justify-center h-full">
-          <div className="flex items-center gap-2.5">
-            <Loader2Icon className="w-4 h-4 text-zinc-600 animate-spin" />
-            <span className="text-sm text-zinc-600">
-              {connected ? 'Waiting for agent output...' : 'Connecting...'}
-            </span>
+    <div className="absolute inset-0 flex flex-col bg-[#0A0A0A]">
+      {/* Collapse-all toggle */}
+      {blocks.length > 0 && (
+        <div className="absolute top-2 right-5 z-10">
+          <button
+            onClick={() => setCollapseSignal(prev => prev > 0 ? -Math.abs(prev) - 1 : Math.abs(prev) + 1)}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-zinc-500 hover:text-zinc-300 bg-zinc-900/80 hover:bg-zinc-800/80 border border-zinc-800 backdrop-blur-sm transition-colors"
+            title={isCollapsed ? 'Expand all' : 'Collapse all'}
+          >
+            {isCollapsed ? (
+              <><ChevronsUpDownIcon className="w-3 h-3" /> Expand</>
+            ) : (
+              <><ChevronsDownUpIcon className="w-3 h-3" /> Collapse</>
+            )}
+          </button>
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-4 py-3 min-h-0"
+      >
+        {blocks.length === 0 && !exited && (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex items-center gap-2.5">
+              <Loader2Icon className="w-4 h-4 text-zinc-600 animate-spin" />
+              <span className="text-sm text-zinc-600">
+                {connected ? 'Waiting for agent output...' : 'Connecting...'}
+              </span>
+            </div>
+          </div>
+        )}
+        {blocks.length === 0 && exited && (
+          <div className="flex items-center justify-center h-full">
+            <span className="text-sm text-zinc-600">No output captured</span>
+          </div>
+        )}
+        <div className="max-w-4xl">
+          {renderedBlocks}
+        </div>
+        {/* Loading indicator after sending follow-up */}
+        {blocks.length > 0 && !exited && blocks[blocks.length - 1]?.type === 'user-message' && (
+          <div className="max-w-4xl flex items-center gap-2 py-3 pl-5">
+            <Loader2Icon className="w-3.5 h-3.5 text-zinc-600 animate-spin" />
+            <span className="text-xs text-zinc-600">Agent thinking...</span>
+          </div>
+        )}
+      </div>
+      {/* Follow-up input — shown when agent has exited and callback is available */}
+      {exited && onSendFollowUp && !staticData && (
+        <div className="shrink-0 border-t border-zinc-800 bg-[#0A0A0A] px-4 py-3">
+          <div className="max-w-4xl flex gap-2">
+            <textarea
+              ref={followUpRef}
+              value={followUpInput}
+              onChange={(e) => setFollowUpInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendFollowUp();
+                }
+              }}
+              placeholder="Reply to the agent..."
+              rows={1}
+              className="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-steel/50 resize-none"
+            />
+            <button
+              onClick={handleSendFollowUp}
+              disabled={!followUpInput.trim() || sendingFollowUp}
+              className="shrink-0 px-3 py-2 rounded-md bg-steel/20 text-steel hover:bg-steel/30 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <SendIcon className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}
-      {blocks.length === 0 && exited && (
-        <div className="flex items-center justify-center h-full">
-          <span className="text-sm text-zinc-600">No output captured</span>
-        </div>
-      )}
-      <div className="max-w-4xl">
-        {renderedBlocks}
-      </div>
     </div>
   );
 }
