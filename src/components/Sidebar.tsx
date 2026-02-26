@@ -28,6 +28,7 @@ import {
   Trash2Icon,
   AlertTriangleIcon,
   PencilIcon,
+  FolderOpenIcon,
 } from "lucide-react";
 import type { Project, Task, TaskStatus, TaskColumns } from "@/lib/types";
 import { useProjects } from "./ProjectsProvider";
@@ -109,7 +110,7 @@ function ProjectMenu({ project, onDelete, onRename }: ProjectMenuProps) {
         <MoreHorizontalIcon className="w-4 h-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-36 bg-bronze-50 dark:bg-zinc-800 border border-bronze-400 dark:border-zinc-700 rounded-md shadow-lg z-50 py-1">
+        <div className="absolute right-0 top-full mt-1 w-44 bg-bronze-50 dark:bg-zinc-800 border border-bronze-400 dark:border-zinc-700 rounded-md shadow-lg z-50 py-1">
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -121,6 +122,18 @@ function ProjectMenu({ project, onDelete, onRename }: ProjectMenuProps) {
           >
             <PencilIcon className="w-3.5 h-3.5" />
             Rename
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              fetch(`/api/projects/${project.id}/reveal`, { method: "POST" });
+            }}
+            className="w-full text-left px-3 py-1.5 text-sm text-bronze-700 dark:text-zinc-300 hover:bg-bronze-200 dark:hover:bg-zinc-700 flex items-center gap-2"
+          >
+            <FolderOpenIcon className="w-3.5 h-3.5" />
+            Show in Finder
           </button>
           <button
             onClick={(e) => {
