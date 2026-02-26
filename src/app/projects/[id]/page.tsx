@@ -436,10 +436,16 @@ export default function ProjectPage() {
         <TaskModal
           task={modalTask}
           isOpen={true}
-          onClose={async (isEmpty: boolean) => {
+          onClose={async (isEmpty: boolean, data?: { title: string; description: string }) => {
             if (isEmpty) {
               await deleteTask(modalTask.id);
-            } else if (modalTask.description?.trim() && !modalTask.title?.trim()) {
+            } else if (data?.description?.trim() && !data?.title?.trim()) {
+              // Wait for the save to persist before generating title
+              await fetch(`/api/projects/${projectId}/tasks/${modalTask.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: data.title, description: data.description }),
+              });
               // Background-generate a title from the description
               fetch(`/api/projects/${projectId}/tasks/${modalTask.id}/generate-title`, { method: 'POST' });
             }

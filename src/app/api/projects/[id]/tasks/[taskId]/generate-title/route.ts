@@ -40,10 +40,14 @@ export async function POST(_request: Request, { params }: Params) {
 
   // Launcher: run claude, capture output, curl it back as a PATCH
   const launcherFile = join(promptDir, `title-${shortId}.sh`);
+  const logFile = join(promptDir, `title-${shortId}.log`);
   writeFileSync(
     launcherFile,
     `#!/bin/bash
-title=$(env -u CLAUDECODE -u PORT ${CLAUDE} -p "$(cat '${promptFile}')" 2>/dev/null)
+exec > '${logFile}' 2>&1
+echo "[generate-title] starting for ${shortId}"
+title=$(env -u CLAUDECODE -u PORT ${CLAUDE} -p "$(cat '${promptFile}')" 2>&1)
+echo "[generate-title] raw output: $title"
 # Strip surrounding quotes
 title=$(echo "$title" | sed 's/^["'"'"'"]//;s/["'"'"'"]$//')
 title=$(echo "$title" | head -1 | xargs)
@@ -64,7 +68,7 @@ rm -f '${promptFile}' '${launcherFile}'
 
   // Spawn in background — returns immediately
   const child = spawn("bash", [launcherFile], {
-    stdio: ["ignore", "ignore", "ignore"],
+    stdio: "ignore",
     detached: true,
   });
   child.unref();
