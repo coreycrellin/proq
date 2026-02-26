@@ -282,7 +282,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
                     </button>
                   </div>
                   <div className="flex-1 min-h-0 relative">
-                    <AgentStreamView tabId={terminalTabId} visible={true} staticData={task.agentLog} mode={viewMode} />
+                    <AgentStreamView tabId={terminalTabId} visible={true} staticData={task.agentLog} mode={viewMode} onSendFollowUp={handleSendFollowUp} />
                   </div>
                 </>
               ) : (

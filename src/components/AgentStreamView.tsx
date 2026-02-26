@@ -870,7 +870,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
         })()}
       </div>
       {/* Follow-up input — shown whenever callback is available (even mid-stream) */}
-      {onSendFollowUp && !staticData && (
+      {onSendFollowUp && (
         <div className="shrink-0 border-t border-border-default bg-surface-base px-4 py-3">
           <div className="max-w-4xl flex gap-2">
             <textarea
