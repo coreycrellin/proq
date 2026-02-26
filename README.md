@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/proq-badge.png" alt="proq" width="360" />
+  <img src="public/proq-badge.png" alt="proq" width="180" />
 </p>
 
 <p align="center">
