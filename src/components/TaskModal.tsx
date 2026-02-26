@@ -273,7 +273,20 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
           <textarea
             ref={descriptionRef}
             value={description}
-            onChange={(e) => handleDescriptionChange(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              const cursor = e.target.selectionStart ?? val.length;
+              // Detect /att slash command right before cursor to trigger file picker
+              const before = cursor - 4;
+              if (before >= 0 && val.substring(before, cursor) === '/att' && (before === 0 || /\s/.test(val[before - 1]))) {
+                const cleaned = val.substring(0, before) + val.substring(cursor);
+                pendingCursor.current = before;
+                handleDescriptionChange(cleaned);
+                setTimeout(() => fileInputRef.current?.click(), 0);
+                return;
+              }
+              handleDescriptionChange(val);
+            }}
             onKeyDown={(e) => {
               const textarea = descriptionRef.current;
               if (!textarea) return;
