@@ -306,8 +306,10 @@ function TextBlock({ block, collapseSignal }: { block: RenderBlock; collapseSign
 
   return (
     <div className="flex gap-3 py-2.5">
-      <div className="shrink-0 mt-1.5">
-        <div className={`w-2 h-2 rounded-full ${block.status === 'active' ? 'bg-steel dark:bg-blue-400 animate-pulse' : 'bg-patina dark:bg-emerald-400'}`} />
+      <div className="shrink-0 mt-1">
+        <div className="w-3.5 h-3.5 flex items-center justify-center">
+          <div className={`w-2 h-2 rounded-full ${block.status === 'active' ? 'bg-steel dark:bg-blue-400 animate-pulse' : 'bg-patina dark:bg-emerald-400'}`} />
+        </div>
       </div>
       <div className="min-w-0 flex-1">
         {isLong && (
