@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 // proq-bridge.js — Runs inside a tmux session, exposes the agent's PTY over a unix domain socket.
-// Usage: node proq-bridge.js <socket-path> <launcher-script>
+// Usage: node proq-bridge.js <socket-path> <launcher-script> [--json]
 //
-// This lets xterm.js connect directly to the PTY without going through tmux's terminal layer,
-// avoiding key interception issues (shift-enter, scroll conflicts, etc.).
+// PTY mode (default): xterm.js connects directly to the PTY for full terminal emulation.
+// JSON mode (--json): Uses child_process.spawn for clean stdout (no PTY wrapping artifacts).
+//   Designed for `claude --output-format stream-json` where output is newline-delimited JSON.
 
 const net = require("net");
 const fs = require("fs");
 const path = require("path");
-
-// Resolve node-pty from the project's node_modules
-const ptyModule = require(path.join(__dirname, "../../node_modules/node-pty"));
+const { spawn } = require("child_process");
 
 const SCROLLBACK_LIMIT = 50 * 1024; // 50 KB ring buffer
 
 const socketPath = process.argv[2];
 const launcherScript = process.argv[3];
+const jsonMode = process.argv[4] === "--json";
 
 if (!socketPath || !launcherScript) {
-  console.error("Usage: node proq-bridge.js <socket-path> <launcher-script>");
+  console.error("Usage: node proq-bridge.js <socket-path> <launcher-script> [--json]");
   process.exit(1);
 }
 
@@ -39,35 +39,29 @@ for (const key of Object.keys(env)) {
   if (key.startsWith("npm_")) delete env[key];
 }
 
-// Spawn the launcher script in a real PTY
-const shell = ptyModule.spawn("bash", [launcherScript], {
-  name: "xterm-256color",
-  cols: 120,
-  rows: 30,
-  cwd: process.cwd(),
-  env,
-});
-
 let scrollback = "";
 const activeClients = new Set();
 let processExited = false;
 let exitCode = null;
 
-// Capture PTY output
-shell.onData((data) => {
-  scrollback += data;
+// Unified process handle
+let proc;
+
+function handleData(data) {
+  const str = typeof data === "string" ? data : data.toString();
+  scrollback += str;
   if (scrollback.length > SCROLLBACK_LIMIT) {
     scrollback = scrollback.slice(-SCROLLBACK_LIMIT);
   }
 
   for (const client of activeClients) {
     if (!client.destroyed) {
-      try { client.write(data); } catch {}
+      try { client.write(str); } catch {}
     }
   }
-});
+}
 
-shell.onExit(({ exitCode: code }) => {
+function handleExit(code) {
   processExited = true;
   exitCode = code;
   console.log(`[proq-bridge] process exited with code ${code}`);
@@ -78,7 +72,47 @@ shell.onExit(({ exitCode: code }) => {
       try { client.write(JSON.stringify({ type: "exit", code }) + "\n"); } catch {}
     }
   }
-});
+}
+
+if (jsonMode) {
+  // JSON mode: use child_process.spawn for clean stdout (no PTY line wrapping)
+  console.log("[proq-bridge] starting in JSON mode (child_process.spawn)");
+  const child = spawn("bash", [launcherScript], {
+    cwd: process.cwd(),
+    env,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+
+  child.stdout.on("data", handleData);
+  child.stderr.on("data", handleData);
+  child.on("exit", (code) => handleExit(code));
+
+  proc = {
+    write: () => {}, // no interactive input in JSON mode
+    resize: () => {}, // no terminal to resize
+    kill: () => { try { child.kill(); } catch {} },
+  };
+} else {
+  // PTY mode: full terminal emulation via node-pty
+  console.log("[proq-bridge] starting in PTY mode (node-pty)");
+  const ptyModule = require(path.join(__dirname, "../../node_modules/node-pty"));
+  const shell = ptyModule.spawn("bash", [launcherScript], {
+    name: "xterm-256color",
+    cols: 120,
+    rows: 30,
+    cwd: process.cwd(),
+    env,
+  });
+
+  shell.onData(handleData);
+  shell.onExit(({ exitCode: code }) => handleExit(code));
+
+  proc = {
+    write: (data) => { try { shell.write(data); } catch {} },
+    resize: (cols, rows) => { try { shell.resize(cols, rows); } catch {} },
+    kill: () => { try { shell.kill(); } catch {} },
+  };
+}
 
 // Unix domain socket server
 const server = net.createServer((client) => {
@@ -100,39 +134,37 @@ const server = net.createServer((client) => {
     } catch {}
   }
 
-  // Forward client input to PTY
+  // Forward client input to process
   let inputBuffer = "";
   client.on("data", (data) => {
     const str = data.toString();
 
-    // Check for in-band JSON resize messages
-    // They arrive as complete JSON objects, potentially mixed with terminal data
+    if (jsonMode) {
+      // In JSON mode, only handle resize messages; ignore other input
+      try {
+        const parsed = JSON.parse(str);
+        if (parsed.type === "resize") return; // no-op for JSON mode
+      } catch {}
+      return;
+    }
+
+    // PTY mode: handle mixed input (resize messages + terminal data)
     inputBuffer += str;
 
-    // Try to extract JSON messages from the buffer
     while (inputBuffer.length > 0) {
-      // Look for JSON object start
       const jsonStart = inputBuffer.indexOf("{");
       if (jsonStart === -1) {
-        // No JSON, send everything as terminal input
-        if (!processExited) {
-          try { shell.write(inputBuffer); } catch {}
-        }
+        if (!processExited) proc.write(inputBuffer);
         inputBuffer = "";
         break;
       }
 
-      // Send any text before the JSON as terminal input
       if (jsonStart > 0) {
-        if (!processExited) {
-          try { shell.write(inputBuffer.slice(0, jsonStart)); } catch {}
-        }
+        if (!processExited) proc.write(inputBuffer.slice(0, jsonStart));
         inputBuffer = inputBuffer.slice(jsonStart);
       }
 
-      // Try to parse JSON
       try {
-        // Find the matching closing brace
         let braceDepth = 0;
         let jsonEnd = -1;
         for (let i = 0; i < inputBuffer.length; i++) {
@@ -146,30 +178,21 @@ const server = net.createServer((client) => {
           }
         }
 
-        if (jsonEnd === -1) {
-          // Incomplete JSON, wait for more data
-          break;
-        }
+        if (jsonEnd === -1) break;
 
         const jsonStr = inputBuffer.slice(0, jsonEnd);
         const parsed = JSON.parse(jsonStr);
 
         if (parsed.type === "resize" && parsed.cols && parsed.rows) {
-          try { shell.resize(parsed.cols, parsed.rows); } catch {}
+          proc.resize(parsed.cols, parsed.rows);
           inputBuffer = inputBuffer.slice(jsonEnd);
           continue;
         }
 
-        // Not a recognized message, send as terminal input
-        if (!processExited) {
-          try { shell.write(jsonStr); } catch {}
-        }
+        if (!processExited) proc.write(jsonStr);
         inputBuffer = inputBuffer.slice(jsonEnd);
       } catch {
-        // Invalid JSON, send the opening brace as terminal input and continue
-        if (!processExited) {
-          try { shell.write("{"); } catch {}
-        }
+        if (!processExited) proc.write("{");
         inputBuffer = inputBuffer.slice(1);
       }
     }
@@ -201,17 +224,14 @@ function shutdown() {
     console.error(`[proq-bridge] failed to write log:`, err);
   }
 
-  // Clean up socket file
   try {
     fs.unlinkSync(socketPath);
   } catch {}
 
-  // Kill the PTY if still running
   if (!processExited) {
-    try { shell.kill(); } catch {}
+    proc.kill();
   }
 
-  // Close the server
   try { server.close(); } catch {}
 
   process.exit(0);

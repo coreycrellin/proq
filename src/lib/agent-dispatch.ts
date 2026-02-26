@@ -58,12 +58,11 @@ export function scheduleCleanup(projectId: string, taskId: string) {
       // Wait for bridge to write the log file
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      // Read scrollback from bridge's log file
+      // Read scrollback from bridge's log file (JSON lines from stream-json mode)
       let output = "";
       try {
         if (existsSync(socketLogPath)) {
           output = readFileSync(socketLogPath, "utf-8");
-          output = stripAnsi(output);
           unlinkSync(socketLogPath);
         }
       } catch {
@@ -215,7 +214,7 @@ ${callbackCurl}
   const promptFile = join(promptDir, `${tmuxSession}.md`);
   const launcherFile = join(promptDir, `${tmuxSession}.sh`);
   writeFileSync(promptFile, prompt, "utf-8");
-  writeFileSync(launcherFile, `#!/bin/bash\nexec env -u CLAUDECODE -u PORT ${CLAUDE} ${claudeFlags} "$(cat '${promptFile}')"\n`, "utf-8");
+  writeFileSync(launcherFile, `#!/bin/bash\nexec env -u CLAUDECODE -u PORT ${CLAUDE} -p --output-format stream-json ${claudeFlags} "$(cat '${promptFile}')"\n`, "utf-8");
 
   // Ensure bridge socket directory exists
   mkdirSync("/tmp/proq", { recursive: true });
@@ -223,7 +222,7 @@ ${callbackCurl}
   const socketPath = `/tmp/proq/${tmuxSession}.sock`;
 
   // Launch via tmux with bridge — session survives server restarts, bridge exposes PTY over unix socket
-  const tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' node '${bridgePath}' '${socketPath}' '${launcherFile}'`;
+  const tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' node '${bridgePath}' '${socketPath}' '${launcherFile}' --json`;
 
   try {
     execSync(tmuxCmd, { timeout: 10_000 });

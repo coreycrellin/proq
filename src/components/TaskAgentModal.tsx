@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { TerminalPane } from './TerminalPane';
+import { AgentStreamView } from './AgentStreamView';
 import { ConflictModal } from './ConflictModal';
 
 interface TaskAgentModalProps {
@@ -203,8 +204,8 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
             </div>
           ) : showTerminal ? (
             <div className="flex-1 relative min-h-0 flex flex-col">
-              <div className="flex-1 min-h-0">
-                <TerminalPane tabId={terminalTabId} visible={true} enableDrop />
+              <div className="flex-1 min-h-0 relative">
+                <AgentStreamView tabId={terminalTabId} visible={true} />
               </div>
               {countdownText && (
                 <div className="shrink-0 px-3 py-1.5 text-[11px] text-zinc-600 font-mono border-t border-zinc-800 bg-[#0a0a0a]">
@@ -213,11 +214,18 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
               )}
             </div>
           ) : showStaticLog ? (
-            <div className="flex-1 relative min-h-0 flex flex-col bg-black">
-              <pre className="flex-1 min-h-0 overflow-y-auto p-4 text-[12px] font-mono text-zinc-400 whitespace-pre-wrap leading-relaxed">
-                {task.agentLog}
-              </pre>
-              <div className="shrink-0 px-3 py-1.5 text-[11px] text-zinc-600 font-mono border-t border-zinc-800">
+            <div className="flex-1 relative min-h-0 flex flex-col">
+              {/* Detect if agentLog is JSON lines (stream-json) or plain text (legacy) */}
+              {task.agentLog && task.agentLog.trimStart().startsWith('{') ? (
+                <div className="flex-1 min-h-0 relative">
+                  <AgentStreamView tabId={terminalTabId} visible={true} staticData={task.agentLog} />
+                </div>
+              ) : (
+                <pre className="flex-1 min-h-0 overflow-y-auto p-4 text-[12px] font-mono text-zinc-400 whitespace-pre-wrap leading-relaxed bg-black">
+                  {task.agentLog}
+                </pre>
+              )}
+              <div className="shrink-0 px-3 py-1.5 text-[11px] text-zinc-600 font-mono border-t border-zinc-800 bg-[#0a0a0a]">
                 Session ended
               </div>
             </div>
