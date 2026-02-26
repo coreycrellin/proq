@@ -223,12 +223,12 @@ ${callbackCurl}
   let tmuxCmd: string;
   if (outputMode === "raw") {
     // PTY mode: normal terminal output for xterm.js raw view
-    writeFileSync(launcherFile, `#!/bin/bash\nexec env -u CLAUDECODE -u PORT ${CLAUDE} -p ${claudeFlags} "$(cat '${promptFile}')"\n`, "utf-8");
+    writeFileSync(launcherFile, `#!/bin/bash\nexec env -u CLAUDECODE -u PORT '${CLAUDE}' -p ${claudeFlags} "$(cat '${promptFile}')"\n`, "utf-8");
     tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' node '${bridgePath}' '${socketPath}' '${launcherFile}'`;
   } else {
     // JSON mode: stream-json output for pretty view, tailed from file
     const jsonlPath = `/tmp/proq/${tmuxSession}.jsonl`;
-    writeFileSync(launcherFile, `#!/bin/bash\nexec env -u CLAUDECODE -u PORT ${CLAUDE} -p --verbose --output-format stream-json ${claudeFlags} "$(cat '${promptFile}')" > '${jsonlPath}' 2>&1\n`, "utf-8");
+    writeFileSync(launcherFile, `#!/bin/bash\nexec env -u CLAUDECODE -u PORT '${CLAUDE}' -p --verbose --output-format stream-json ${claudeFlags} "$(cat '${promptFile}')" > '${jsonlPath}' 2>&1\n`, "utf-8");
     tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' node '${bridgePath}' '${socketPath}' '${launcherFile}' --json --jsonl '${jsonlPath}'`;
   }
 

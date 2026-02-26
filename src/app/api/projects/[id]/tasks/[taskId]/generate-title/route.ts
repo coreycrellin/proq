@@ -46,7 +46,7 @@ export async function POST(_request: Request, { params }: Params) {
     `#!/bin/bash
 exec > '${logFile}' 2>&1
 echo "[generate-title] starting for ${shortId}"
-title=$(env -u CLAUDECODE -u PORT ${CLAUDE} -p "$(cat '${promptFile}')" 2>&1)
+title=$(env -u CLAUDECODE -u PORT '${CLAUDE}' -p "$(cat '${promptFile}')" 2>/dev/null)
 echo "[generate-title] raw output: $title"
 # Strip surrounding quotes
 title=$(echo "$title" | sed 's/^["'"'"'"]//;s/["'"'"'"]$//')
