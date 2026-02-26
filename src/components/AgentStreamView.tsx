@@ -840,13 +840,32 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
         <div className="max-w-4xl">
           {renderedBlocks}
         </div>
-        {/* Loading indicator after sending follow-up */}
-        {blocks.length > 0 && !exited && blocks[blocks.length - 1]?.type === 'user-message' && (
-          <div className="max-w-4xl flex items-center gap-2 py-3 pl-5">
-            <Loader2Icon className="w-3.5 h-3.5 text-zinc-600 animate-spin" />
-            <span className="text-xs text-zinc-600">Agent thinking...</span>
-          </div>
-        )}
+        {/* Processing indicator — shows agent is still alive */}
+        {blocks.length > 0 && !exited && (() => {
+          const lastBlock = blocks[blocks.length - 1];
+          // After a follow-up message, show "thinking"
+          if (lastBlock?.type === 'user-message') {
+            return (
+              <div className="max-w-4xl flex items-center gap-2 py-3 pl-5">
+                <Loader2Icon className="w-3.5 h-3.5 text-zinc-600 animate-spin" />
+                <span className="text-xs text-zinc-600">Agent thinking...</span>
+              </div>
+            );
+          }
+          // For all other cases where the last block is complete, show a subtle "still working" indicator
+          if (lastBlock?.status === 'complete') {
+            return (
+              <div className="max-w-4xl flex items-center gap-1.5 py-3 pl-5">
+                <span className="flex items-center gap-[3px]">
+                  <span className="w-1 h-1 rounded-full bg-zinc-600 animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1.2s' }} />
+                  <span className="w-1 h-1 rounded-full bg-zinc-600 animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1.2s' }} />
+                  <span className="w-1 h-1 rounded-full bg-zinc-600 animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1.2s' }} />
+                </span>
+              </div>
+            );
+          }
+          return null;
+        })()}
       </div>
       {/* Follow-up input — shown whenever callback is available (even mid-stream) */}
       {onSendFollowUp && !staticData && (
