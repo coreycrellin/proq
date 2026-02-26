@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <strong>A kanban IDE for CLI-based coding agents.</strong><br/>
-  Define what you want. Let agents ship it.
+  <strong>A kanban IDE for parallel coding agents.</strong><br/>
+  Your job is to define what you want. This is a workspace built for that. 
 </p>
 
 <p align="center">
