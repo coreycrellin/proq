@@ -29,6 +29,7 @@ import {
   AlertTriangleIcon,
   PencilIcon,
   FolderOpenIcon,
+  ListTodoIcon,
 } from "lucide-react";
 import type { Project, Task, TaskStatus, TaskColumns } from "@/lib/types";
 import { useProjects } from "./ProjectsProvider";
@@ -310,6 +311,12 @@ export function Sidebar({ onAddProject, onMissingPath }: SidebarProps) {
   );
 
   const isChatActive = pathname === "/supervisor";
+  const isTasksActive = pathname === "/tasks";
+
+  // Count tasks needing attention across all projects
+  const attentionCount = Object.values(tasksByProject).reduce((sum, cols) => {
+    return sum + (cols.verify?.length || 0) + (cols["in-progress"]?.filter(t => t.humanSteps)?.length || 0);
+  }, 0);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -423,6 +430,32 @@ export function Sidebar({ onAddProject, onMissingPath }: SidebarProps) {
           >
             Supervisor
           </span>
+        </div>
+      </Link>
+
+      {/* Tasks List View */}
+      <Link
+        href="/tasks"
+        className={`w-full text-left p-3 px-4 relative group py-4 block
+          ${isTasksActive ? "bg-bronze-300 dark:bg-zinc-800" : "hover:bg-bronze-300/60 dark:hover:bg-zinc-800/40"}`}
+      >
+        {isTasksActive && (
+          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-600 dark:bg-bronze-500" />
+        )}
+        <div className="flex items-center gap-2.5">
+          <ListTodoIcon
+            className={`w-4 h-4 ${isTasksActive ? "text-bronze-500" : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300"}`}
+          />
+          <span
+            className={`text-sm font-medium ${isTasksActive ? "text-bronze-900 dark:text-zinc-100" : "text-bronze-700 dark:text-zinc-300 group-hover:text-bronze-900 dark:group-hover:text-zinc-100"}`}
+          >
+            Tasks
+          </span>
+          {attentionCount > 0 && (
+            <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-gold/20 text-gold text-[10px] font-bold">
+              {attentionCount}
+            </span>
+          )}
         </div>
       </Link>
 
