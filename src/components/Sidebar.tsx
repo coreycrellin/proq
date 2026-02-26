@@ -449,7 +449,7 @@ export function Sidebar({ onAddProject, onMissingPath }: SidebarProps) {
           <span
             className={`text-sm font-medium ${isTasksActive ? "text-bronze-900 dark:text-zinc-100" : "text-bronze-700 dark:text-zinc-300 group-hover:text-bronze-900 dark:group-hover:text-zinc-100"}`}
           >
-            Tasks
+            Task List
           </span>
           {attentionCount > 0 && (
             <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-gold/20 text-gold text-[10px] font-bold">
