@@ -447,8 +447,8 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
               onClick={() => { setOutputMode('pretty'); autosave(title, description, attachments, mode, 'pretty'); }}
               className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition-colors ${
                 outputMode === 'pretty'
-                  ? 'bg-zinc-700 text-zinc-200'
-                  : 'text-zinc-500 hover:text-zinc-400'
+                  ? 'bg-bronze-300/80 text-bronze-800 dark:bg-zinc-700 dark:text-zinc-200'
+                  : 'text-bronze-500 hover:text-bronze-700 dark:text-zinc-500 dark:hover:text-zinc-400'
               }`}
             >
               Pretty
@@ -457,8 +457,8 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
               onClick={() => { setOutputMode('raw'); autosave(title, description, attachments, mode, 'raw'); }}
               className={`px-1.5 py-0.5 text-[11px] font-medium rounded transition-colors ${
                 outputMode === 'raw'
-                  ? 'bg-zinc-700 text-zinc-200'
-                  : 'text-zinc-500 hover:text-zinc-400'
+                  ? 'bg-bronze-300/80 text-bronze-800 dark:bg-zinc-700 dark:text-zinc-200'
+                  : 'text-bronze-500 hover:text-bronze-700 dark:text-zinc-500 dark:hover:text-zinc-400'
               }`}
             >
               Raw
