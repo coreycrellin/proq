@@ -12,12 +12,14 @@ export async function GET(_request: Request, { params }: Params) {
   }
   const columns = await getAllTasks(id);
 
-  // Detect orphaned tasks: dispatch is "running" but tmux session is dead
+  // Reconcile stale tasks: dispatch is "running" but tmux session has ended.
+  // This catches cases where the agent completed but its curl callback failed.
+  // Only check "running" (not "starting") — starting tasks may not have a session yet.
   const inProgress = columns["in-progress"] || [];
   let hasOrphans = false;
   for (const task of inProgress) {
-    if ((task.dispatch === "running" || task.dispatch === "starting") && !isSessionAlive(task.id)) {
-      console.log(`[orphan-detect] task ${task.id.slice(0, 8)} has dispatch="${task.dispatch}" but tmux session is dead — moving to verify`);
+    if (task.dispatch === "running" && !isSessionAlive(task.id)) {
+      console.log(`[reconcile] task ${task.id.slice(0, 8)} dispatch="running" but session dead — moving to verify`);
       await updateTask(id, task.id, { status: "verify", dispatch: null });
       scheduleCleanup(id, task.id);
       hasOrphans = true;
