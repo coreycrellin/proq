@@ -105,15 +105,19 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
     };
   }, []);
 
-  // Cmd+Enter to trigger "Start Now"
+  // Cmd+Enter to trigger "Start Now", Cmd+Shift+A to attach file
   useEffect(() => {
-    if (!isOpen || !onMoveToInProgress) return;
+    if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && e.metaKey && description.trim() && !dispatching) {
+      if (e.key === 'Enter' && e.metaKey && onMoveToInProgress && description.trim() && !dispatching) {
         e.preventDefault();
         if (saveTimeout.current) clearTimeout(saveTimeout.current);
         setDispatching(true);
         onMoveToInProgress(task.id, { title, description, attachments, mode });
+      }
+      if (e.key === 'a' && e.metaKey && e.shiftKey) {
+        e.preventDefault();
+        fileInputRef.current?.click();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -341,6 +345,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
         <div className="border-t border-bronze-300/60 dark:border-zinc-800/60 flex items-stretch shrink-0">
           <button
             onClick={() => fileInputRef.current?.click()}
+            title="Attach file (⌘⇧A)"
             className="flex items-center gap-1.5 text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors text-xs px-4 py-3"
           >
             <PaperclipIcon className="w-3.5 h-3.5" />
