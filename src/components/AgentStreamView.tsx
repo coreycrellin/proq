@@ -346,7 +346,7 @@ function TextBlock({ block, collapseSignal, neverCollapse }: { block: RenderBloc
   );
 }
 
-function AskUserQuestionContent({ input, result }: { input: Record<string, unknown>; result?: string }) {
+function AskUserQuestionContent({ input, result, onAnswer }: { input: Record<string, unknown>; result?: string; onAnswer?: (answer: string) => void }) {
   const questions = (input.questions as Array<{
     question: string;
     header?: string;
@@ -365,6 +365,9 @@ function AskUserQuestionContent({ input, result }: { input: Record<string, unkno
     }
   }
 
+  const hasAnswer = Object.keys(answers).length > 0;
+  const canClick = !!onAnswer && !hasAnswer;
+
   return (
     <div className="space-y-3 px-3 py-2.5">
       {questions.map((q, i) => {
@@ -379,12 +382,17 @@ function AskUserQuestionContent({ input, result }: { input: Record<string, unkno
               {q.options.map((opt, j) => {
                 const isSelected = answer === opt.label;
                 return (
-                  <div
+                  <button
                     key={j}
-                    className={`flex items-start gap-2 px-2.5 py-1.5 rounded-md text-[12px] ${
+                    type="button"
+                    disabled={!canClick}
+                    onClick={() => canClick && onAnswer(opt.label)}
+                    className={`flex items-start gap-2 px-2.5 py-1.5 rounded-md text-[12px] w-full text-left transition-colors ${
                       isSelected
                         ? 'bg-steel/10 border border-steel/30 text-steel dark:text-blue-300'
-                        : 'text-bronze-600 dark:text-zinc-400'
+                        : canClick
+                          ? 'text-bronze-600 dark:text-zinc-400 hover:bg-bronze-100 dark:hover:bg-zinc-800/50 cursor-pointer'
+                          : 'text-bronze-600 dark:text-zinc-400'
                     }`}
                   >
                     <span className="shrink-0 mt-px">{isSelected ? '\u25CF' : '\u25CB'}</span>
@@ -394,21 +402,21 @@ function AskUserQuestionContent({ input, result }: { input: Record<string, unkno
                         <span className="ml-1.5 text-text-chrome">{opt.description}</span>
                       )}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           </div>
         );
       })}
-      {result && !Object.keys(answers).length && (
+      {result && !hasAnswer && (
         <div className="text-[11px] text-text-chrome italic">{result}</div>
       )}
     </div>
   );
 }
 
-function ToolBlock({ block, collapseSignal }: { block: RenderBlock; collapseSignal: number }) {
+function ToolBlock({ block, collapseSignal, onAnswer }: { block: RenderBlock; collapseSignal: number; onAnswer?: (answer: string) => void }) {
   const isAskQuestion = block.toolName === 'AskUserQuestion';
   const [collapsed, setCollapsed] = useState(isAskQuestion ? false : collapseSignal > 0);
 
@@ -455,7 +463,7 @@ function ToolBlock({ block, collapseSignal }: { block: RenderBlock; collapseSign
         {!collapsed && (
           <div className="mt-2 rounded-md border border-border-default bg-surface-secondary overflow-hidden">
             {isAskQuestion ? (
-              <AskUserQuestionContent input={block.toolInput || {}} result={block.toolResult} />
+              <AskUserQuestionContent input={block.toolInput || {}} result={block.toolResult} onAnswer={onAnswer} />
             ) : (
               <>
                 {inputDisplay && (
@@ -644,12 +652,18 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     }
   }, []);
 
-  const handleSendFollowUp = useCallback(async () => {
-    if ((!followUpInput.trim() && followUpAttachments.length === 0) || !onSendFollowUp || sendingFollowUp) return;
-    const msg = followUpInput.trim();
-    const atts = followUpAttachments.length > 0 ? [...followUpAttachments] : undefined;
-    setFollowUpInput('');
-    setFollowUpAttachments([]);
+  const forceReconnect = useCallback(() => {
+    setBlocks([]);
+    setRawText('');
+    blockIdCounter.current = 0;
+    toolBlockMap.current.clear();
+    bufferRef.current = '';
+    gotValidEventRef.current = false;
+    setReconnectKey(prev => prev + 1);
+  }, []);
+
+  const sendFollowUpMessage = useCallback(async (msg: string, atts?: TaskAttachment[]) => {
+    if (!onSendFollowUp || sendingFollowUp) return;
     setSendingFollowUp(true);
 
     // Add user message block (instant feedback)
@@ -663,25 +677,11 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     // Reset exited so we show loading for the follow-up
     setExited(false);
 
-    const forceReconnect = () => {
-      setBlocks([]);
-      setRawText('');
-      blockIdCounter.current = 0;
-      toolBlockMap.current.clear();
-      bufferRef.current = '';
-      gotValidEventRef.current = false;
-      setReconnectKey(prev => prev + 1);
-    };
-
     try {
       const result = await onSendFollowUp(msg, atts);
       if (result?.bridgeRestarted || !connected) {
-        // Bridge was restarted or WebSocket is disconnected — reset state and reconnect.
-        // The bridge will replay the full jsonl (including user-follow-up event).
         forceReconnect();
       } else {
-        // WebSocket appears connected but data may not be flowing (stale connection).
-        // If no new blocks arrive within 8s, force reconnection as a fallback.
         const countAtSend = blockIdCounter.current;
         setTimeout(() => {
           if (blockIdCounter.current <= countAtSend) {
@@ -696,7 +696,16 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     } finally {
       setSendingFollowUp(false);
     }
-  }, [followUpInput, followUpAttachments, onSendFollowUp, sendingFollowUp, nextBlockId, connected]);
+  }, [onSendFollowUp, sendingFollowUp, nextBlockId, connected, forceReconnect]);
+
+  const handleSendFollowUp = useCallback(async () => {
+    if (!followUpInput.trim() && followUpAttachments.length === 0) return;
+    const msg = followUpInput.trim();
+    const atts = followUpAttachments.length > 0 ? [...followUpAttachments] : undefined;
+    setFollowUpInput('');
+    setFollowUpAttachments([]);
+    await sendFollowUpMessage(msg, atts);
+  }, [followUpInput, followUpAttachments, sendFollowUpMessage]);
 
   // Process a single stream-json event
   const processEvent = useCallback((event: StreamMessage) => {
@@ -941,14 +950,14 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     return blocks.map((block) => {
       switch (block.type) {
         case 'text': return <TextBlock key={block.id} block={block} collapseSignal={collapseSignal} neverCollapse={block.id === lastTextBeforeResult} />;
-        case 'tool': return <ToolBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
+        case 'tool': return <ToolBlock key={block.id} block={block} collapseSignal={collapseSignal} onAnswer={block.toolName === 'AskUserQuestion' && onSendFollowUp ? (answer) => sendFollowUpMessage(answer) : undefined} />;
         case 'thinking': return <ThinkingBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
         case 'result': return <ResultBlock key={block.id} block={block} />;
         case 'user-message': return <UserMessageBlock key={block.id} block={block} />;
         default: return null;
       }
     });
-  }, [blocks, collapseSignal]);
+  }, [blocks, collapseSignal, onSendFollowUp, sendFollowUpMessage]);
 
   if (!visible) return null;
 

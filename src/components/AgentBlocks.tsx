@@ -327,7 +327,7 @@ export function TextBlock({ block, collapseSignal, neverCollapse }: { block: Ren
   );
 }
 
-export function AskUserQuestionContent({ input, result }: { input: Record<string, unknown>; result?: string }) {
+export function AskUserQuestionContent({ input, result, onAnswer }: { input: Record<string, unknown>; result?: string; onAnswer?: (answer: string) => void }) {
   const questions = (input.questions as Array<{
     question: string;
     header?: string;
@@ -346,6 +346,9 @@ export function AskUserQuestionContent({ input, result }: { input: Record<string
     }
   }
 
+  const hasAnswer = Object.keys(answers).length > 0;
+  const canClick = !!onAnswer && !hasAnswer;
+
   return (
     <div className="space-y-3 px-3 py-2.5">
       {questions.map((q, i) => {
@@ -360,12 +363,17 @@ export function AskUserQuestionContent({ input, result }: { input: Record<string
               {q.options.map((opt, j) => {
                 const isSelected = answer === opt.label;
                 return (
-                  <div
+                  <button
                     key={j}
-                    className={`flex items-start gap-2 px-2.5 py-1.5 rounded-md text-[12px] ${
+                    type="button"
+                    disabled={!canClick}
+                    onClick={() => canClick && onAnswer(opt.label)}
+                    className={`flex items-start gap-2 px-2.5 py-1.5 rounded-md text-[12px] w-full text-left transition-colors ${
                       isSelected
                         ? 'bg-steel/10 border border-steel/30 text-steel dark:text-blue-300'
-                        : 'text-bronze-600 dark:text-zinc-400'
+                        : canClick
+                          ? 'text-bronze-600 dark:text-zinc-400 hover:bg-bronze-100 dark:hover:bg-zinc-800/50 cursor-pointer'
+                          : 'text-bronze-600 dark:text-zinc-400'
                     }`}
                   >
                     <span className="shrink-0 mt-px">{isSelected ? '\u25CF' : '\u25CB'}</span>
@@ -375,14 +383,14 @@ export function AskUserQuestionContent({ input, result }: { input: Record<string
                         <span className="ml-1.5 text-text-chrome">{opt.description}</span>
                       )}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           </div>
         );
       })}
-      {result && !Object.keys(answers).length && (
+      {result && !hasAnswer && (
         <div className="text-[11px] text-text-chrome italic">{result}</div>
       )}
     </div>
