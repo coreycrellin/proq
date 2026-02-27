@@ -507,7 +507,7 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
             <span className="text-sm text-text-chrome">Send a message to get started</span>
           </div>
         )}
-        <div className="max-w-4xl">
+        <div>
           {renderedBlocks}
         </div>
         {/* Processing indicator */}
@@ -515,14 +515,14 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
           const lastBlock = allBlocks[allBlocks.length - 1];
           if (lastBlock?.type === 'user-message' || allBlocks.length === 0 || (streamBlocks.length === 0 && isLoading)) {
             return (
-              <div className="max-w-4xl py-3 pl-5">
+              <div className="py-3 pl-5">
                 <ScrambleText text="Thinking..." />
               </div>
             );
           }
           if (lastBlock?.status === 'complete' && lastBlock?.type !== 'result') {
             return (
-              <div className="max-w-4xl py-3 pl-5">
+              <div className="py-3 pl-5">
                 <ScrambleText text="Working..." />
               </div>
             );
@@ -535,7 +535,7 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
       <div className="shrink-0 border-t border-border-default bg-surface-base px-4 py-3">
         {/* Attachment previews */}
         {attachments.length > 0 && (
-          <div className="max-w-4xl flex flex-wrap gap-2 mb-2">
+          <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((att) => {
               const isImage = att.type?.startsWith('image/') || false;
               return isImage && att.dataUrl ? (
@@ -566,7 +566,7 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
             })}
           </div>
         )}
-        <div className="max-w-4xl flex gap-2">
+        <div className="flex gap-2">
           <textarea
             ref={textareaRef}
             value={inputValue}
