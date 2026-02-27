@@ -139,6 +139,8 @@ export interface ProjectState {
   terminalTabs?: TerminalTabInfo[];
   terminalActiveTabId?: string;
   recentlyDeleted?: DeletedTaskEntry[];
+  supervisorChatLog?: ChatLogEntry[];
+  supervisorDraft?: string;
   // Legacy field — present only in unmigrated files
   tasks?: Task[];
 }

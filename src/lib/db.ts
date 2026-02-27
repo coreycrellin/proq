@@ -533,6 +533,56 @@ export async function setSupervisorDraft(draft: string): Promise<void> {
 }
 
 // ═══════════════════════════════════════════════════════════
+// PROJECT-SCOPED SUPERVISOR CHAT
+// ═══════════════════════════════════════════════════════════
+
+export async function getProjectSupervisorChatLog(projectId: string): Promise<ChatLogEntry[]> {
+  const data = getProjectData(projectId);
+  return data.supervisorChatLog || [];
+}
+
+export async function addProjectSupervisorMessage(
+  projectId: string,
+  entry: Pick<ChatLogEntry, "role" | "message" | "toolCalls">
+): Promise<ChatLogEntry> {
+  return withWriteLock(`project:${projectId}`, async () => {
+    const state = getProjectData(projectId);
+    if (!state.supervisorChatLog) state.supervisorChatLog = [];
+    const msg: ChatLogEntry = {
+      role: entry.role,
+      message: entry.message,
+      timestamp: new Date().toISOString(),
+      toolCalls: entry.toolCalls,
+    };
+    state.supervisorChatLog.push(msg);
+    writeProject(projectId, state);
+    return msg;
+  });
+}
+
+export async function clearProjectSupervisorChatLog(projectId: string): Promise<void> {
+  return withWriteLock(`project:${projectId}`, async () => {
+    const state = getProjectData(projectId);
+    state.supervisorChatLog = [];
+    state.supervisorDraft = undefined;
+    writeProject(projectId, state);
+  });
+}
+
+export async function getProjectSupervisorDraft(projectId: string): Promise<string> {
+  const data = getProjectData(projectId);
+  return data.supervisorDraft || "";
+}
+
+export async function setProjectSupervisorDraft(projectId: string, draft: string): Promise<void> {
+  return withWriteLock(`project:${projectId}`, async () => {
+    const state = getProjectData(projectId);
+    state.supervisorDraft = draft || undefined;
+    writeProject(projectId, state);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════════════════════
 

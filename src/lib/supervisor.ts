@@ -12,10 +12,17 @@ export type SupervisorChunk =
   | { type: "result"; text: string }
   | { type: "error"; error: string };
 
+export interface ProjectContext {
+  id: string;
+  name: string;
+  path: string;
+  taskSummary?: string;
+}
+
 // ── System prompt ────────────────────────────────────────
 
-function buildSystemPrompt(): string {
-  return `You are the Supervisor for proq — a task orchestration board for AI-assisted development running at http://localhost:1337.
+function buildSystemPrompt(projectContext?: ProjectContext): string {
+  let prompt = `You are the Supervisor for proq — a task orchestration board for AI-assisted development running at http://localhost:1337.
 
 You can manage projects and tasks by calling the REST API. Here are the available endpoints:
 
@@ -47,6 +54,25 @@ Cross-project:
 Stay focused on proq management unless explicitly asked to do something else.
 Be concise and action-oriented. When creating or updating tasks, confirm what you did.
 Your working directory is the proq codebase itself.`;
+
+  if (projectContext) {
+    prompt += `
+
+## Current Project Context
+You are currently assisting with project "${projectContext.name}" (id: "${projectContext.id}").
+Project path: ${projectContext.path}
+
+When the user asks to create, add, or make a task (e.g., "make a task for this", "create a task", "add a ticket for X", "let's do X"), create it in THIS project using:
+  curl -s -X POST http://localhost:1337/api/projects/${projectContext.id}/tasks -H 'Content-Type: application/json' -d '{"title":"<short title>","description":"<detailed description>"}'
+
+Always confirm what task you created.`;
+
+    if (projectContext.taskSummary) {
+      prompt += `\n\nCurrent tasks in this project:\n${projectContext.taskSummary}`;
+    }
+  }
+
+  return prompt;
 }
 
 // ── Conversation prompt ──────────────────────────────────
@@ -90,8 +116,9 @@ export async function* runSupervisor(
   history: ChatLogEntry[],
   userMessage: string,
   signal?: AbortSignal,
+  projectContext?: ProjectContext,
 ): AsyncGenerator<SupervisorChunk> {
-  const systemPrompt = buildSystemPrompt();
+  const systemPrompt = buildSystemPrompt(projectContext);
   const conversationPrompt = buildConversationPrompt(history, userMessage);
 
   const args = [
