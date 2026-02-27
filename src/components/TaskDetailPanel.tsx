@@ -15,6 +15,7 @@ import {
   GitBranchIcon,
   ExternalLinkIcon,
   ArrowLeftIcon,
+  PlayIcon,
 } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { parseLines } from '@/lib/utils';
@@ -24,6 +25,8 @@ interface TaskDetailPanelProps {
   projectId: string;
   projectName: string;
   onStatusChange?: (taskId: string, status: string) => void;
+  onContinueToCode?: (taskId: string) => void;
+  onClickTask?: (task: Task) => void;
 }
 
 function timeAgo(dateStr: string): string {
@@ -37,7 +40,7 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export function TaskDetailPanel({ task, projectId, projectName, onStatusChange }: TaskDetailPanelProps) {
+export function TaskDetailPanel({ task, projectId, projectName, onStatusChange, onContinueToCode, onClickTask }: TaskDetailPanelProps) {
   const router = useRouter();
   const steps = parseLines(task.humanSteps);
   const findings = parseLines(task.findings);
@@ -255,19 +258,38 @@ export function TaskDetailPanel({ task, projectId, projectName, onStatusChange }
 
       {/* Action footer */}
       <div className="shrink-0 border-t border-border-subtle p-3 flex items-center gap-2">
-        <button
-          onClick={() => router.push(`/projects/${projectId}`)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-chrome hover:text-text-chrome-hover border border-border-default rounded-md hover:bg-surface-hover transition-colors"
-        >
-          <ArrowLeftIcon className="w-3 h-3" />
-          View in Board
-        </button>
+        {onClickTask ? (
+          <button
+            onClick={() => onClickTask(task)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-chrome hover:text-text-chrome-hover border border-border-default rounded-md hover:bg-surface-hover transition-colors"
+          >
+            <ExternalLinkIcon className="w-3 h-3" />
+            Open
+          </button>
+        ) : (
+          <button
+            onClick={() => router.push(`/projects/${projectId}`)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-chrome hover:text-text-chrome-hover border border-border-default rounded-md hover:bg-surface-hover transition-colors"
+          >
+            <ArrowLeftIcon className="w-3 h-3" />
+            View in Board
+          </button>
+        )}
 
         {task.status === 'verify' && onStatusChange && (
           <>
+            {task.mode === 'plan' && task.findings?.trim() && onContinueToCode && (
+              <button
+                onClick={() => onContinueToCode(task.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-steel border border-steel/30 rounded-md hover:bg-steel/10 transition-colors ml-auto"
+              >
+                <PlayIcon className="w-3 h-3" />
+                Continue to Code
+              </button>
+            )}
             <button
               onClick={() => onStatusChange(task.id, 'done')}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-patina border border-patina/30 rounded-md hover:bg-patina/10 transition-colors ml-auto"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-patina border border-patina/30 rounded-md hover:bg-patina/10 transition-colors ${!(task.mode === 'plan' && task.findings?.trim() && onContinueToCode) ? 'ml-auto' : ''}`}
             >
               <CheckCircle2Icon className="w-3 h-3" />
               {task.branch ? 'Merge & Complete' : 'Complete'}

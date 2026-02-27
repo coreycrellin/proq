@@ -20,9 +20,9 @@ function isSessionAlive(tmuxSession: string): boolean {
 
 export async function POST(request: Request, { params }: Params) {
   const { id, taskId } = await params;
-  const { message } = await request.json();
+  const { message, attachments } = await request.json();
 
-  if (!message?.trim()) {
+  if (!message?.trim() && (!attachments || attachments.length === 0)) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 });
   }
 
@@ -53,6 +53,27 @@ export async function POST(request: Request, { params }: Params) {
   mkdirSync(promptDir, { recursive: true });
   mkdirSync("/tmp/proq", { recursive: true });
 
+  // Write image attachments to temp files so the agent can read them
+  let messageWithImages = message || "";
+  if (attachments?.length) {
+    const attachDir = join(tmpdir(), "proq-prompts", `${tmuxSession}-attachments`);
+    mkdirSync(attachDir, { recursive: true });
+    const imageFiles: string[] = [];
+    for (const att of attachments) {
+      if (att.dataUrl && att.type?.startsWith("image/")) {
+        const match = att.dataUrl.match(/^data:[^;]+;base64,(.+)$/);
+        if (match) {
+          const filePath = join(attachDir, att.name);
+          writeFileSync(filePath, Buffer.from(match[1], "base64"));
+          imageFiles.push(filePath);
+        }
+      }
+    }
+    if (imageFiles.length > 0) {
+      messageWithImages += `\n\n## Attached Images\nThe following image files are attached. Use your Read tool to view them:\n${imageFiles.map((f) => `- ${f}`).join("\n")}`;
+    }
+  }
+
   // If the jsonl file doesn't exist, try to recreate from agentLog
   if (!existsSync(jsonlPath)) {
     if (task.agentLog?.trimStart().startsWith("{")) {
@@ -73,7 +94,7 @@ export async function POST(request: Request, { params }: Params) {
   // If the agent's tmux session is still alive, write a pending reply file
   // for the bridge to pick up after the current process exits
   if (isSessionAlive(tmuxSession)) {
-    writeFileSync(pendingReplyPath, message, "utf-8");
+    writeFileSync(pendingReplyPath, messageWithImages, "utf-8");
     console.log(`[reply] queued pending reply for task ${shortId} (agent still running)`);
     return NextResponse.json({ success: true, queued: true });
   }
@@ -82,7 +103,7 @@ export async function POST(request: Request, { params }: Params) {
   console.log(`[reply] session ${tmuxSession} is dead, restarting bridge for reply`);
 
   // Write pending-reply for the bridge to pick up after the no-op launcher exits
-  writeFileSync(pendingReplyPath, message, "utf-8");
+  writeFileSync(pendingReplyPath, messageWithImages, "utf-8");
 
   // Create a no-op launcher (bridge requires one; it exits immediately)
   const noopLauncher = join(promptDir, `${tmuxSession}-noop.sh`);

@@ -22,7 +22,8 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const tabs: { id: TabOption; label: string }[] = [
-    { id: 'project', label: 'Project' },
+    { id: 'project', label: 'Board' },
+    { id: 'list', label: 'List' },
     { id: 'live', label: 'Live' },
     { id: 'code', label: 'Code' },
   ];

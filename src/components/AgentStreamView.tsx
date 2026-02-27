@@ -22,7 +22,11 @@ import {
   LayersIcon,
   SendIcon,
   UserIcon,
+  PaperclipIcon,
+  XIcon,
+  SquareIcon,
 } from 'lucide-react';
+import type { TaskAttachment } from '@/lib/types';
 
 /* ─── Types for stream-json events ─── */
 
@@ -495,7 +499,7 @@ interface AgentStreamViewProps {
   /** 'pretty' renders parsed blocks (default), 'raw' shows raw text */
   mode?: 'pretty' | 'raw';
   /** Called when user sends a follow-up message after agent exits. Returns bridgeRestarted if session was dead and bridge was restarted. */
-  onSendFollowUp?: (message: string) => Promise<{ bridgeRestarted?: boolean } | void>;
+  onSendFollowUp?: (message: string, attachments?: TaskAttachment[]) => Promise<{ bridgeRestarted?: boolean } | void>;
 }
 
 export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', onSendFollowUp }: AgentStreamViewProps) {
@@ -505,6 +509,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
   const [exited, setExited] = useState(false);
   const [followUpInput, setFollowUpInput] = useState('');
   const [sendingFollowUp, setSendingFollowUp] = useState(false);
+  const [followUpAttachments, setFollowUpAttachments] = useState<TaskAttachment[]>([]);
   // Collapse signal: positive = collapse all, negative = expand all, 0 = initial (auto-collapsed)
   // Default is 1 so blocks start collapsed (auto-collapse)
   const [collapseSignal, setCollapseSignal] = useState(1);
@@ -514,6 +519,8 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
   const containerRef = useRef<HTMLDivElement>(null);
   const rawContainerRef = useRef<HTMLDivElement>(null);
   const followUpRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const bufferRef = useRef('');
   const blockIdCounter = useRef(0);
   const toolBlockMap = useRef<Map<string, string>>(new Map()); // toolUseId → blockId
@@ -526,10 +533,43 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     return `block-${blockIdCounter.current}`;
   }, []);
 
+  const addFiles = useCallback((files: FileList | File[]) => {
+    Array.from(files).forEach((f) => {
+      const att: TaskAttachment = {
+        id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        name: f.name,
+        size: f.size,
+        type: f.type,
+      };
+      if (f.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          att.dataUrl = e.target?.result as string;
+          setFollowUpAttachments((prev) => [...prev, att]);
+        };
+        reader.readAsDataURL(f);
+      } else {
+        setFollowUpAttachments((prev) => [...prev, att]);
+      }
+    });
+  }, []);
+
+  const removeFollowUpAttachment = useCallback((id: string) => {
+    setFollowUpAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
+  const handleStop = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'interrupt' }));
+    }
+  }, []);
+
   const handleSendFollowUp = useCallback(async () => {
-    if (!followUpInput.trim() || !onSendFollowUp || sendingFollowUp) return;
+    if ((!followUpInput.trim() && followUpAttachments.length === 0) || !onSendFollowUp || sendingFollowUp) return;
     const msg = followUpInput.trim();
+    const atts = followUpAttachments.length > 0 ? [...followUpAttachments] : undefined;
     setFollowUpInput('');
+    setFollowUpAttachments([]);
     setSendingFollowUp(true);
 
     // Add user message block (instant feedback)
@@ -554,7 +594,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     };
 
     try {
-      const result = await onSendFollowUp(msg);
+      const result = await onSendFollowUp(msg, atts);
       if (result?.bridgeRestarted || !connected) {
         // Bridge was restarted or WebSocket is disconnected — reset state and reconnect.
         // The bridge will replay the full jsonl (including user-follow-up event).
@@ -576,7 +616,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     } finally {
       setSendingFollowUp(false);
     }
-  }, [followUpInput, onSendFollowUp, sendingFollowUp, nextBlockId, connected]);
+  }, [followUpInput, followUpAttachments, onSendFollowUp, sendingFollowUp, nextBlockId, connected]);
 
   // Process a single stream-json event
   const processEvent = useCallback((event: StreamMessage) => {
@@ -732,6 +772,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
 
       const wsUrl = `ws://${window.location.hostname}:42069/ws/terminal?id=${encodeURIComponent(tabId)}`;
       ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
       ws.onopen = () => {
         setConnected(true);
@@ -761,6 +802,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
 
     return () => {
       cancelled = true;
+      wsRef.current = null;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       try { ws?.close(); } catch {}
     };
@@ -919,11 +961,54 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
       {/* Follow-up input — shown whenever callback is available (even mid-stream) */}
       {onSendFollowUp && (
         <div className="shrink-0 border-t border-border-default bg-surface-base px-4 py-3">
+          {/* Attachment previews */}
+          {followUpAttachments.length > 0 && (
+            <div className="max-w-4xl flex flex-wrap gap-2 mb-2">
+              {followUpAttachments.map((att) => {
+                const isImage = att.type?.startsWith('image/') || false;
+                return isImage && att.dataUrl ? (
+                  <div key={att.id} className="relative group rounded-md overflow-hidden border border-border-default bg-surface-primary">
+                    <img src={att.dataUrl} alt={att.name} className="h-16 w-auto max-w-[100px] object-cover block" />
+                    <button
+                      onClick={() => removeFollowUpAttachment(att.id)}
+                      className="absolute top-0.5 right-0.5 p-0.5 rounded bg-black/60 text-white/80 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <XIcon className="w-3 h-3" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-1 py-0.5">
+                      <span className="text-[9px] text-zinc-300 truncate block">{att.name}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div key={att.id} className="flex items-center gap-1.5 bg-surface-primary border border-border-default rounded-md px-2 py-1.5 group">
+                    <FileIcon className="w-3 h-3 text-text-chrome shrink-0" />
+                    <span className="text-[11px] text-text-secondary truncate max-w-[100px]">{att.name}</span>
+                    <button
+                      onClick={() => removeFollowUpAttachment(att.id)}
+                      className="text-text-chrome hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <XIcon className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className="max-w-4xl flex gap-2">
             <textarea
               ref={followUpRef}
               value={followUpInput}
-              onChange={(e) => setFollowUpInput(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                const cursor = e.target.selectionStart ?? val.length;
+                const before = cursor - 4;
+                if (before >= 0 && val.substring(before, cursor) === '/att' && (before === 0 || /\s/.test(val[before - 1]))) {
+                  setFollowUpInput(val.substring(0, before) + val.substring(cursor));
+                  setTimeout(() => fileInputRef.current?.click(), 0);
+                  return;
+                }
+                setFollowUpInput(val);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -935,13 +1020,41 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
               className="flex-1 bg-surface-primary border border-border-default rounded-md px-3 py-2 text-sm text-bronze-800 dark:text-zinc-200 placeholder-text-chrome focus:outline-none focus:border-steel/50 resize-none"
             />
             <button
+              onClick={() => fileInputRef.current?.click()}
+              title="Attach file (/att)"
+              className="shrink-0 px-2 py-2 rounded-md text-text-chrome hover:text-text-secondary hover:bg-surface-primary transition-colors"
+            >
+              <PaperclipIcon className="w-4 h-4" />
+            </button>
+            {!exited && connected && (
+              <button
+                onClick={handleStop}
+                title="Stop agent"
+                className="shrink-0 px-2 py-2 rounded-md text-red-400 hover:bg-red-400/10 transition-colors"
+              >
+                <SquareIcon className="w-4 h-4 fill-current" />
+              </button>
+            )}
+            <button
               onClick={handleSendFollowUp}
-              disabled={!followUpInput.trim() || sendingFollowUp}
+              disabled={(!followUpInput.trim() && followUpAttachments.length === 0) || sendingFollowUp}
               className="shrink-0 px-3 py-2 rounded-md bg-steel/20 text-steel hover:bg-steel/30 transition-colors disabled:opacity-30 disabled:pointer-events-none"
             >
               <SendIcon className="w-4 h-4" />
             </button>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                addFiles(e.target.files);
+                e.target.value = '';
+              }
+            }}
+          />
         </div>
       )}
     </div>

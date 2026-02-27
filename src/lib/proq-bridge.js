@@ -88,8 +88,10 @@ if (jsonMode && jsonlPath) {
   // then tail the file to capture stream-json output.
   console.log(`[proq-bridge] starting in JSON mode (file tail: ${jsonlPath})`);
 
-  // Ensure jsonl file exists (launcher will write to it)
-  try { fs.writeFileSync(jsonlPath, "", "utf-8"); } catch {}
+  // Ensure jsonl file exists (launcher will append to it)
+  if (!fs.existsSync(jsonlPath)) {
+    try { fs.writeFileSync(jsonlPath, "", "utf-8"); } catch {}
+  }
 
   const child = spawn("bash", [launcherScript], {
     cwd: process.cwd(),
@@ -278,10 +280,16 @@ const server = net.createServer((client) => {
     const str = data.toString();
 
     if (jsonMode) {
-      // In JSON mode, only handle resize messages; ignore other input
+      // In JSON mode, handle resize and interrupt messages; ignore other input
       try {
         const parsed = JSON.parse(str);
         if (parsed.type === "resize") return; // no-op for JSON mode
+        if (parsed.type === "interrupt") {
+          if (!processExited) {
+            proc.kill();
+          }
+          return;
+        }
       } catch {}
       return;
     }

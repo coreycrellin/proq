@@ -7,6 +7,7 @@ import { KanbanBoard } from '@/components/KanbanBoard';
 import TerminalPanel from '@/components/TerminalPanel';
 import { LiveTab } from '@/components/LiveTab';
 import { CodeTab } from '@/components/CodeTab';
+import { ProjectTaskList } from '@/components/ProjectTaskList';
 import { TaskModal } from '@/components/TaskModal';
 import { TaskAgentModal } from '@/components/TaskAgentModal';
 import { UndoModal } from '@/components/UndoModal';
@@ -181,6 +182,23 @@ export default function ProjectPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+    refresh();
+  };
+
+  const handleContinueToCode = async (taskId: string) => {
+    // Switch mode to code, set dispatch queued, clear old agent data but keep findings (the plan)
+    await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'code', dispatch: 'queued', humanSteps: '', agentLog: '' }),
+    });
+    // Move to in-progress — processQueue will pick up the queued task
+    await fetch(`/api/projects/${projectId}/tasks/reorder`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId, toColumn: 'in-progress', toIndex: 0 }),
+    });
+    setAgentModalTask(null);
     refresh();
   };
 
@@ -392,6 +410,45 @@ export default function ProjectPage() {
           </>
         )}
 
+        {activeTab === 'list' && project && (
+          <ProjectTaskList
+            projectId={projectId}
+            projectName={project.name || project.path.replace(/\/+$/, '').split('/').pop() || projectId}
+            columns={columns}
+            onClickTask={(task) => {
+              if (task.status === 'todo') {
+                setModalTask(task);
+              } else {
+                setAgentModalTask(task);
+              }
+            }}
+            onStatusChange={async (taskId, newStatus) => {
+              if (newStatus === 'in-progress') {
+                await fetch(`/api/projects/${projectId}/tasks/reorder`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ taskId, toColumn: 'in-progress', toIndex: 0 }),
+                });
+              } else if (newStatus === 'done') {
+                await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ status: 'done' }),
+                });
+              } else if (newStatus === 'todo') {
+                await fetch(`/api/projects/${projectId}/tasks/reorder`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ taskId, toColumn: 'todo', toIndex: 0 }),
+                });
+              }
+              refresh();
+            }}
+            onContinueToCode={handleContinueToCode}
+            onRefresh={refresh}
+          />
+        )}
+
         {activeTab === 'live' && project && <LiveTab project={project} />}
         {activeTab === 'code' && project && <CodeTab project={project} />}
       </main>
@@ -410,6 +467,7 @@ export default function ProjectPage() {
             setAgentModalTask(null);
             fetchBranchState();
           }}
+          onContinueToCode={handleContinueToCode}
           parallelMode={executionMode === 'parallel'}
           currentBranch={currentBranch}
           onSwitchBranch={handleSwitchBranch}

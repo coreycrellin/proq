@@ -1,7 +1,7 @@
 // ── Project ──────────────────────────────────────────────
 export type ProjectStatus = 'active' | 'review' | 'idle' | 'error';
 
-export type ProjectTab = 'project' | 'live' | 'code';
+export type ProjectTab = 'project' | 'list' | 'live' | 'code';
 
 export interface Project {
   id: string;

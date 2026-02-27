@@ -117,6 +117,7 @@ export async function dispatchTask(
   mode?: TaskMode,
   attachments?: TaskAttachment[],
   outputMode?: TaskOutputMode,
+  findings?: string,
 ): Promise<string | undefined> {
   // Look up project path
   const projects = await getAllProjects();
@@ -184,7 +185,10 @@ ${callbackCurl}
 `;
     claudeFlags = "--dangerously-skip-permissions";
   } else {
-    prompt = `${heading}
+    const planContext = findings?.trim()
+      ? `## Plan from Research Phase\nImplement the following plan:\n\n${findings.trim()}\n\n---\n\n`
+      : '';
+    prompt = `${planContext}${heading}
 When completely finished, commit and signal complete:
 1. If code was changed, stage and commit the changes with a descriptive message.
 2. Signal back to the main process to update the task board, including the results/summary ("findings") and human steps (if there are any operational steps the user should take to verify, or complete the task)
@@ -357,6 +361,7 @@ export async function processQueue(projectId: string): Promise<void> {
           next.mode,
           next.attachments,
           next.outputMode,
+          next.findings,
         );
         if (result) {
           await updateTask(projectId, next.id, { dispatch: "running" });
@@ -382,6 +387,7 @@ export async function processQueue(projectId: string): Promise<void> {
           task.mode,
           task.attachments,
           task.outputMode,
+          task.findings,
         );
         if (result) {
           await updateTask(projectId, task.id, { dispatch: "running" });

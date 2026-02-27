@@ -17,7 +17,7 @@ import {
   PlayIcon,
   GitBranchIcon,
 } from 'lucide-react';
-import type { Task } from '@/lib/types';
+import type { Task, TaskAttachment } from '@/lib/types';
 import { AgentStreamView } from './AgentStreamView';
 import { TerminalPane } from './TerminalPane';
 import { ConflictModal } from './ConflictModal';
@@ -29,12 +29,13 @@ interface TaskAgentModalProps {
   cleanupExpiresAt?: number;
   onClose: () => void;
   onComplete?: (taskId: string) => void;
+  onContinueToCode?: (taskId: string) => void;
   parallelMode?: boolean;
   currentBranch?: string;
   onSwitchBranch?: (branch: string) => void;
 }
 
-export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, onClose, onComplete, parallelMode, currentBranch, onSwitchBranch }: TaskAgentModalProps) {
+export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, onClose, onComplete, onContinueToCode, parallelMode, currentBranch, onSwitchBranch }: TaskAgentModalProps) {
   const shortId = task.id.slice(0, 8);
   const terminalTabId = `task-${shortId}`;
   const steps = parseLines(task.humanSteps);
@@ -50,11 +51,11 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
   // Show terminal for done tasks too; fall back to static log only after cleanup has captured agentLog
   const showStaticLog = task.status === 'done' && !cleanupExpiresAt && !!task.agentLog && !forceShowLive;
   const showTerminal = (task.status === 'in-progress' || task.status === 'verify' || (task.status === 'done' && !showStaticLog)) && !isQueued;
-  const handleSendFollowUp = useCallback(async (message: string): Promise<{ bridgeRestarted?: boolean } | void> => {
+  const handleSendFollowUp = useCallback(async (message: string, attachments?: TaskAttachment[]): Promise<{ bridgeRestarted?: boolean } | void> => {
     const res = await fetch(`/api/projects/${projectId}/tasks/${task.id}/reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, attachments }),
     });
     const data = await res.json();
     if (data.bridgeRestarted) {
@@ -530,17 +531,33 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
             )}
           </div>
 
-          {/* Complete button pinned to bottom */}
-          {task.status === 'verify' && onComplete && (
-            <div className="shrink-0 group/complete">
-              <div className="h-px bg-bronze-300 dark:bg-zinc-800 group-hover/complete:bg-patina/40 transition-colors" />
-              <button
-                onClick={() => onComplete(task.id)}
-                className="flex items-center justify-center gap-1.5 w-full px-3 py-5 text-xs font-medium text-patina/80 hover:text-patina hover:bg-patina/10 transition-colors"
-              >
-                <CheckCircle2Icon className="w-3.5 h-3.5" />
-                {task.branch ? 'Merge & Complete' : 'Complete'}
-              </button>
+          {/* Action buttons pinned to bottom */}
+          {task.status === 'verify' && (
+            <div className="shrink-0">
+              {task.mode === 'plan' && task.findings?.trim() && onContinueToCode && (
+                <div className="group/continue">
+                  <div className="h-px bg-bronze-300 dark:bg-zinc-800 group-hover/continue:bg-steel/40 transition-colors" />
+                  <button
+                    onClick={() => onContinueToCode(task.id)}
+                    className="flex items-center justify-center gap-1.5 w-full px-3 py-5 text-xs font-medium text-steel/80 hover:text-steel hover:bg-steel/10 transition-colors"
+                  >
+                    <PlayIcon className="w-3.5 h-3.5" />
+                    Continue to Code
+                  </button>
+                </div>
+              )}
+              {onComplete && (
+                <div className="group/complete">
+                  <div className="h-px bg-bronze-300 dark:bg-zinc-800 group-hover/complete:bg-patina/40 transition-colors" />
+                  <button
+                    onClick={() => onComplete(task.id)}
+                    className="flex items-center justify-center gap-1.5 w-full px-3 py-5 text-xs font-medium text-patina/80 hover:text-patina hover:bg-patina/10 transition-colors"
+                  >
+                    <CheckCircle2Icon className="w-3.5 h-3.5" />
+                    {task.branch ? 'Merge & Complete' : 'Complete'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
