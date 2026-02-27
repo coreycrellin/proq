@@ -29,6 +29,7 @@ import {
   AlertTriangleIcon,
   PencilIcon,
   FolderOpenIcon,
+  GithubIcon,
   PanelLeftCloseIcon,
 } from "lucide-react";
 import type { Project, Task, TaskStatus, TaskColumns } from "@/lib/types";
@@ -136,6 +137,24 @@ function ProjectMenu({ project, onDelete, onRename }: ProjectMenuProps) {
           >
             <FolderOpenIcon className="w-3.5 h-3.5" />
             Show in Finder
+          </button>
+          <button
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              try {
+                const res = await fetch(`/api/projects/${project.id}/github`);
+                if (res.ok) {
+                  const { url } = await res.json();
+                  window.open(url, "_blank");
+                }
+              } catch { /* no remote */ }
+            }}
+            className="w-full text-left px-3 py-1.5 text-sm text-bronze-700 dark:text-zinc-300 hover:bg-bronze-200 dark:hover:bg-zinc-700 flex items-center gap-2"
+          >
+            <GithubIcon className="w-3.5 h-3.5" />
+            Open on GitHub
           </button>
           <button
             onClick={(e) => {
