@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>proq — Style Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Gemunu+Libre:wght@800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-display: 'Gemunu Libre', sans-serif;
+    --page-bg: #09090b;
+    --page-fg: #fafafa;
+    --section-bg: #18181b;
+    --section-border: #27272a;
+    --muted: #a1a1aa;
+    --subtle: #71717a;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--page-bg);
+    color: var(--page-fg);
+    line-height: 1.6;
+    padding: 0 0 80px 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Header ─── */
+  .hero {
+    padding: 60px 40px 48px;
+    border-bottom: 1px solid var(--section-border);
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: 3.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .hero p {
+    color: var(--muted);
+    font-size: 1.05rem;
+    max-width: 600px;
+  }
+
+  /* ─── Table of Contents ─── */
+  .toc {
+    padding: 32px 40px;
+    border-bottom: 1px solid var(--section-border);
+  }
+  .toc h2 {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--subtle);
+    margin-bottom: 16px;
+  }
+  .toc-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+  }
+  .toc-list a {
+    display: block;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--muted);
+    background: rgba(39,39,42,0.4);
+    border: 1px solid rgba(39,39,42,0.6);
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .toc-list a:hover {
+    color: #fafafa;
+    background: rgba(39,39,42,0.7);
+    border-color: #3f3f46;
+  }
+
+  /* ─── Sections ─── */
+  section {
+    padding: 48px 40px;
+    border-bottom: 1px solid var(--section-border);
+  }
+  section:last-child { border-bottom: none; }
+
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .section-desc {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 32px;
+    max-width: 640px;
+  }
+
+  .subsection {
+    margin-bottom: 40px;
+  }
+  .subsection:last-child { margin-bottom: 0; }
+  .subsection-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--subtle);
+    margin-bottom: 16px;
+  }
+
+  /* ─── Color Swatches ─── */
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .swatch {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--section-border);
+    background: var(--section-bg);
+  }
+  .swatch-color {
+    height: 72px;
+    position: relative;
+  }
+  .swatch-info {
+    padding: 10px 12px;
+  }
+  .swatch-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .swatch-hex {
+    font-size: 0.7rem;
+    color: var(--subtle);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* Wide swatch for accent colors */
+  .swatch-wide-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .swatch-wide .swatch-color {
+    height: 56px;
+    display: flex;
+    align-items: flex-end;
+    padding: 0 12px 8px;
+  }
+  .swatch-wide .swatch-color .variant-dots {
+    display: flex;
+    gap: 6px;
+  }
+  .variant-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid rgba(0,0,0,0.15);
+  }
+
+  /* Semantic token rows */
+  .token-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .token-row {
+    display: grid;
+    grid-template-columns: 180px 1fr 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--section-bg);
+    border: 1px solid var(--section-border);
+    border-radius: 8px;
+    font-size: 0.82rem;
+  }
+  .token-name {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #fafafa;
+  }
+  .token-value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+  .token-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+  }
+
+  /* ─── Usage Examples ─── */
+  .usage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .usage-card {
+    background: var(--section-bg);
+    border: 1px solid var(--section-border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .usage-preview {
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    background: rgba(39,39,42,0.15);
+  }
+  .usage-info {
+    padding: 14px 16px;
+    border-top: 1px solid var(--section-border);
+  }
+  .usage-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .usage-desc {
+    font-size: 0.72rem;
+    color: var(--subtle);
+  }
+
+  /* ─── Status workflow ─── */
+  .status-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+  }
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border: 1px solid;
+  }
+  .status-arrow {
+    color: var(--subtle);
+    font-size: 1.2rem;
+    padding: 0 8px;
+  }
+
+  /* ─── Button samples ─── */
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .btn-sample {
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: default;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+  }
+
+  /* ─── Code block ─── */
+  .code-block {
+    background: #0a0a0c;
+    border: 1px solid var(--section-border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: var(--muted);
+    overflow-x: auto;
+    margin-top: 12px;
+  }
+  .code-block .kw { color: #c9a84c; }
+  .code-block .str { color: #6a9a58; }
+  .code-block .cm { color: #52525b; }
+  .code-block .fn { color: #5b83b0; }
+
+  /* ─── Dark/Light comparison ─── */
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .comparison-panel {
+    border-radius: 10px;
+    border: 1px solid;
+    overflow: hidden;
+  }
+  .comparison-label {
+    padding: 10px 16px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid;
+  }
+  .comparison-body {
+    padding: 20px 16px;
+  }
+  .comparison-body .swatch-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .comparison-body .swatch-row:last-child { margin-bottom: 0; }
+  .comparison-body .mini-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  .comparison-body .swatch-label {
+    font-size: 0.75rem;
+  }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 768px) {
+    .hero, section, .toc { padding-left: 20px; padding-right: 20px; }
+    .hero h1 { font-size: 2.5rem; }
+    .comparison { grid-template-columns: 1fr; }
+    .token-row { grid-template-columns: 1fr; gap: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- HERO -->
+<!-- ════════════════════════════════════════════════════════ -->
+<header class="hero">
+  <h1>proq Style Guide</h1>
+  <p>Design system reference for the proq task management dashboard. A warm, imperial palette built on bronze neutrals and muted action accents.</p>
+</header>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- TABLE OF CONTENTS -->
+<!-- ════════════════════════════════════════════════════════ -->
+<nav class="toc">
+  <h2>Contents</h2>
+  <ul class="toc-list">
+    <li><a href="#bronze">Bronze Palette</a></li>
+    <li><a href="#accents">Action Accents</a></li>
+    <li><a href="#zinc">Zinc (Dark Mode)</a></li>
+    <li><a href="#semantic">Semantic Tokens</a></li>
+    <li><a href="#status">Status Colors</a></li>
+    <li><a href="#surfaces">Surfaces &amp; Depth</a></li>
+    <li><a href="#buttons">Buttons</a></li>
+    <li><a href="#text">Text Colors</a></li>
+    <li><a href="#borders">Borders</a></li>
+    <li><a href="#usage">Usage Patterns</a></li>
+    <li><a href="#typography">Typography</a></li>
+  </ul>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 1. BRONZE PALETTE -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section id="bronze">
+  <h2 class="section-title">Bronze Palette</h2>
+  <p class="section-desc">
+    The foundation of proq's visual identity. Bronze serves as the neutral palette in light mode &mdash; warm, understated, and professional. Replaces standard grays to give the interface a distinct character.
+  </p>
+
+  <div class="swatch-grid">
+    <div class="swatch">
+      <div class="swatch-color" style="background: #faf7f1;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">bronze-50</div>
+        <div class="swatch-hex">#faf7f1</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #f5f0e6;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">bronze-100</div>
+        <div class="swatch-hex">#f5f0e6</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #ede7db;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">bronze-200</div>
+        <div class="swatch-hex">#ede7db</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #e2dbd0;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">bronze-300</div>
+        <div class="swatch-hex">#e2dbd0</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #d4cbbf;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">bronze-400</div>
+        <div class="swatch-hex">#d4cbbf</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #a89d90;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">bronze-500</div>
+        <div class="swatch-hex">#a89d90</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #7a7068;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">bronze-600</div>
+        <div class="swatch-hex">#7a7068</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #5c534b;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">bronze-700</div>
+        <div class="swatch-hex">#5c534b</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #3a342e;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">bronze-800</div>
+        <div class="swatch-hex">#3a342e</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #2a2520;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">bronze-900</div>
+        <div class="swatch-hex">#2a2520</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection" style="margin-top: 32px;">
+    <div class="subsection-title">Usage</div>
+    <table style="width: 100%; font-size: 0.82rem; border-collapse: collapse;">
+      <thead>
+        <tr style="text-align: left; color: var(--subtle); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Shade</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Role (Light Mode)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">50</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">Modal/dropdown backgrounds, elevated surfaces</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">100</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">Page background, chat panel, form field fills</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">200</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">Hover states, dropdown highlights, code display</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">300</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">Borders, separators, hover backgrounds</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">400</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">Input borders, scrollbar thumbs, subtle accents</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">500</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">Muted text, scrollbar hover, dark mode text-chrome-hover</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">600</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">Secondary text, descriptions, text-chrome base</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">700</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">Primary text, form labels, text-chrome-hover (light)</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">800</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">Headings, active badges, text-chrome-active (light), dark border-hover</td></tr>
+        <tr><td style="padding: 8px 12px; color: var(--muted);">900</td><td style="padding: 8px 12px;">Deepest text, heavy emphasis</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 2. ACTION ACCENTS -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section id="accents">
+  <h2 class="section-title">Action Accents</h2>
+  <p class="section-desc">
+    Four muted, imperial accent colors &mdash; each mapped to a specific semantic role. Warm and desaturated to blend with the bronze palette rather than compete with it.
+  </p>
+
+  <div class="swatch-wide-grid">
+    <!-- Steel -->
+    <div class="swatch swatch-wide">
+      <div class="swatch-color" style="background: #5b83b0;">
+        <div class="variant-dots">
+          <div class="variant-dot" style="background: #6d94bf;" title="steel-light"></div>
+          <div class="variant-dot" style="background: #5b83b0;" title="steel"></div>
+          <div class="variant-dot" style="background: #4a72a0;" title="steel-dark"></div>
+        </div>
+      </div>
+      <div class="swatch-info">
+        <div class="swatch-name">Steel</div>
+        <div class="swatch-hex">#5b83b0 &middot; Active / In-Progress</div>
+      </div>
+    </div>
+
+    <!-- Gold -->
+    <div class="swatch swatch-wide">
+      <div class="swatch-color" style="background: #c9a84c;">
+        <div class="variant-dots">
+          <div class="variant-dot" style="background: #d4b85e;" title="gold-light"></div>
+          <div class="variant-dot" style="background: #c9a84c;" title="gold"></div>
+          <div class="variant-dot" style="background: #b8953d;" title="gold-dark"></div>
+        </div>
+      </div>
+      <div class="swatch-info">
+        <div class="swatch-name">Gold</div>
+        <div class="swatch-hex">#c9a84c &middot; Verify / Review</div>
+      </div>
+    </div>
+
+    <!-- Patina -->
+    <div class="swatch swatch-wide">
+      <div class="swatch-color" style="background: #6a9a58;">
+        <div class="variant-dots">
+          <div class="variant-dot" style="background: #7baa6a;" title="patina-light"></div>
+          <div class="variant-dot" style="background: #6a9a58;" title="patina"></div>
+          <div class="variant-dot" style="background: #5a8a48;" title="patina-dark"></div>
+        </div>
+      </div>
+      <div class="swatch-info">
+        <div class="swatch-name">Patina</div>
+        <div class="swatch-hex">#6a9a58 &middot; Done / Success</div>
+      </div>
+    </div>
+
+    <!-- Crimson -->
+    <div class="swatch swatch-wide">
+      <div class="swatch-color" style="background: #b35a5a;">
+        <div class="variant-dots">
+          <div class="variant-dot" style="background: #c06b6b;" title="crimson-light"></div>
+          <div class="variant-dot" style="background: #b35a5a;" title="crimson"></div>
+          <div class="variant-dot" style="background: #a04a4a;" title="crimson-dark"></div>
+        </div>
+      </div>
+      <div class="swatch-info">
+        <div class="swatch-name">Crimson</div>
+        <div class="swatch-hex">#b35a5a &middot; Delete / Error</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection" style="margin-top: 32px;">
+    <div class="subsection-title">Accent Variants</div>
+    <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 16px;">
+      Each accent has three variants: <strong>light</strong> (hover/highlight), <strong>default</strong> (primary use), and <strong>dark</strong> (pressed/active states, drag overlays).
+    </p>
+    <table style="width: 100%; font-size: 0.82rem; border-collapse: collapse;">
+      <thead>
+        <tr style="text-align: left; color: var(--subtle); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Color</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Light</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Default</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Dark</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Dark Mode Fallback</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); font-weight: 600;">Steel</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: var(--muted);">#6d94bf</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: var(--muted);">#5b83b0</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: var(--muted);">#4a72a0</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: #60a5fa;">blue-400</span></td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); font-weight: 600;">Gold</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: var(--muted);">#d4b85e</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: var(--muted);">#c9a84c</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: var(--muted);">#b8953d</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: #c9a84c;">gold (unchanged)</span></td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); font-weight: 600;">Patina</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: var(--muted);">#7baa6a</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: var(--muted);">#6a9a58</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: var(--muted);">#5a8a48</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="color: #34d399;">emerald-400</span></td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 12px; font-weight: 600;">Crimson</td>
+          <td style="padding: 8px 12px;"><span style="color: var(--muted);">#c06b6b</span></td>
+          <td style="padding: 8px 12px;"><span style="color: var(--muted);">#b35a5a</span></td>
+          <td style="padding: 8px 12px;"><span style="color: var(--muted);">#a04a4a</span></td>
+          <td style="padding: 8px 12px;"><span style="color: #f87171;">red-400</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subsection" style="margin-top: 32px;">
+    <div class="subsection-title">Common opacity patterns</div>
+    <div class="code-block">
+<span class="cm">/* Subtle backgrounds — pair accent with low opacity */</span>
+<span class="fn">bg-steel</span>/5    <span class="cm">/* drop zone highlight */</span>
+<span class="fn">bg-steel</span>/10   <span class="cm">/* button hover */</span>
+<span class="fn">bg-gold</span>/8    <span class="cm">/* verification alert box */</span>
+<span class="fn">bg-gold</span>/20   <span class="cm">/* live indicator dot */</span>
+
+<span class="cm">/* Borders at low opacity for subtle accents */</span>
+<span class="fn">border-steel</span>/30   <span class="cm">/* action button border */</span>
+<span class="fn">border-steel</span>/40   <span class="cm">/* running task border glow */</span>
+<span class="fn">border-gold</span>/20   <span class="cm">/* verify alert border */</span>
+<span class="fn">border-gold</span>/50   <span class="cm">/* verify dot border */</span>
+
+<span class="cm">/* Shadows for depth on running tasks */</span>
+<span class="fn">shadow-[0_0_12px_rgba(91,131,176,0.15)]</span>  <span class="cm">/* steel glow */</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 3. ZINC (DARK MODE) -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section id="zinc">
+  <h2 class="section-title">Zinc Palette (Dark Mode)</h2>
+  <p class="section-desc">
+    In dark mode, standard Tailwind zinc replaces bronze for backgrounds, borders, and text.
+    Bronze-600 is retained for <code style="color: #c9a84c;">text-chrome</code> to keep the warm character.
+  </p>
+
+  <div class="swatch-grid">
+    <div class="swatch">
+      <div class="swatch-color" style="background: #fafafa;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">zinc-50</div>
+        <div class="swatch-hex">#fafafa</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #f4f4f5;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">zinc-100</div>
+        <div class="swatch-hex">#f4f4f5</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #e4e4e7;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">zinc-200</div>
+        <div class="swatch-hex">#e4e4e7</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #d4d4d8;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">zinc-300</div>
+        <div class="swatch-hex">#d4d4d8</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #a1a1aa;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">zinc-400</div>
+        <div class="swatch-hex">#a1a1aa</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #71717a;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">zinc-500</div>
+        <div class="swatch-hex">#71717a</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #52525b;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">zinc-600</div>
+        <div class="swatch-hex">#52525b</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #3f3f46;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">zinc-700</div>
+        <div class="swatch-hex">#3f3f46</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #27272a;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">zinc-800</div>
+        <div class="swatch-hex">#27272a</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #18181b;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">zinc-900</div>
+        <div class="swatch-hex">#18181b</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background: #09090b;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">zinc-950</div>
+        <div class="swatch-hex">#09090b</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection" style="margin-top: 32px;">
+    <div class="subsection-title">Bronze &harr; Zinc mapping</div>
+    <table style="width: 100%; font-size: 0.82rem; border-collapse: collapse;">
+      <thead>
+        <tr style="text-align: left; color: var(--subtle); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Light (Bronze)</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Dark (Zinc)</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Context</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">bronze-50</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">zinc-900</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Modals, dropdowns</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">bronze-100</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">zinc-800</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Form fields, chat input</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">bronze-200</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">zinc-700</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Hover states</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">bronze-300</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">zinc-800</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Borders</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">bronze-700</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">zinc-400</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Secondary text</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">bronze-800</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">zinc-200</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Primary text</td></tr>
+        <tr><td style="padding: 8px 12px;">bronze-900</td><td style="padding: 8px 12px;">zinc-100</td><td style="padding: 8px 12px; color: var(--muted);">Headings</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 4. SEMANTIC TOKENS -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section id="semantic">
+  <h2 class="section-title">Semantic Tokens</h2>
+  <p class="section-desc">
+    CSS custom properties that resolve to different values in light and dark mode. Use these for theme-aware styling instead of hard-coding bronze/zinc values.
+  </p>
+
+  <div class="subsection">
+    <div class="subsection-title">Surfaces</div>
+    <div class="token-list">
+      <div class="token-row">
+        <div class="token-name">--surface-base</div>
+        <div class="token-value"><div class="token-dot" style="background: #f5f0e6;"></div> #f5f0e6</div>
+        <div class="token-value"><div class="token-dot" style="background: #09090b;"></div> #09090b</div>
+      </div>
+      <div class="token-row">
+        <div class="token-name">--surface-primary</div>
+        <div class="token-value"><div class="token-dot" style="background: #faf7f1;"></div> #faf7f1</div>
+        <div class="token-value"><div class="token-dot" style="background: #18181b;"></div> #18181b</div>
+      </div>
+      <div class="token-row">
+        <div class="token-name">--surface-secondary</div>
+        <div class="token-value"><div class="token-dot" style="background: #ede7db;"></div> #ede7db</div>
+        <div class="token-value"><div class="token-dot" style="background: rgba(39,39,42,0.3); border: 1px solid rgba(255,255,255,0.05);"></div> zinc-800/30</div>
+      </div>
+      <div class="token-row">
+        <div class="token-name">--surface-hover</div>
+        <div class="token-value"><div class="token-dot" style="background: #e2dbd0;"></div> #e2dbd0</div>
+        <div class="token-value"><div class="token-dot" style="background: #18181b;"></div> #18181b</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">Borders</div>
+    <div class="token-list">
+      <div class="token-row">
+        <div class="token-name">--border-default</div>
+        <div class="token-value"><div class="token-dot" style="background: #e2dbd0;"></div> #e2dbd0</div>
+        <div class="token-value"><div class="token-dot" style="background: #27272a;"></div> #27272a</div>
+      </div>
+      <div class="token-row">
+        <div class="token-name">--border-hover</div>
+        <div class="token-value"><div class="token-dot" style="background: #b8a078;"></div> #b8a078</div>
+        <div class="token-value"><div class="token-dot" style="background: #3a342e;"></div> #3a342e</div>
+      </div>
+      <div class="token-row">
+        <div class="token-name">--border-subtle</div>
+        <div class="token-value"><div class="token-dot" style="background: rgba(226,219,208,0.6);"></div> bronze-300/60</div>
+        <div class="token-value"><div class="token-dot" style="background: rgba(39,39,42,0.6); border: 1px solid rgba(255,255,255,0.05);"></div> zinc-800/60</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">Text Chrome</div>
+    <div class="token-list">
+      <div class="token-row">
+        <div class="token-name">--text-chrome</div>
+        <div class="token-value"><span style="color: #7a7068; font-weight: 500;">Sample text</span> #7a7068</div>
+        <div class="token-value"><span style="color: #7a7068; font-weight: 500;">Sample text</span> #7a7068</div>
+      </div>
+      <div class="token-row">
+        <div class="token-name">--text-chrome-hover</div>
+        <div class="token-value"><span style="color: #5c534b; font-weight: 500;">Sample text</span> #5c534b</div>
+        <div class="token-value"><span style="color: #a89d90; font-weight: 500;">Sample text</span> #a89d90</div>
+      </div>
+      <div class="token-row">
+        <div class="token-name">--text-chrome-active</div>
+        <div class="token-value"><span style="color: #3a342e; font-weight: 500;">Sample text</span> #3a342e</div>
+        <div class="token-value"><span style="color: #a89d90; font-weight: 500;">Sample text</span> #a89d90</div>
+      </div>
+    </div>
+    <p style="font-size: 0.78rem; color: var(--subtle); margin-top: 12px;">
+      Note: <code style="color: #c9a84c;">text-chrome</code> uses bronze-600 in <em>both</em> modes &mdash; the warm tone carries into dark mode for character. Only hover/active shift between modes.
+    </p>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 5. STATUS COLORS -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section id="status">
+  <h2 class="section-title">Status Colors</h2>
+  <p class="section-desc">
+    The task lifecycle maps directly to accent colors. Each column in the Kanban board has a dedicated color identity.
+  </p>
+
+  <div class="status-flow" style="margin-bottom: 32px;">
+    <div class="status-pill" style="background: rgba(161,161,170,0.08); border-color: rgba(161,161,170,0.2); color: #a1a1aa;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/></svg>
+      Todo
+    </div>
+    <span class="status-arrow">&rarr;</span>
+    <div class="status-pill" style="background: rgba(91,131,176,0.08); border-color: rgba(91,131,176,0.3); color: #5b83b0;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 2s linear infinite;"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+      In Progress
+    </div>
+    <span class="status-arrow">&rarr;</span>
+    <div class="status-pill" style="background: rgba(201,168,76,0.08); border-color: rgba(201,168,76,0.3); color: #c9a84c;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><path d="M8 11l2 2 4-4"/></svg>
+      Verify
+    </div>
+    <span class="status-arrow">&rarr;</span>
+    <div class="status-pill" style="background: rgba(106,154,88,0.08); border-color: rgba(106,154,88,0.3); color: #6a9a58;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Done
+    </div>
+  </div>
+  <style>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>
+
+  <div class="subsection">
+    <div class="subsection-title">Status &rarr; Color Reference</div>
+    <table style="width: 100%; font-size: 0.82rem; border-collapse: collapse;">
+      <thead>
+        <tr style="text-align: left; color: var(--subtle); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Status</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Color</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Tailwind Class</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Used For</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">Todo</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#a1a1aa;vertical-align:middle;margin-right:6px;"></span><span style="color: var(--muted);">zinc-400</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><code style="color: var(--muted);">text-zinc-400</code></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Column icon, neutral state</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">In Progress</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#5b83b0;vertical-align:middle;margin-right:6px;"></span><span style="color: var(--muted);">steel</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><code style="color: var(--muted);">text-steel, border-steel, bg-steel</code></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Running spinner, task border glow, drop zone, action buttons</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);">Verify</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#c9a84c;vertical-align:middle;margin-right:6px;"></span><span style="color: var(--muted);">gold</span></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><code style="color: var(--muted);">text-gold, border-gold, bg-gold</code></td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Column icon, review badges, human-step alerts, verify dots</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 12px;">Done</td>
+          <td style="padding: 8px 12px;"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#6a9a58;vertical-align:middle;margin-right:6px;"></span><span style="color: var(--muted);">patina</span></td>
+          <td style="padding: 8px 12px;"><code style="color: var(--muted);">text-patina, bg-patina</code></td>
+          <td style="padding: 8px 12px; color: var(--muted);">Completion checkmarks, success indicators, "mark complete" hover</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subsection" style="margin-top: 32px;">
+    <div class="subsection-title">Dispatch State Indicators</div>
+    <div class="usage-grid">
+      <div class="usage-card">
+        <div class="usage-preview">
+          <div style="width: 200px; padding: 14px 16px; border-radius: 8px; background: rgba(39,39,42,0.3); border: 1px solid rgba(39,39,42,0.6);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span style="font-size: 0.78rem; color: var(--muted);">Queued task</span>
+            </div>
+          </div>
+        </div>
+        <div class="usage-info">
+          <div class="usage-label">Queued</div>
+          <div class="usage-desc">Clock icon, neutral border. Waiting for dispatch.</div>
+        </div>
+      </div>
+      <div class="usage-card">
+        <div class="usage-preview">
+          <div style="width: 200px; padding: 14px 16px; border-radius: 8px; background: rgba(39,39,42,0.3); border: 1px solid rgba(161,161,170,0.3);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" style="animation: spin 1.5s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              <span style="font-size: 0.78rem; color: var(--muted);">Starting task</span>
+            </div>
+          </div>
+        </div>
+        <div class="usage-info">
+          <div class="usage-label">Starting</div>
+          <div class="usage-desc">Gray spinner. Tmux session is launching.</div>
+        </div>
+      </div>
+      <div class="usage-card">
+        <div class="usage-preview">
+          <div style="width: 200px; padding: 14px 16px; border-radius: 8px; background: rgba(39,39,42,0.3); border: 1px solid rgba(91,131,176,0.4); box-shadow: 0 0 12px rgba(91,131,176,0.15); animation: pulse-subtle 2s ease-in-out infinite;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5b83b0" stroke-width="2" style="animation: spin 1.5s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              <span style="font-size: 0.78rem; color: #5b83b0;">Running task</span>
+            </div>
+          </div>
+        </div>
+        <div class="usage-info">
+          <div class="usage-label">Running</div>
+          <div class="usage-desc">Steel border glow + pulse animation. Agent is actively working.</div>
+        </div>
+      </div>
+    </div>
+    <style>
+      @keyframes pulse-subtle {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.85; }
+      }
+    </style>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 6. SURFACES & DEPTH -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section id="surfaces">
+  <h2 class="section-title">Surfaces &amp; Depth</h2>
+  <p class="section-desc">
+    Three levels of surface depth create visual hierarchy. In dark mode, depth is achieved through subtle lightening; in light mode, through subtle darkening.
+  </p>
+
+  <div class="comparison" style="margin-bottom: 32px;">
+    <!-- Light mode -->
+    <div class="comparison-panel" style="background: #f5f0e6; border-color: #e2dbd0;">
+      <div class="comparison-label" style="background: #ede7db; color: #5c534b; border-color: #e2dbd0;">Light Mode</div>
+      <div class="comparison-body">
+        <div class="swatch-row">
+          <div class="mini-dot" style="background: #f5f0e6; border: 1px solid #e2dbd0;"></div>
+          <div class="swatch-label" style="color: #3a342e; font-size: 0.78rem;"><strong>Base</strong> &mdash; surface-base <span style="color: #7a7068;">#f5f0e6</span></div>
+        </div>
+        <div class="swatch-row">
+          <div class="mini-dot" style="background: #faf7f1; border: 1px solid #e2dbd0;"></div>
+          <div class="swatch-label" style="color: #3a342e; font-size: 0.78rem;"><strong>Primary</strong> &mdash; cards, panels <span style="color: #7a7068;">#faf7f1</span></div>
+        </div>
+        <div class="swatch-row">
+          <div class="mini-dot" style="background: #ede7db; border: 1px solid #e2dbd0;"></div>
+          <div class="swatch-label" style="color: #3a342e; font-size: 0.78rem;"><strong>Secondary</strong> &mdash; nested content <span style="color: #7a7068;">#ede7db</span></div>
+        </div>
+        <div class="swatch-row">
+          <div class="mini-dot" style="background: #e2dbd0; border: 1px solid #d4cbbf;"></div>
+          <div class="swatch-label" style="color: #3a342e; font-size: 0.78rem;"><strong>Hover</strong> &mdash; interactive highlight <span style="color: #7a7068;">#e2dbd0</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- Dark mode -->
+    <div class="comparison-panel" style="background: #09090b; border-color: #27272a;">
+      <div class="comparison-label" style="background: #18181b; color: #a1a1aa; border-color: #27272a;">Dark Mode</div>
+      <div class="comparison-body">
+        <div class="swatch-row">
+          <div class="mini-dot" style="background: #09090b; border: 1px solid #27272a;"></div>
+          <div class="swatch-label" style="color: #fafafa; font-size: 0.78rem;"><strong>Base</strong> &mdash; surface-base <span style="color: #71717a;">#09090b</span></div>
+        </div>
+        <div class="swatch-row">
+          <div class="mini-dot" style="background: #18181b; border: 1px solid #27272a;"></div>
+          <div class="swatch-label" style="color: #fafafa; font-size: 0.78rem;"><strong>Primary</strong> &mdash; cards, panels <span style="color: #71717a;">#18181b</span></div>
+        </div>
+        <div class="swatch-row">
+          <div class="mini-dot" style="background: rgba(39,39,42,0.3); border: 1px solid #27272a;"></div>
+          <div class="swatch-label" style="color: #fafafa; font-size: 0.78rem;"><strong>Secondary</strong> &mdash; nested content <span style="color: #71717a;">zinc-800/30</span></div>
+        </div>
+        <div class="swatch-row">
+          <div class="mini-dot" style="background: #18181b; border: 1px solid #27272a;"></div>
+          <div class="swatch-label" style="color: #fafafa; font-size: 0.78rem;"><strong>Hover</strong> &mdash; interactive highlight <span style="color: #71717a;">#18181b</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">Shadow Usage</div>
+    <div class="code-block">
+<span class="cm">/* Modals &amp; dropdowns — heavy shadow */</span>
+shadow-2xl shadow-black/20 <span class="kw">dark:</span>shadow-black/40
+
+<span class="cm">/* Running task card — colored glow */</span>
+shadow-[0_0_12px_rgba(91,131,176,0.15)]  <span class="cm">/* steel glow */</span>
+
+<span class="cm">/* Drag overlay — elevated card */</span>
+shadow-lg ring-1 ring-steel-dark
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 7. BUTTONS -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section id="buttons">
+  <h2 class="section-title">Buttons</h2>
+  <p class="section-desc">
+    Two button tiers: primary (bordered, with background) and secondary (text-only). Both use the text-chrome color scale.
+  </p>
+
+  <div class="subsection">
+    <div class="subsection-title">Dark Mode</div>
+    <div class="btn-row" style="margin-bottom: 24px;">
+      <div class="btn-sample" style="background: rgba(39,39,42,0.6); border: 1px solid rgba(58,52,46,0.5); color: #a89d90;">
+        btn-primary
+      </div>
+      <div class="btn-sample" style="background: transparent; border: 1px solid transparent; color: #7a7068;">
+        btn-secondary
+      </div>
+      <div class="btn-sample" style="background: rgba(91,131,176,0.1); border: 1px solid rgba(91,131,176,0.3); color: #5b83b0;">
+        Action (steel)
+      </div>
+      <div class="btn-sample" style="background: rgba(106,154,88,0.1); border: 1px solid rgba(106,154,88,0.3); color: #6a9a58;">
+        Complete (patina)
+      </div>
+      <div class="btn-sample" style="background: transparent; border: 1px solid transparent; color: #b35a5a;">
+        Delete (crimson)
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">Light Mode</div>
+    <div class="btn-row" style="margin-bottom: 24px;">
+      <div class="btn-sample" style="background: rgba(237,231,219,0.6); border: 1px solid rgba(212,203,191,0.5); color: #3a342e;">
+        btn-primary
+      </div>
+      <div class="btn-sample" style="background: transparent; border: 1px solid transparent; color: #7a7068;">
+        btn-secondary
+      </div>
+      <div class="btn-sample" style="background: rgba(91,131,176,0.1); border: 1px solid rgba(91,131,176,0.3); color: #4a72a0;">
+        Action (steel)
+      </div>
+      <div class="btn-sample" style="background: rgba(106,154,88,0.1); border: 1px solid rgba(106,154,88,0.3); color: #5a8a48;">
+        Complete (patina)
+      </div>
+      <div class="btn-sample" style="background: transparent; border: 1px solid transparent; color: #b35a5a;">
+        Delete (crimson)
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">Button CSS (from globals.css)</div>
+    <div class="code-block">
+<span class="cm">/* Primary — bordered with subtle fill */</span>
+.<span class="fn">btn-primary</span> {
+  @apply px-3 py-1.5 text-xs font-medium rounded-md shadow-sm transition-colors;
+  @apply <span class="str">text-text-chrome-active</span> <span class="str">bg-bronze-200/60</span> border <span class="str">border-bronze-400/50</span>
+         <span class="kw">dark:</span><span class="str">bg-zinc-800/60</span> <span class="kw">dark:</span><span class="str">border-bronze-800/50</span>;
+  @apply hover:<span class="str">bg-bronze-300/60</span> <span class="kw">dark:</span>hover:<span class="str">bg-zinc-700/60</span>;
+}
+
+<span class="cm">/* Secondary — text only, no background */</span>
+.<span class="fn">btn-secondary</span> {
+  @apply px-3 py-1.5 text-xs font-medium rounded-md transition-colors;
+  @apply <span class="str">text-text-chrome</span> hover:<span class="str">text-text-chrome-hover</span>;
+}
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 8. TEXT COLORS -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section id="text">
+  <h2 class="section-title">Text Colors</h2>
+  <p class="section-desc">
+    Text uses bronze tones in light mode and zinc in dark mode, with the text-chrome semantic tokens providing the warm UI text color that bridges both modes.
+  </p>
+
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <!-- Headings -->
+    <div style="display: flex; align-items: baseline; gap: 16px; padding: 12px 16px; background: var(--section-bg); border: 1px solid var(--section-border); border-radius: 8px;">
+      <span style="width: 120px; flex-shrink: 0; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--subtle);">Headings</span>
+      <span style="font-size: 1.1rem; font-weight: 700; color: #fafafa;">Page Title</span>
+      <code style="font-size: 0.72rem; color: var(--subtle); margin-left: auto;">bronze-900 dark:zinc-100</code>
+    </div>
+    <!-- Primary text -->
+    <div style="display: flex; align-items: baseline; gap: 16px; padding: 12px 16px; background: var(--section-bg); border: 1px solid var(--section-border); border-radius: 8px;">
+      <span style="width: 120px; flex-shrink: 0; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--subtle);">Primary</span>
+      <span style="font-size: 0.9rem; color: #e4e4e7;">Task title and body content</span>
+      <code style="font-size: 0.72rem; color: var(--subtle); margin-left: auto;">bronze-800 dark:zinc-200</code>
+    </div>
+    <!-- Secondary text -->
+    <div style="display: flex; align-items: baseline; gap: 16px; padding: 12px 16px; background: var(--section-bg); border: 1px solid var(--section-border); border-radius: 8px;">
+      <span style="width: 120px; flex-shrink: 0; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--subtle);">Secondary</span>
+      <span style="font-size: 0.85rem; color: #a1a1aa;">Descriptions and timestamps</span>
+      <code style="font-size: 0.72rem; color: var(--subtle); margin-left: auto;">bronze-600 dark:zinc-400</code>
+    </div>
+    <!-- Chrome text -->
+    <div style="display: flex; align-items: baseline; gap: 16px; padding: 12px 16px; background: var(--section-bg); border: 1px solid var(--section-border); border-radius: 8px;">
+      <span style="width: 120px; flex-shrink: 0; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--subtle);">Chrome</span>
+      <span style="font-size: 0.85rem; color: #7a7068;">Sidebar labels, icons, UI controls</span>
+      <code style="font-size: 0.72rem; color: var(--subtle); margin-left: auto;">text-chrome (#7a7068)</code>
+    </div>
+    <!-- Muted text -->
+    <div style="display: flex; align-items: baseline; gap: 16px; padding: 12px 16px; background: var(--section-bg); border: 1px solid var(--section-border); border-radius: 8px;">
+      <span style="width: 120px; flex-shrink: 0; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--subtle);">Muted</span>
+      <span style="font-size: 0.85rem; color: #52525b;">Placeholders, disabled text</span>
+      <code style="font-size: 0.72rem; color: var(--subtle); margin-left: auto;">bronze-500 dark:zinc-600</code>
+    </div>
+    <!-- Code / inline -->
+    <div style="display: flex; align-items: baseline; gap: 16px; padding: 12px 16px; background: var(--section-bg); border: 1px solid var(--section-border); border-radius: 8px;">
+      <span style="width: 120px; flex-shrink: 0; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--subtle);">Inline Code</span>
+      <code style="font-size: 0.85rem; padding: 2px 6px; border-radius: 4px; background: rgba(39,39,42,0.3);"><span style="color: #d4b85e;">amber-700</span> dark:<span style="color: rgba(252,211,77,0.8);">amber-300/80</span></code>
+      <code style="font-size: 0.72rem; color: var(--subtle); margin-left: auto;">Syntax highlighting</code>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 9. BORDERS -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section id="borders">
+  <h2 class="section-title">Borders</h2>
+  <p class="section-desc">
+    Three tiers of border emphasis, plus accent borders for status indication.
+  </p>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <!-- Default -->
+    <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--section-bg); border-radius: 8px;">
+      <div style="width: 80px; height: 48px; border-radius: 6px; background: rgba(39,39,42,0.15); border: 1px solid #27272a;"></div>
+      <div>
+        <div style="font-size: 0.82rem; font-weight: 600;">Default</div>
+        <div style="font-size: 0.72rem; color: var(--subtle);">Cards, panels, dividers &mdash; <code>border-default</code> / <code>border-bronze-300 dark:border-zinc-800</code></div>
+      </div>
+    </div>
+    <!-- Subtle -->
+    <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--section-bg); border-radius: 8px;">
+      <div style="width: 80px; height: 48px; border-radius: 6px; background: rgba(39,39,42,0.15); border: 1px solid rgba(39,39,42,0.6);"></div>
+      <div>
+        <div style="font-size: 0.82rem; font-weight: 600;">Subtle</div>
+        <div style="font-size: 0.72rem; color: var(--subtle);">Low-contrast separators, nested elements &mdash; <code>border-subtle</code> / <code>zinc-800/60</code></div>
+      </div>
+    </div>
+    <!-- Hover -->
+    <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--section-bg); border-radius: 8px;">
+      <div style="width: 80px; height: 48px; border-radius: 6px; background: rgba(39,39,42,0.15); border: 1px solid #3a342e;"></div>
+      <div>
+        <div style="font-size: 0.82rem; font-weight: 600;">Hover</div>
+        <div style="font-size: 0.72rem; color: var(--subtle);">Warm accent on hover &mdash; <code>border-hover</code> / <code>#b8a078 light, #3a342e dark</code></div>
+      </div>
+    </div>
+    <!-- Steel accent -->
+    <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--section-bg); border-radius: 8px;">
+      <div style="width: 80px; height: 48px; border-radius: 6px; background: rgba(39,39,42,0.15); border: 1px solid rgba(91,131,176,0.4); box-shadow: 0 0 8px rgba(91,131,176,0.1);"></div>
+      <div>
+        <div style="font-size: 0.82rem; font-weight: 600;">Steel Accent</div>
+        <div style="font-size: 0.72rem; color: var(--subtle);">Running tasks, active state &mdash; <code>border-steel/40</code> with optional glow</div>
+      </div>
+    </div>
+    <!-- Gold accent -->
+    <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--section-bg); border-radius: 8px;">
+      <div style="width: 80px; height: 48px; border-radius: 6px; background: rgba(39,39,42,0.15); border: 1px solid rgba(201,168,76,0.3);"></div>
+      <div>
+        <div style="font-size: 0.82rem; font-weight: 600;">Gold Accent</div>
+        <div style="font-size: 0.72rem; color: var(--subtle);">Verification alerts, review items &mdash; <code>border-gold/20</code> to <code>border-gold/50</code></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 10. USAGE PATTERNS -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section id="usage">
+  <h2 class="section-title">Usage Patterns</h2>
+  <p class="section-desc">
+    Common patterns for combining colors across components. These demonstrate how the palette comes together in practice.
+  </p>
+
+  <div class="usage-grid">
+    <!-- Task Card -->
+    <div class="usage-card">
+      <div class="usage-preview" style="padding: 16px;">
+        <div style="width: 100%; padding: 14px 16px; border-radius: 8px; background: #18181b; border: 1px solid #27272a;">
+          <div style="font-size: 0.82rem; font-weight: 600; color: #e4e4e7; margin-bottom: 6px;">Fix authentication bug</div>
+          <div style="font-size: 0.72rem; color: #71717a;">High priority &middot; 2 min ago</div>
+        </div>
+      </div>
+      <div class="usage-info">
+        <div class="usage-label">Task Card (idle)</div>
+        <div class="usage-desc">zinc-900 bg, zinc-800 border, zinc-200 title, zinc-500 meta</div>
+      </div>
+    </div>
+
+    <!-- Running Task Card -->
+    <div class="usage-card">
+      <div class="usage-preview" style="padding: 16px;">
+        <div style="width: 100%; padding: 14px 16px; border-radius: 8px; background: #18181b; border: 1px solid rgba(91,131,176,0.4); box-shadow: 0 0 12px rgba(91,131,176,0.15); animation: pulse-subtle 2s ease-in-out infinite;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5b83b0" stroke-width="2.5" style="animation: spin 1.5s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <span style="font-size: 0.82rem; font-weight: 600; color: #e4e4e7;">Optimize queries</span>
+          </div>
+          <div style="font-size: 0.72rem; color: #71717a;">Agent working&hellip;</div>
+        </div>
+      </div>
+      <div class="usage-info">
+        <div class="usage-label">Task Card (running)</div>
+        <div class="usage-desc">steel/40 border + glow + pulse animation, steel spinner</div>
+      </div>
+    </div>
+
+    <!-- Sidebar item -->
+    <div class="usage-card">
+      <div class="usage-preview" style="padding: 16px; flex-direction: column; gap: 4px; align-items: stretch;">
+        <div style="padding: 8px 12px; border-radius: 6px; display: flex; align-items: center; gap: 8px; color: #7a7068; font-size: 0.8rem;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #a1a1aa;"></div>
+          my-project
+        </div>
+        <div style="padding: 8px 12px; border-radius: 6px; display: flex; align-items: center; gap: 8px; color: #a89d90; font-size: 0.8rem; background: rgba(39,39,42,0.3);">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #5b83b0;"></div>
+          active-project
+        </div>
+      </div>
+      <div class="usage-info">
+        <div class="usage-label">Sidebar Items</div>
+        <div class="usage-desc">text-chrome for labels, status dots match status color, selected gets surface-secondary bg</div>
+      </div>
+    </div>
+
+    <!-- Merge conflict badge -->
+    <div class="usage-card">
+      <div class="usage-preview">
+        <div style="padding: 10px 14px; border-radius: 6px; background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.15); display: flex; align-items: center; gap: 8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span style="font-size: 0.78rem; color: #f87171;">Merge conflict on <span style="color: #fbbf24;">proq/abc123</span></span>
+        </div>
+      </div>
+      <div class="usage-info">
+        <div class="usage-label">Merge Conflict</div>
+        <div class="usage-desc">red-500 bg/border at low opacity, yellow-400 for branch name</div>
+      </div>
+    </div>
+
+    <!-- Verify alert -->
+    <div class="usage-card">
+      <div class="usage-preview">
+        <div style="padding: 10px 14px; border-radius: 6px; background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.2); display: flex; align-items: center; gap: 8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span style="font-size: 0.78rem; color: #c9a84c;">3 steps for you</span>
+        </div>
+      </div>
+      <div class="usage-info">
+        <div class="usage-label">Human Steps Alert</div>
+        <div class="usage-desc">gold/8 bg, gold/20 border, gold text + icon</div>
+      </div>
+    </div>
+
+    <!-- Drop zone -->
+    <div class="usage-card">
+      <div class="usage-preview">
+        <div style="width: 100%; padding: 20px; border-radius: 8px; background: rgba(91,131,176,0.05); border: 2px dashed rgba(91,131,176,0.2); text-align: center;">
+          <span style="font-size: 0.78rem; color: #5b83b0;">Drop here</span>
+        </div>
+      </div>
+      <div class="usage-info">
+        <div class="usage-label">In-Progress Drop Zone</div>
+        <div class="usage-desc">steel/5 bg + ring-steel/20 when dragging over the in-progress column</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- 11. TYPOGRAPHY -->
+<!-- ════════════════════════════════════════════════════════ -->
+<section id="typography">
+  <h2 class="section-title">Typography</h2>
+  <p class="section-desc">
+    Three font families: Gemunu Libre for the brand mark, Geist Sans for body text, and Geist Mono for code.
+  </p>
+
+  <div style="display: flex; flex-direction: column; gap: 24px;">
+    <!-- Gemunu Libre -->
+    <div style="padding: 24px; background: var(--section-bg); border: 1px solid var(--section-border); border-radius: 10px;">
+      <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--subtle); margin-bottom: 12px;">Display &mdash; Gemunu Libre 800</div>
+      <div style="font-family: 'Gemunu Libre', sans-serif; font-weight: 800; font-size: 2.5rem; letter-spacing: -0.02em; line-height: 1;">proq</div>
+      <div style="font-size: 0.75rem; color: var(--subtle); margin-top: 8px;">Used for: Logo/brand mark only. Variable: <code>--font-gemunu-libre</code></div>
+    </div>
+    <!-- Geist Sans -->
+    <div style="padding: 24px; background: var(--section-bg); border: 1px solid var(--section-border); border-radius: 10px;">
+      <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--subtle); margin-bottom: 12px;">Body &mdash; Geist Sans 100&ndash;900</div>
+      <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 4px;">The quick brown fox jumps over the lazy dog</div>
+      <div style="font-size: 0.9rem; color: var(--muted);">ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789</div>
+      <div style="font-size: 0.75rem; color: var(--subtle); margin-top: 8px;">Used for: All UI text, headings, labels, body copy. Variable: <code>--font-geist-sans</code></div>
+    </div>
+    <!-- Geist Mono -->
+    <div style="padding: 24px; background: var(--section-bg); border: 1px solid var(--section-border); border-radius: 10px;">
+      <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--subtle); margin-bottom: 12px;">Mono &mdash; Geist Mono 100&ndash;900</div>
+      <div style="font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 0.9rem; margin-bottom: 4px;">const proq = await dispatch(task)</div>
+      <div style="font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 0.82rem; color: var(--muted);">0123456789 {} [] () => &lt;&gt; // /* */</div>
+      <div style="font-size: 0.75rem; color: var(--subtle); margin-top: 8px;">Used for: Code blocks, terminal output, inline code, chat panel. Variable: <code>--font-geist-mono</code></div>
+    </div>
+  </div>
+
+  <div class="subsection" style="margin-top: 32px;">
+    <div class="subsection-title">Font Scale</div>
+    <table style="width: 100%; font-size: 0.82rem; border-collapse: collapse;">
+      <thead>
+        <tr style="text-align: left; color: var(--subtle); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Size</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Tailwind</th>
+          <th style="padding: 8px 12px; border-bottom: 1px solid var(--section-border);">Usage</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">0.7rem</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><code>text-[0.7rem]</code></td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Subsection labels, timestamps</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">0.75rem</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><code>text-xs</code></td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Buttons, badges, meta info</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">0.8rem</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><code>text-[0.8rem]</code></td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Sidebar items, form fields</td></tr>
+        <tr><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">0.875rem</td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3);"><code>text-sm</code></td><td style="padding: 8px 12px; border-bottom: 1px solid rgba(39,39,42,0.3); color: var(--muted);">Body text, descriptions</td></tr>
+        <tr><td style="padding: 8px 12px; color: var(--muted);">1rem+</td><td style="padding: 8px 12px;"><code>text-base+</code></td><td style="padding: 8px 12px; color: var(--muted);">Section headings, modal titles</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subsection" style="margin-top: 32px;">
+    <div class="subsection-title">Scrollbar Styling</div>
+    <div class="comparison">
+      <div class="comparison-panel" style="background: #f5f0e6; border-color: #e2dbd0;">
+        <div class="comparison-label" style="background: #ede7db; color: #5c534b; border-color: #e2dbd0;">Light</div>
+        <div class="comparison-body">
+          <div class="swatch-row">
+            <div class="mini-dot" style="background: #f5f0e6; border: 1px solid #e2dbd0; width: 8px; height: 40px; border-radius: 0;"></div>
+            <div class="swatch-label" style="color: #3a342e; font-size: 0.75rem;">Track: bronze-100 <span style="color: #7a7068;">#f5f0e6</span></div>
+          </div>
+          <div class="swatch-row">
+            <div class="mini-dot" style="background: #d4cbbf; border: 2px solid #f5f0e6; width: 8px; height: 40px; border-radius: 9999px;"></div>
+            <div class="swatch-label" style="color: #3a342e; font-size: 0.75rem;">Thumb: bronze-400 <span style="color: #7a7068;">#d4cbbf</span></div>
+          </div>
+          <div class="swatch-row">
+            <div class="mini-dot" style="background: #a89d90; border: 2px solid #f5f0e6; width: 8px; height: 40px; border-radius: 9999px;"></div>
+            <div class="swatch-label" style="color: #3a342e; font-size: 0.75rem;">Thumb hover: bronze-500 <span style="color: #7a7068;">#a89d90</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="comparison-panel" style="background: #09090b; border-color: #27272a;">
+        <div class="comparison-label" style="background: #18181b; color: #a1a1aa; border-color: #27272a;">Dark</div>
+        <div class="comparison-body">
+          <div class="swatch-row">
+            <div class="mini-dot" style="background: #18181b; border: 1px solid #27272a; width: 8px; height: 40px; border-radius: 0;"></div>
+            <div class="swatch-label" style="color: #fafafa; font-size: 0.75rem;">Track: zinc-900 <span style="color: #71717a;">#18181b</span></div>
+          </div>
+          <div class="swatch-row">
+            <div class="mini-dot" style="background: #27272a; border: 2px solid #18181b; width: 8px; height: 40px; border-radius: 9999px;"></div>
+            <div class="swatch-label" style="color: #fafafa; font-size: 0.75rem;">Thumb: zinc-800 <span style="color: #71717a;">#27272a</span></div>
+          </div>
+          <div class="swatch-row">
+            <div class="mini-dot" style="background: #3f3f46; border: 2px solid #18181b; width: 8px; height: 40px; border-radius: 9999px;"></div>
+            <div class="swatch-label" style="color: #fafafa; font-size: 0.75rem;">Thumb hover: zinc-700 <span style="color: #71717a;">#3f3f46</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection" style="margin-top: 32px;">
+    <div class="subsection-title">Animation</div>
+    <div class="code-block">
+<span class="cm">/* Subtle pulse for running/locked tasks */</span>
+@keyframes <span class="fn">pulse-subtle</span> {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+.<span class="fn">animate-pulse-subtle</span> {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+<span class="cm">/* Quick capture input animation */</span>
+@keyframes <span class="fn">quick-capture-in</span> {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+<span class="cm">/* Cursor blink for inputs */</span>
+@keyframes <span class="fn">cursor-blink</span> {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- FOOTER -->
+<!-- ════════════════════════════════════════════════════════ -->
+<footer style="padding: 48px 40px; text-align: center;">
+  <p style="font-size: 0.78rem; color: var(--subtle);">
+    proq Style Guide &mdash; Generated from <code style="color: var(--muted);">tailwind.config.ts</code> and <code style="color: var(--muted);">globals.css</code>
+  </p>
+</footer>
+
+</body>
+</html>
