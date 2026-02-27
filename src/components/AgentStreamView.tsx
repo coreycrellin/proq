@@ -409,19 +409,20 @@ function AskUserQuestionContent({ input, result }: { input: Record<string, unkno
 }
 
 function ToolBlock({ block, collapseSignal }: { block: RenderBlock; collapseSignal: number }) {
-  const [collapsed, setCollapsed] = useState(collapseSignal > 0);
+  const isAskQuestion = block.toolName === 'AskUserQuestion';
+  const [collapsed, setCollapsed] = useState(isAskQuestion ? false : collapseSignal > 0);
 
-  // Sync with global collapse toggle
+  // Sync with global collapse toggle (AskUserQuestion always stays expanded)
   useEffect(() => {
+    if (isAskQuestion) return;
     if (collapseSignal > 0) setCollapsed(true);
     else if (collapseSignal < 0) setCollapsed(false);
-  }, [collapseSignal]);
+  }, [collapseSignal, isAskQuestion]);
   const Icon = getToolIcon(block.toolName || '');
   const description = getToolDescription(block.toolName || '', block.toolInput || {});
   const inputDisplay = getToolInputDisplay(block.toolName || '', block.toolInput || {});
   const hasResult = block.toolResult !== undefined;
   const isActive = block.status === 'active' && !hasResult;
-  const isAskQuestion = block.toolName === 'AskUserQuestion';
 
   return (
     <div className="flex gap-3 py-2.5">
