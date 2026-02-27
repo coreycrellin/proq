@@ -141,7 +141,7 @@ if (jsonMode && jsonlPath) {
     fs.writeFileSync(replyPromptFile, message, "utf-8");
     fs.writeFileSync(
       replyLauncherFile,
-      `#!/bin/bash\nexec env -u CLAUDECODE -u PORT ${claudeBin} ${resumeFlag} -p --verbose --output-format stream-json --dangerously-skip-permissions "$(cat '${replyPromptFile}')" >> '${jsonlPath}' 2>&1\n`,
+      `#!/bin/bash\nexec env -u CLAUDECODE -u PORT '${claudeBin}' ${resumeFlag} -p --verbose --output-format stream-json --dangerously-skip-permissions "$(cat '${replyPromptFile}')" >> '${jsonlPath}' 2>&1\n`,
       "utf-8",
     );
 
