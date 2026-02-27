@@ -344,12 +344,12 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
         {(showTerminal || isQueued || showStaticLog) && !rightPanelExpanded && (
           <div
             onMouseDown={handleVerticalResizeMouseDown}
-            className="shrink-0 w-1.5 cursor-col-resize bg-bronze-200/60 dark:bg-zinc-800/80 hover:bg-steel/30 active:bg-steel/40 transition-colors group relative flex items-center justify-center"
+            className="shrink-0 w-1.5 cursor-col-resize bg-bronze-200/60 dark:bg-zinc-800/80 hover:bg-steel/30 active:bg-steel/40 transition-colors group z-10 relative flex items-center justify-center"
           >
-            {/* Wide hit target */}
-            <div className="absolute inset-y-0 -left-2 -right-2" />
+            {/* Wide hit target — z-20 so it sits above adjacent panels */}
+            <div className="absolute inset-y-0 -left-2 -right-2 z-20 cursor-col-resize" />
             {/* Grip dots visible on hover */}
-            <div className="flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
               <div className="w-0.5 h-0.5 rounded-full bg-zinc-500" />
               <div className="w-0.5 h-0.5 rounded-full bg-zinc-500" />
               <div className="w-0.5 h-0.5 rounded-full bg-zinc-500" />
