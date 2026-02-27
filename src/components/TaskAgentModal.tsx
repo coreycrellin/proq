@@ -16,6 +16,8 @@ import {
   ClockIcon,
   PlayIcon,
   GitBranchIcon,
+  Maximize2Icon,
+  Minimize2Icon,
 } from 'lucide-react';
 import type { Task, TaskAttachment } from '@/lib/types';
 import { AgentStreamView } from './AgentStreamView';
@@ -65,10 +67,15 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
     return data;
   }, [projectId, task.id]);
   const [topPanelPercent, setTopPanelPercent] = useState(30);
+  const [rightPanelExpanded, setRightPanelExpanded] = useState(false);
+  const [rightPanelPercent, setRightPanelPercent] = useState(33);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const bottomPanelRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
+  const isDraggingVerticalRef = useRef(false);
 
+  // Horizontal resize (top/bottom split within right panel)
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     isDraggingRef.current = true;
@@ -90,6 +97,33 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
       document.body.style.userSelect = '';
     };
     document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, []);
+
+  // Vertical resize (left/right split between terminal and details)
+  const handleVerticalResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingVerticalRef.current = true;
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingVerticalRef.current || !modal) return;
+      const rect = modal.getBoundingClientRect();
+      // Right panel percentage = distance from right edge
+      const pct = ((rect.right - ev.clientX) / rect.width) * 100;
+      setRightPanelPercent(Math.min(Math.max(pct, 20), 70));
+    };
+    const onMouseUp = () => {
+      isDraggingVerticalRef.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
@@ -143,11 +177,12 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
 
       {/* Modal */}
       <div
+        ref={modalRef}
         className="relative w-full max-w-7xl h-[90vh] flex flex-row rounded-lg border border-bronze-300 dark:border-[#222] bg-bronze-50 dark:bg-[#141414] shadow-2xl shadow-black/60 mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Left panel: terminal or queued state (70%) ── */}
-        <div className="flex-1 min-h-0 flex flex-col">
+        {/* ── Left panel: terminal or queued state ── */}
+        <div className={`min-h-0 flex flex-col ${rightPanelExpanded ? 'hidden' : ''}`} style={{ flex: `0 0 calc(${100 - rightPanelPercent}% - 3px)` }}>
           {/* Worktree status — only in parallel mode */}
           {parallelMode && (
             <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-zinc-900/50">
@@ -305,15 +340,51 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
           ) : null}
         </div>
 
-        {/* ── Right panel: task details (30% with terminal, full width without) ── */}
-        <div ref={rightPanelRef} className={`${showTerminal || isQueued ? 'w-[33%] border-l border-bronze-300 dark:border-zinc-800' : 'w-full'} shrink-0 flex flex-col overflow-hidden bg-bronze-50 dark:bg-[#141414]`}>
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors z-10"
-          >
-            <XIcon className="w-4 h-4" />
-          </button>
+        {/* ── Vertical resize handle (between terminal and details) ── */}
+        {(showTerminal || isQueued || showStaticLog) && !rightPanelExpanded && (
+          <div className="shrink-0 w-1.5 relative z-10">
+            {/* Hit target — wider than visible handle for easy grabbing */}
+            <div
+              onMouseDown={handleVerticalResizeMouseDown}
+              className="absolute inset-y-0 -left-2 -right-2 z-20 cursor-col-resize group"
+            >
+              {/* Visible bar */}
+              <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1.5 bg-bronze-200/60 dark:bg-zinc-800/80 group-hover:bg-steel/30 group-active:bg-steel/40 transition-colors flex items-center justify-center">
+                {/* Grip dots */}
+                <div className="flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="w-0.5 h-0.5 rounded-full bg-zinc-500" />
+                  <div className="w-0.5 h-0.5 rounded-full bg-zinc-500" />
+                  <div className="w-0.5 h-0.5 rounded-full bg-zinc-500" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Right panel: task details ── */}
+        <div ref={rightPanelRef} className={`${rightPanelExpanded ? 'w-full' : (showTerminal || isQueued || showStaticLog ? '' : 'w-full')} shrink-0 flex flex-col overflow-hidden bg-bronze-50 dark:bg-[#141414]`} style={(showTerminal || isQueued || showStaticLog) && !rightPanelExpanded ? { flex: `0 0 calc(${rightPanelPercent}% - 3px)` } : undefined}>
+          {/* Expand / Close buttons */}
+          <div className="absolute top-4 right-4 flex items-center gap-1 z-10">
+            {(showTerminal || isQueued || showStaticLog) && (
+              <button
+                onClick={() => setRightPanelExpanded(prev => !prev)}
+                className="p-1.5 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
+                title={rightPanelExpanded ? 'Show terminal' : 'Expand details'}
+              >
+                {rightPanelExpanded ? (
+                  <Minimize2Icon className="w-4 h-4" />
+                ) : (
+                  <Maximize2Icon className="w-4 h-4" />
+                )}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
 
           {/* Top half: title, status, description */}
           <div className="overflow-y-auto p-5 pt-12 space-y-4 shrink-0" style={{ height: `${topPanelPercent}%` }}>
