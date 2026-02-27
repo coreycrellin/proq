@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 export interface TerminalTab {
   id: string;
   label: string;
-  type: 'shell' | 'task';
+  type: 'shell' | 'task' | 'supervisor';
   status?: 'running' | 'done';
 }
 
@@ -19,7 +19,7 @@ interface TerminalTabsContextValue {
   getTabs(projectId: string): TerminalTab[];
   getActiveTabId(projectId: string): string;
   setActiveTabId(projectId: string, tabId: string): void;
-  openTab(projectId: string, tabId: string, label: string, type: 'shell' | 'task'): void;
+  openTab(projectId: string, tabId: string, label: string, type: 'shell' | 'task' | 'supervisor'): void;
   closeTab(projectId: string, tabId: string): void;
   renameTab(projectId: string, tabId: string, label: string): void;
   markTabDone(projectId: string, tabId: string): void;
@@ -40,11 +40,11 @@ function getOrCreate(
   return state[projectId] || { tabs: [dt], activeTabId: dt.id };
 }
 
-/** Extract shell tabs as persistable data */
-function shellTabsFor(ps: ProjectTerminalState): Array<{ id: string; label: string }> {
+/** Extract user-created tabs (shell + supervisor) as persistable data */
+function persistableTabsFor(ps: ProjectTerminalState): Array<{ id: string; label: string; type?: 'shell' | 'supervisor' }> {
   return ps.tabs
-    .filter((t) => t.type === 'shell')
-    .map(({ id, label }) => ({ id, label }));
+    .filter((t) => t.type === 'shell' || t.type === 'supervisor')
+    .map(({ id, label, type }) => ({ id, label, ...(type === 'supervisor' ? { type: type as 'supervisor' } : {}) }));
 }
 
 export function TerminalTabsProvider({ children }: { children: React.ReactNode }) {
@@ -56,7 +56,7 @@ export function TerminalTabsProvider({ children }: { children: React.ReactNode }
   const persistTabs = useCallback((projectId: string, ps: ProjectTerminalState) => {
     if (saveTimers.current[projectId]) clearTimeout(saveTimers.current[projectId]);
     saveTimers.current[projectId] = setTimeout(() => {
-      const tabs = shellTabsFor(ps);
+      const tabs = persistableTabsFor(ps);
       fetch(`/api/projects/${projectId}/terminal-tabs`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -73,21 +73,21 @@ export function TerminalTabsProvider({ children }: { children: React.ReactNode }
     fetch(`/api/projects/${projectId}/terminal-tabs`)
       .then((res) => res.json())
       .then((data) => {
-        const saved: Array<{ id: string; label: string }> = data.tabs || [];
+        const saved: Array<{ id: string; label: string; type?: 'shell' | 'supervisor' }> = data.tabs || [];
         const savedActiveTabId: string | undefined = data.activeTabId;
         setState((prev) => {
           const existing = prev[projectId];
           // If tabs were already added (e.g. task tabs opened before hydration), merge
           const taskTabs = existing ? existing.tabs.filter((t) => t.type === 'task') : [];
 
-          let shellTabs: TerminalTab[];
+          let userTabs: TerminalTab[];
           if (saved.length > 0) {
-            shellTabs = saved.map((t) => ({ ...t, type: 'shell' as const }));
+            userTabs = saved.map((t) => ({ ...t, type: (t.type || 'shell') as 'shell' | 'supervisor' }));
           } else {
-            shellTabs = [defaultTab(projectId)];
+            userTabs = [defaultTab(projectId)];
           }
 
-          const allTabs = [...shellTabs, ...taskTabs];
+          const allTabs = [...userTabs, ...taskTabs];
           // Restore saved active tab if it still exists, otherwise fall back
           const activeTabId =
             (savedActiveTabId && allTabs.find((t) => t.id === savedActiveTabId) ? savedActiveTabId : null)
@@ -128,7 +128,7 @@ export function TerminalTabsProvider({ children }: { children: React.ReactNode }
   }, [persistTabs]);
 
   const openTab = useCallback(
-    (projectId: string, tabId: string, label: string, type: 'shell' | 'task') => {
+    (projectId: string, tabId: string, label: string, type: 'shell' | 'task' | 'supervisor') => {
       setState((prev) => {
         const ps = getOrCreate(prev, projectId);
         if (ps.tabs.find((t) => t.id === tabId)) {
@@ -148,7 +148,7 @@ export function TerminalTabsProvider({ children }: { children: React.ReactNode }
             activeTabId: tabId,
           },
         };
-        if (type === 'shell') persistTabs(projectId, next[projectId]);
+        if (type === 'shell' || type === 'supervisor') persistTabs(projectId, next[projectId]);
         return next;
       });
     },
@@ -156,7 +156,10 @@ export function TerminalTabsProvider({ children }: { children: React.ReactNode }
   );
 
   const closeTab = useCallback((projectId: string, tabId: string) => {
-    fetch(`/api/terminal/${tabId}`, { method: 'DELETE' }).catch(() => {});
+    // Only kill PTY for shell/task tabs, not supervisor tabs
+    if (!tabId.startsWith('supervisor-')) {
+      fetch(`/api/terminal/${tabId}`, { method: 'DELETE' }).catch(() => {});
+    }
 
     setState((prev) => {
       const ps = getOrCreate(prev, projectId);
