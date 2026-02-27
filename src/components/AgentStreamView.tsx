@@ -297,17 +297,18 @@ function CollapsibleOutput({
 
 /* ─── Individual block renderers ─── */
 
-function TextBlock({ block, collapseSignal }: { block: RenderBlock; collapseSignal: number }) {
-  const [collapsed, setCollapsed] = useState(collapseSignal > 0);
+function TextBlock({ block, collapseSignal, neverCollapse }: { block: RenderBlock; collapseSignal: number; neverCollapse?: boolean }) {
+  const [collapsed, setCollapsed] = useState(neverCollapse ? false : collapseSignal > 0);
   const text = block.text || '';
   const lineCount = text.split('\n').length;
   const isLong = lineCount > 8;
 
-  // Sync with global collapse toggle
+  // Sync with global collapse toggle (skip if this is the final output block)
   useEffect(() => {
+    if (neverCollapse) { setCollapsed(false); return; }
     if (collapseSignal > 0 && isLong) setCollapsed(true);
     else if (collapseSignal < 0) setCollapsed(false);
-  }, [collapseSignal, isLong]);
+  }, [collapseSignal, isLong, neverCollapse]);
 
   return (
     <div className="flex gap-3 py-2.5">
@@ -845,9 +846,23 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
 
   // Memoize the rendered blocks to avoid re-rendering unchanged blocks
   const renderedBlocks = useMemo(() => {
+    // Find the last text block before a result block — this is the final Claude output
+    // and should never collapse so the user always sees the summary
+    let lastTextBeforeResult: string | null = null;
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      if (blocks[i].type === 'result') {
+        // Walk back to find the preceding text block
+        for (let j = i - 1; j >= 0; j--) {
+          if (blocks[j].type === 'text') { lastTextBeforeResult = blocks[j].id; break; }
+          if (blocks[j].type === 'tool' || blocks[j].type === 'user-message') break;
+        }
+        break;
+      }
+    }
+
     return blocks.map((block) => {
       switch (block.type) {
-        case 'text': return <TextBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
+        case 'text': return <TextBlock key={block.id} block={block} collapseSignal={collapseSignal} neverCollapse={block.id === lastTextBeforeResult} />;
         case 'tool': return <ToolBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
         case 'thinking': return <ThinkingBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
         case 'result': return <ResultBlock key={block.id} block={block} />;
