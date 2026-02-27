@@ -84,10 +84,19 @@ export async function POST(request: Request, { params }: Params) {
     }
   }
 
+  // Collect image data URLs for persisting in the JSONL stream
+  const imageDataUrls = (attachments || [])
+    .filter((att: { type?: string; dataUrl?: string }) => att.type?.startsWith("image/") && att.dataUrl)
+    .map((att: { dataUrl: string }) => att.dataUrl);
+
   // Append user follow-up event to jsonl for history persistence
   appendFileSync(
     jsonlPath,
-    JSON.stringify({ type: "user-follow-up", message }) + "\n",
+    JSON.stringify({
+      type: "user-follow-up",
+      message,
+      ...(imageDataUrls.length > 0 ? { imageDataUrls } : {}),
+    }) + "\n",
     "utf-8",
   );
 

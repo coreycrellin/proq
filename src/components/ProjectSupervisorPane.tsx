@@ -72,6 +72,7 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
           id: `hist-${counter++}`,
           type: 'user-message',
           userMessage: msg.message,
+          userImages: msg.imageDataUrls,
           status: 'complete',
         });
       } else {

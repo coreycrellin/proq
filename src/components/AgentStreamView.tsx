@@ -88,6 +88,8 @@ interface RenderBlock {
   isError?: boolean;
   // user-message
   userMessage?: string;
+  /** Image data URLs attached to a user message */
+  userImages?: string[];
   // status
   status: 'active' | 'complete';
 }
@@ -580,8 +582,19 @@ function UserMessageBlock({ block }: { block: RenderBlock }) {
       <div className="shrink-0 mt-1">
         <UserIcon className="w-3.5 h-3.5 text-steel" />
       </div>
-      <div className="text-[13px] text-bronze-800 dark:text-zinc-200 leading-relaxed">
-        {renderFormattedText(block.userMessage || '')}
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] text-bronze-800 dark:text-zinc-200 leading-relaxed">
+          {renderFormattedText(block.userMessage || '')}
+        </div>
+        {block.userImages && block.userImages.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {block.userImages.map((url, i) => (
+              <div key={i} className="rounded-md overflow-hidden border border-border-default bg-surface-primary">
+                <img src={url} alt="Attached image" className="h-24 w-auto max-w-[200px] object-cover block" />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -679,11 +692,17 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     if (!onSendFollowUp || sendingFollowUp) return;
     setSendingFollowUp(true);
 
+    // Extract image data URLs from attachments
+    const imageUrls = (atts || [])
+      .filter(a => a.type?.startsWith('image/') && a.dataUrl)
+      .map(a => a.dataUrl!);
+
     // Add user message block (instant feedback)
     setBlocks(prev => [...prev, {
       id: nextBlockId(),
       type: 'user-message',
       userMessage: msg,
+      userImages: imageUrls.length > 0 ? imageUrls : undefined,
       status: 'complete',
     }]);
 
@@ -827,7 +846,9 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
 
         // Handle user follow-up events (persisted in jsonl by reply route)
         if ((event as unknown as { type: string; message?: string }).type === 'user-follow-up') {
-          const msg = (event as unknown as { message: string }).message;
+          const followUp = event as unknown as { message: string; imageDataUrls?: string[] };
+          const msg = followUp.message;
+          const imgs = followUp.imageDataUrls;
           setBlocks(prev => {
             // Skip duplicate if last block is already this user message (added locally)
             const last = prev[prev.length - 1];
@@ -838,6 +859,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
               id: nextBlockId(),
               type: 'user-message',
               userMessage: msg,
+              userImages: imgs && imgs.length > 0 ? imgs : undefined,
               status: 'complete' as const,
             }];
           });

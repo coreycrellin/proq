@@ -89,6 +89,7 @@ export interface ChatLogEntry {
   message: string;
   timestamp: string;
   toolCalls?: ToolCall[];
+  imageDataUrls?: string[];
 }
 
 // ── Agent session ────────────────────────────────────────

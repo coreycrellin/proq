@@ -52,8 +52,17 @@ export async function POST(req: NextRequest, { params }: Params) {
     fullMessage += `\n[Attached: ${attNames}]`;
   }
 
+  // Collect image data URLs for persisting in chat history
+  const imageDataUrlsForHistory = (attachments || [])
+    .filter((a) => a.type?.startsWith("image/") && a.dataUrl)
+    .map((a) => a.dataUrl as string);
+
   // Save user message
-  await addProjectSupervisorMessage(id, { role: "user", message: fullMessage });
+  await addProjectSupervisorMessage(id, {
+    role: "user",
+    message: fullMessage,
+    ...(imageDataUrlsForHistory.length > 0 ? { imageDataUrls: imageDataUrlsForHistory } : {}),
+  });
 
   // Get history for context
   const history = await getProjectSupervisorChatLog(id);
