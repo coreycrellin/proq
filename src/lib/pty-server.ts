@@ -4,6 +4,7 @@ import { existsSync, writeFileSync, mkdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { tmpdir, homedir } from "os";
 import type { WebSocket } from "ws";
+import { shellEnv } from "./shell-env";
 
 const SCROLLBACK_LIMIT = 50 * 1024; // 50 KB ring buffer per PTY
 
@@ -74,7 +75,7 @@ export function spawnShellSession(tabId: string, cmd?: string, cwd?: string): bo
   const tmuxCmd = `tmux new-session -d -s '${session}' -c '${resolvedCwd}' node '${bridgePath}' '${sock}' '${launcherFile}'`;
 
   try {
-    execSync(tmuxCmd, { timeout: 10_000 });
+    execSync(tmuxCmd, { timeout: 10_000, env: shellEnv() });
     console.log(`[pty] launched tmux shell session ${session} for tab ${tabId}`);
     return true;
   } catch (err) {

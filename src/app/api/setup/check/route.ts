@@ -4,11 +4,12 @@ import { existsSync, readdirSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import { getSettings } from "@/lib/db";
+import { shellEnv } from "@/lib/shell-env";
 
 function findBinary(name: string, extraPaths: string[] = []): { found: boolean; path: string } {
-  // Try `which` first (checks server PATH)
+  // Try `which` using the user's login shell PATH
   try {
-    const result = execSync(`which ${name}`, { timeout: 5_000, encoding: "utf-8" }).trim();
+    const result = execSync(`which ${name}`, { timeout: 5_000, encoding: "utf-8", env: shellEnv() }).trim();
     if (result && existsSync(result)) {
       return { found: true, path: result };
     }
@@ -25,7 +26,7 @@ function findBinary(name: string, extraPaths: string[] = []): { found: boolean; 
 
   // Try npm global bin
   try {
-    const npmRoot = execSync("npm root -g", { timeout: 5_000, encoding: "utf-8" }).trim();
+    const npmRoot = execSync("npm root -g", { timeout: 5_000, encoding: "utf-8", env: shellEnv() }).trim();
     if (npmRoot) {
       candidates.push(`${npmRoot}/.bin/${name}`);
       // npm global root is node_modules — bin is sibling

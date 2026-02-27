@@ -4,6 +4,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { getAllProjects, getAllTasks, getExecutionMode, getSettings, getTask, updateTask } from "./db";
 import { stripAnsi } from "./utils";
+import { shellEnv } from "./shell-env";
 import { createWorktree, removeWorktree } from "./worktree";
 import type { TaskAttachment, TaskMode, TaskOutputMode } from "./types";
 
@@ -244,7 +245,7 @@ ${callbackCurl}
   }
 
   try {
-    execSync(tmuxCmd, { timeout: 10_000 });
+    execSync(tmuxCmd, { timeout: 10_000, env: shellEnv() });
     console.log(
       `[agent-dispatch] launched tmux session ${tmuxSession} for task ${taskId}`,
     );
