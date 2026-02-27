@@ -43,7 +43,6 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
   const steps = parseLines(task.humanSteps);
   const findings = parseLines(task.findings);
   const isDispatched = task.dispatch === 'running' || task.dispatch === 'starting';
-  const [viewMode, setViewMode] = useState<'pretty' | 'raw'>('pretty');
   const [countdownText, setCountdownText] = useState('');
   const [dispatching, setDispatching] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -262,34 +261,10 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
                   <TerminalPane tabId={terminalTabId} visible={true} />
                 </div>
               ) : (
-                /* Pretty output mode: stream view with Pretty/Raw toggle */
-                <>
-                  <div className="shrink-0 flex items-center justify-end gap-1 px-3 py-1.5 border-b border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-[#0a0a0a]">
-                    <button
-                      onClick={() => setViewMode('pretty')}
-                      className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
-                        viewMode === 'pretty'
-                          ? 'bg-bronze-300 text-bronze-800 dark:bg-zinc-700 dark:text-zinc-200'
-                          : 'text-bronze-500 hover:text-bronze-700 dark:text-zinc-500 dark:hover:text-zinc-400'
-                      }`}
-                    >
-                      Pretty
-                    </button>
-                    <button
-                      onClick={() => setViewMode('raw')}
-                      className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
-                        viewMode === 'raw'
-                          ? 'bg-bronze-300 text-bronze-800 dark:bg-zinc-700 dark:text-zinc-200'
-                          : 'text-bronze-500 hover:text-bronze-700 dark:text-zinc-500 dark:hover:text-zinc-400'
-                      }`}
-                    >
-                      Raw
-                    </button>
-                  </div>
-                  <div className="flex-1 min-h-0 relative">
-                    <AgentStreamView tabId={terminalTabId} visible={true} mode={viewMode} onSendFollowUp={handleSendFollowUp} />
-                  </div>
-                </>
+                /* Pretty output mode: stream view */
+                <div className="flex-1 min-h-0 relative">
+                  <AgentStreamView tabId={terminalTabId} visible={true} mode="pretty" onSendFollowUp={handleSendFollowUp} />
+                </div>
               )}
               {countdownText && (
                 <div className="shrink-0 px-3 py-1.5 text-[11px] text-bronze-500 dark:text-zinc-600 font-mono border-t border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-[#0a0a0a]">
@@ -300,34 +275,9 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
           ) : showStaticLog ? (
             <div className="flex-1 relative min-h-0 flex flex-col">
               {task.agentLog && task.agentLog.trimStart().startsWith('{') ? (
-                <>
-                  {/* View mode toggle */}
-                  <div className="shrink-0 flex items-center justify-end gap-1 px-3 py-1.5 border-b border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-[#0a0a0a]">
-                    <button
-                      onClick={() => setViewMode('pretty')}
-                      className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
-                        viewMode === 'pretty'
-                          ? 'bg-bronze-300 text-bronze-800 dark:bg-zinc-700 dark:text-zinc-200'
-                          : 'text-bronze-500 hover:text-bronze-700 dark:text-zinc-500 dark:hover:text-zinc-400'
-                      }`}
-                    >
-                      Pretty
-                    </button>
-                    <button
-                      onClick={() => setViewMode('raw')}
-                      className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
-                        viewMode === 'raw'
-                          ? 'bg-bronze-300 text-bronze-800 dark:bg-zinc-700 dark:text-zinc-200'
-                          : 'text-bronze-500 hover:text-bronze-700 dark:text-zinc-500 dark:hover:text-zinc-400'
-                      }`}
-                    >
-                      Raw
-                    </button>
-                  </div>
-                  <div className="flex-1 min-h-0 relative">
-                    <AgentStreamView tabId={terminalTabId} visible={true} staticData={task.agentLog} mode={viewMode} onSendFollowUp={handleSendFollowUp} />
-                  </div>
-                </>
+                <div className="flex-1 min-h-0 relative">
+                  <AgentStreamView tabId={terminalTabId} visible={true} staticData={task.agentLog} mode="pretty" onSendFollowUp={handleSendFollowUp} />
+                </div>
               ) : (
                 <pre className="flex-1 min-h-0 overflow-y-auto p-4 text-[12px] font-mono text-bronze-700 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed bg-bronze-100/50 dark:bg-black">
                   {task.agentLog}
