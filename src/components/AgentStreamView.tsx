@@ -28,6 +28,7 @@ import {
   HelpCircleIcon,
 } from 'lucide-react';
 import type { TaskAttachment } from '@/lib/types';
+import { ContextWindowIndicator } from './AgentBlocks';
 import { ScrambleText } from './ScrambleText';
 
 /* ─── Types for stream-json events ─── */
@@ -582,50 +583,6 @@ function UserMessageBlock({ block }: { block: RenderBlock }) {
       <div className="text-[13px] text-bronze-800 dark:text-zinc-200 leading-relaxed">
         {renderFormattedText(block.userMessage || '')}
       </div>
-    </div>
-  );
-}
-
-/* ─── Context window indicator ─── */
-
-const CONTEXT_WINDOW_MAX = 200_000; // Claude context window size in tokens
-
-function ContextWindowIndicator({ tokens }: { tokens: number }) {
-  const pct = Math.min((tokens / CONTEXT_WINDOW_MAX) * 100, 100);
-  const size = 28;
-  const strokeWidth = 3.5;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const filled = (pct / 100) * circumference;
-
-  // Color ramps: green → yellow → red
-  const color = pct < 50 ? 'var(--color-patina, #34d399)'
-    : pct < 80 ? 'var(--color-amber, #fbbf24)'
-    : 'var(--color-crimson, #f87171)';
-
-  return (
-    <div className="flex items-center gap-1.5" title={`Context: ${Math.round(pct)}% (${(tokens / 1000).toFixed(0)}k / ${CONTEXT_WINDOW_MAX / 1000}k tokens)`}>
-      <svg width={size} height={size} className="rotate-[-90deg]">
-        {/* Background ring */}
-        <circle
-          cx={size / 2} cy={size / 2} r={radius}
-          fill="none"
-          stroke="currentColor"
-          className="text-zinc-700/40"
-          strokeWidth={strokeWidth}
-        />
-        {/* Filled arc */}
-        <circle
-          cx={size / 2} cy={size / 2} r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeDasharray={`${filled} ${circumference - filled}`}
-          strokeLinecap="round"
-          className="transition-all duration-500"
-        />
-      </svg>
-      <span className="text-[11px] text-text-chrome tabular-nums">{Math.round(pct)}%</span>
     </div>
   );
 }

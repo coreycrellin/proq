@@ -19,9 +19,9 @@ import {
   TextBlock,
   ToolBlock,
   ThinkingBlock,
-  ResultBlock,
   UserMessageBlock,
   SimpleToolBlock,
+  ContextWindowIndicator,
 } from './AgentBlocks';
 import { ScrambleText } from './ScrambleText';
 
@@ -40,6 +40,7 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
   const [draft, setDraft] = useState('');
   const [inputValue, setInputValue] = useState('');
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
+  const [contextTokens, setContextTokens] = useState(0);
   const [collapseSignal, setCollapseSignal] = useState(1);
   const isCollapsed = collapseSignal > 0;
   const abortRef = useRef<AbortController | null>(null);
@@ -150,7 +151,11 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
     const eventType = event.type as string;
 
     if (eventType === 'assistant' && event.message) {
-      const msg = event.message as { content?: ContentBlock[] };
+      const msg = event.message as { content?: ContentBlock[]; usage?: { input_tokens?: number } };
+      // Track context window usage
+      if (msg.usage?.input_tokens) {
+        setContextTokens(msg.usage.input_tokens);
+      }
       if (!msg.content) return;
 
       const newBlocks: RenderBlock[] = [];
@@ -212,22 +217,7 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
       }
     }
 
-    if (eventType === 'result') {
-      setStreamBlocks(prev => {
-        const next = [...prev, {
-          id: nextBlockId(),
-          type: 'result' as const,
-          resultText: (event.result as string) || '',
-          costUsd: event.cost_usd as number | undefined,
-          durationMs: event.duration_ms as number | undefined,
-          numTurns: event.num_turns as number | undefined,
-          isError: event.is_error as boolean | undefined,
-          status: 'complete' as const,
-        }];
-        streamBlocksRef.current = next;
-        return next;
-      });
-    }
+    // Skip 'result' events — supervisor chats are ongoing streams, not discrete tasks
   }, [nextBlockId]);
 
   // File attachment helpers
@@ -460,18 +450,6 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
 
   // Memoize rendered blocks
   const renderedBlocks = useMemo(() => {
-    // Find the last text block before a result block — never collapse it
-    let lastTextBeforeResult: string | null = null;
-    for (let i = allBlocks.length - 1; i >= 0; i--) {
-      if (allBlocks[i].type === 'result') {
-        for (let j = i - 1; j >= 0; j--) {
-          if (allBlocks[j].type === 'text') { lastTextBeforeResult = allBlocks[j].id; break; }
-          if (allBlocks[j].type === 'tool' || allBlocks[j].type === 'user-message') break;
-        }
-        break;
-      }
-    }
-
     return allBlocks.map((block) => {
       // For history tool blocks that only have a summary (no full input), use simplified rendering
       if (block.type === 'tool' && block.toolInput && '_summary' in block.toolInput) {
@@ -485,10 +463,10 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
         );
       }
       switch (block.type) {
-        case 'text': return <TextBlock key={block.id} block={block} collapseSignal={collapseSignal} neverCollapse={block.id === lastTextBeforeResult} />;
+        case 'text': return <TextBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
         case 'tool': return <ToolBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
         case 'thinking': return <ThinkingBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
-        case 'result': return <ResultBlock key={block.id} block={block} />;
+        case 'result': return null; // Supervisor chats are ongoing — skip result blocks
         case 'user-message': return <UserMessageBlock key={block.id} block={block} />;
         default: return null;
       }
@@ -627,6 +605,9 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
           >
             <PaperclipIcon className="w-4 h-4" />
           </button>
+          {contextTokens > 0 && (
+            <ContextWindowIndicator tokens={contextTokens} />
+          )}
           {isLoading && (
             <button
               onClick={handleStop}

@@ -20,9 +20,9 @@ import {
   TextBlock,
   ToolBlock,
   ThinkingBlock,
-  ResultBlock,
   UserMessageBlock,
   SimpleToolBlock,
+  ContextWindowIndicator,
 } from '@/components/AgentBlocks';
 import { ScrambleText } from '@/components/ScrambleText';
 
@@ -33,6 +33,7 @@ export default function SupervisorPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
+  const [contextTokens, setContextTokens] = useState(0);
   const [collapseSignal, setCollapseSignal] = useState(1);
   const isCollapsed = collapseSignal > 0;
   const abortRef = useRef<AbortController | null>(null);
@@ -115,7 +116,11 @@ export default function SupervisorPage() {
     const eventType = event.type as string;
 
     if (eventType === 'assistant' && event.message) {
-      const msg = event.message as { content?: ContentBlock[] };
+      const msg = event.message as { content?: ContentBlock[]; usage?: { input_tokens?: number } };
+      // Track context window usage
+      if (msg.usage?.input_tokens) {
+        setContextTokens(msg.usage.input_tokens);
+      }
       if (!msg.content) return;
 
       const newBlocks: RenderBlock[] = [];
@@ -154,17 +159,7 @@ export default function SupervisorPage() {
       }
     }
 
-    if (eventType === 'result') {
-      setStreamBlocks(prev => [...prev, {
-        id: nextBlockId(), type: 'result',
-        resultText: (event.result as string) || '',
-        costUsd: event.cost_usd as number | undefined,
-        durationMs: event.duration_ms as number | undefined,
-        numTurns: event.num_turns as number | undefined,
-        isError: event.is_error as boolean | undefined,
-        status: 'complete',
-      }]);
-    }
+    // Skip 'result' events — supervisor chats are ongoing streams, not discrete tasks
   }, [nextBlockId]);
 
   const addFiles = useCallback((files: FileList | File[]) => {
@@ -314,25 +309,15 @@ export default function SupervisorPage() {
   }, []);
 
   const renderedBlocks = useMemo(() => {
-    let lastTextBeforeResult: string | null = null;
-    for (let i = allBlocks.length - 1; i >= 0; i--) {
-      if (allBlocks[i].type === 'result') {
-        for (let j = i - 1; j >= 0; j--) {
-          if (allBlocks[j].type === 'text') { lastTextBeforeResult = allBlocks[j].id; break; }
-          if (allBlocks[j].type === 'tool' || allBlocks[j].type === 'user-message') break;
-        }
-        break;
-      }
-    }
     return allBlocks.map((block) => {
       if (block.type === 'tool' && block.toolInput && '_summary' in block.toolInput) {
         return <SimpleToolBlock key={block.id} action={block.toolName || ''} detail={block.toolInput._summary as string} collapseSignal={collapseSignal} />;
       }
       switch (block.type) {
-        case 'text': return <TextBlock key={block.id} block={block} collapseSignal={collapseSignal} neverCollapse={block.id === lastTextBeforeResult} />;
+        case 'text': return <TextBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
         case 'tool': return <ToolBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
         case 'thinking': return <ThinkingBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
-        case 'result': return <ResultBlock key={block.id} block={block} />;
+        case 'result': return null; // Supervisor chats are ongoing — skip result blocks
         case 'user-message': return <UserMessageBlock key={block.id} block={block} />;
         default: return null;
       }
@@ -437,6 +422,9 @@ export default function SupervisorPage() {
               <button onClick={() => fileInputRef.current?.click()} title="Attach file (/att)" className="shrink-0 px-2 py-2 rounded-md text-text-chrome hover:text-text-secondary hover:bg-surface-primary transition-colors">
                 <PaperclipIcon className="w-4 h-4" />
               </button>
+              {contextTokens > 0 && (
+                <ContextWindowIndicator tokens={contextTokens} />
+              )}
               {isLoading && (
                 <button onClick={handleStop} title="Stop" className="shrink-0 px-2 py-2 rounded-md text-red-400 hover:bg-red-400/10 transition-colors">
                   <SquareIcon className="w-4 h-4 fill-current" />

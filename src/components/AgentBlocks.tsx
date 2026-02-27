@@ -578,6 +578,50 @@ export function UserMessageBlock({ block }: { block: RenderBlock }) {
 
 /* ─── Simplified tool block for history (no full I/O detail) ─── */
 
+/* ─── Context window indicator (shared) ─── */
+
+const CONTEXT_WINDOW_MAX = 200_000; // Claude context window size in tokens
+
+export function ContextWindowIndicator({ tokens }: { tokens: number }) {
+  const pct = Math.min((tokens / CONTEXT_WINDOW_MAX) * 100, 100);
+  const size = 28;
+  const strokeWidth = 3.5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const filled = (pct / 100) * circumference;
+
+  // Color ramps: green → yellow → red
+  const color = pct < 50 ? 'var(--color-patina, #34d399)'
+    : pct < 80 ? 'var(--color-amber, #fbbf24)'
+    : 'var(--color-crimson, #f87171)';
+
+  return (
+    <div className="flex items-center gap-1.5" title={`Context: ${Math.round(pct)}% (${(tokens / 1000).toFixed(0)}k / ${CONTEXT_WINDOW_MAX / 1000}k tokens)`}>
+      <svg width={size} height={size} className="rotate-[-90deg]">
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none"
+          stroke="currentColor"
+          className="text-zinc-700/40"
+          strokeWidth={strokeWidth}
+        />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${filled} ${circumference - filled}`}
+          strokeLinecap="round"
+          className="transition-all duration-500"
+        />
+      </svg>
+      <span className="text-[11px] text-text-chrome tabular-nums">{Math.round(pct)}%</span>
+    </div>
+  );
+}
+
+/* ─── Simplified tool block for history (no full I/O detail) ─── */
+
 export function SimpleToolBlock({ action, detail, collapseSignal }: { action: string; detail: string; collapseSignal: number }) {
   const Icon = getToolIcon(action);
   const [collapsed, setCollapsed] = useState(true);
