@@ -117,7 +117,7 @@ export function TaskDetailPanel({ task, projectId, projectName, onStatusChange, 
         {/* Branch info */}
         {task.branch && (
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 text-xs font-mono px-1.5 py-0.5 rounded border border-bronze-800/50 bg-zinc-800/60 text-text-chrome-active">
+            <span className="inline-flex items-center gap-1 text-xs font-mono px-1.5 py-0.5 rounded border border-bronze-400/50 bg-bronze-200/60 text-bronze-700 dark:border-bronze-800/50 dark:bg-zinc-800/60 dark:text-text-chrome-active">
               <GitBranchIcon className="w-3 h-3" />
               {task.branch}
             </span>
