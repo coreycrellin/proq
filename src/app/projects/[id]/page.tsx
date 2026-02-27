@@ -516,6 +516,7 @@ export default function ProjectPage() {
 
             <TerminalPanel
               projectId={projectId}
+              projectName={project.name}
               projectPath={project.path}
               style={{ flexBasis: `${chatPercent}%` }}
               collapsed={terminalCollapsed}

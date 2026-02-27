@@ -16,6 +16,7 @@ type DrawerView = 'supervisor' | 'terminal';
 
 interface TerminalPanelProps {
   projectId: string;
+  projectName?: string;
   projectPath?: string;
   style?: React.CSSProperties;
   collapsed: boolean;
@@ -54,7 +55,7 @@ function useCleanupCountdown(expiresAt: number | undefined): string | null {
   return `process will be terminated in ${mins}m`;
 }
 
-export default function TerminalPanel({ projectId, projectPath, style, collapsed, onToggleCollapsed, onExpand, cleanupTimes, onResizeStart, isDragging, onTaskCreated }: TerminalPanelProps) {
+export default function TerminalPanel({ projectId, projectName, projectPath, style, collapsed, onToggleCollapsed, onExpand, cleanupTimes, onResizeStart, isDragging, onTaskCreated }: TerminalPanelProps) {
   const { getTabs, getActiveTabId, setActiveTabId, openTab, closeTab, renameTab, hydrateProject } = useTerminalTabs();
   const panelRef = useRef<HTMLDivElement>(null);
   const [menuTabId, setMenuTabId] = useState<string | null>(null);
@@ -201,7 +202,7 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
           }`}
         >
           <SquareChevronUpIcon className="w-3 h-3" />
-          <span className="max-w-[140px] truncate block">Supervisor</span>
+          <span className="max-w-[200px] truncate block">{projectName ? `${projectName} Supervisor` : 'Project Supervisor'}</span>
         </button>
 
         {/* ── Separator ── */}
