@@ -328,6 +328,8 @@ export function TextBlock({ block, collapseSignal, neverCollapse }: { block: Ren
 }
 
 export function AskUserQuestionContent({ input, result, onAnswer }: { input: Record<string, unknown>; result?: string; onAnswer?: (answer: string) => void }) {
+  const [localSelection, setLocalSelection] = useState<string | null>(null);
+
   const questions = (input.questions as Array<{
     question: string;
     header?: string;
@@ -347,12 +349,19 @@ export function AskUserQuestionContent({ input, result, onAnswer }: { input: Rec
   }
 
   const hasAnswer = Object.keys(answers).length > 0;
-  const canClick = !!onAnswer && !hasAnswer;
+  const answered = hasAnswer || !!localSelection;
+  const canClick = !!onAnswer && !answered;
+
+  const handleClick = (label: string) => {
+    if (!canClick) return;
+    setLocalSelection(label);
+    onAnswer(label);
+  };
 
   return (
     <div className="space-y-3 px-3 py-2.5">
       {questions.map((q, i) => {
-        const answer = answers[q.question];
+        const answer = answers[q.question] || localSelection;
         return (
           <div key={i}>
             {q.header && (
@@ -367,7 +376,7 @@ export function AskUserQuestionContent({ input, result, onAnswer }: { input: Rec
                     key={j}
                     type="button"
                     disabled={!canClick}
-                    onClick={() => canClick && onAnswer(opt.label)}
+                    onClick={() => handleClick(opt.label)}
                     className={`flex items-start gap-2 px-2.5 py-1.5 rounded-md text-[12px] w-full text-left transition-colors ${
                       isSelected
                         ? 'bg-steel/10 border border-steel/30 text-steel dark:text-blue-300'
@@ -390,7 +399,7 @@ export function AskUserQuestionContent({ input, result, onAnswer }: { input: Rec
           </div>
         );
       })}
-      {result && !hasAnswer && (
+      {result && !answered && (
         <div className="text-[11px] text-text-chrome italic">{result}</div>
       )}
     </div>
