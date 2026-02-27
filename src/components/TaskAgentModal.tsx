@@ -67,7 +67,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
     return data;
   }, [projectId, task.id]);
   const [topPanelPercent, setTopPanelPercent] = useState(30);
-  const [rightPanelExpanded, setRightPanelExpanded] = useState(false);
+  const [expandedPanel, setExpandedPanel] = useState<'none' | 'top' | 'bottom'>('none');
   const [rightPanelPercent, setRightPanelPercent] = useState(33);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const bottomPanelRef = useRef<HTMLDivElement>(null);
@@ -182,7 +182,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Left panel: terminal or queued state ── */}
-        <div className={`min-h-0 flex flex-col ${rightPanelExpanded ? 'hidden' : ''}`} style={{ flex: `0 0 calc(${100 - rightPanelPercent}% - 1px)` }}>
+        <div className="min-h-0 flex flex-col" style={{ flex: `0 0 calc(${100 - rightPanelPercent}% - 1px)` }}>
           {/* Worktree status — only in parallel mode */}
           {parallelMode && (
             <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-zinc-900/50">
@@ -341,7 +341,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
         </div>
 
         {/* ── Vertical resize handle (between terminal and details) ── */}
-        {(showTerminal || isQueued || showStaticLog) && !rightPanelExpanded && (
+        {(showTerminal || isQueued || showStaticLog) && (
           <div className="shrink-0 w-px relative z-10">
             {/* Hit target — wider than visible line for easy grabbing */}
             <div
@@ -355,22 +355,9 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
         )}
 
         {/* ── Right panel: task details ── */}
-        <div ref={rightPanelRef} className={`${rightPanelExpanded ? 'w-full' : (showTerminal || isQueued || showStaticLog ? '' : 'w-full')} shrink-0 flex flex-col overflow-hidden bg-bronze-50 dark:bg-[#141414]`} style={(showTerminal || isQueued || showStaticLog) && !rightPanelExpanded ? { flex: `0 0 ${rightPanelPercent}%` } : undefined}>
-          {/* Expand / Close buttons */}
+        <div ref={rightPanelRef} className={`${(showTerminal || isQueued || showStaticLog) ? '' : 'w-full'} shrink-0 flex flex-col overflow-hidden bg-bronze-50 dark:bg-[#141414]`} style={(showTerminal || isQueued || showStaticLog) ? { flex: `0 0 ${rightPanelPercent}%` } : undefined}>
+          {/* Close button */}
           <div className="absolute top-4 right-4 flex items-center gap-1 z-10">
-            {(showTerminal || isQueued || showStaticLog) && (
-              <button
-                onClick={() => setRightPanelExpanded(prev => !prev)}
-                className="p-1.5 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
-                title={rightPanelExpanded ? 'Show terminal' : 'Expand details'}
-              >
-                {rightPanelExpanded ? (
-                  <Minimize2Icon className="w-4 h-4" />
-                ) : (
-                  <Maximize2Icon className="w-4 h-4" />
-                )}
-              </button>
-            )}
             <button
               onClick={onClose}
               className="p-1.5 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
@@ -380,7 +367,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
           </div>
 
           {/* Top half: title, status, description */}
-          <div className="overflow-y-auto p-5 pt-12 space-y-4 shrink-0" style={{ height: `${topPanelPercent}%` }}>
+          <div className={`overflow-y-auto p-5 pt-12 space-y-4 ${expandedPanel === 'bottom' ? 'hidden' : expandedPanel === 'top' ? 'flex-1 min-h-0' : 'shrink-0'}`} style={expandedPanel === 'none' ? { height: `${topPanelPercent}%` } : undefined}>
             {/* Status badge */}
             <div className="flex items-center gap-1.5">
               {isQueued ? (
@@ -409,6 +396,17 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
                 </span>
               )}
               <span className="ml-auto text-[10px] text-bronze-500 dark:text-zinc-600 font-mono">{shortId}</span>
+              <button
+                onClick={() => setExpandedPanel(prev => prev === 'top' ? 'none' : 'top')}
+                className="p-1 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
+                title={expandedPanel === 'top' ? 'Collapse' : 'Expand'}
+              >
+                {expandedPanel === 'top' ? (
+                  <Minimize2Icon className="w-3.5 h-3.5" />
+                ) : (
+                  <Maximize2Icon className="w-3.5 h-3.5" />
+                )}
+              </button>
             </div>
 
             {/* Title */}
@@ -462,41 +460,56 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
 
           </div>
 
-          {/* Resize handle */}
-          <div className="shrink-0 h-px relative z-10">
-            <div
-              onMouseDown={handleResizeMouseDown}
-              className="absolute inset-x-0 -top-2 -bottom-2 z-20 cursor-row-resize group"
-            >
-              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-bronze-300 dark:bg-zinc-800" />
+          {/* Resize handle (hidden when either panel is expanded) */}
+          {expandedPanel === 'none' && (
+            <div className="shrink-0 h-px relative z-10">
+              <div
+                onMouseDown={handleResizeMouseDown}
+                className="absolute inset-x-0 -top-2 -bottom-2 z-20 cursor-row-resize group"
+              >
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-bronze-300 dark:bg-zinc-800" />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Bottom half: agent findings & summary */}
-          <div ref={bottomPanelRef} className={`flex-1 min-h-0 overflow-y-auto ${isDispatched && !isQueued && findings.length === 0 ? 'flex flex-col items-center justify-center p-5' : 'p-5 space-y-4'}`}>
+          <div ref={bottomPanelRef} className={`flex-1 min-h-0 overflow-y-auto ${expandedPanel === 'top' ? 'hidden' : ''} ${isDispatched && !isQueued && findings.length === 0 ? 'flex flex-col items-center justify-center p-5' : 'p-5 space-y-4'}`}>
             {findings.length > 0 || !isDispatched || isQueued ? (
               <div className="flex items-center gap-2">
                 <ClipboardListIcon className="w-3.5 h-3.5 text-bronze-600 dark:text-zinc-500" />
                 <span className="text-xs font-medium text-bronze-600 dark:text-zinc-500 uppercase tracking-wide">
                   Agent Report
                 </span>
-                {findings.length > 0 && (
+                <div className="ml-auto flex items-center gap-1">
+                  {findings.length > 0 && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(task.findings || '');
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      className="text-text-chrome hover:text-text-chrome-hover transition-colors p-0.5"
+                      title="Copy to clipboard"
+                    >
+                      {copied ? (
+                        <CheckIcon className="w-3.5 h-3.5 text-patina" />
+                      ) : (
+                        <ClipboardCopyIcon className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(task.findings || '');
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    }}
-                    className="ml-auto text-text-chrome hover:text-text-chrome-hover transition-colors p-0.5"
-                    title="Copy to clipboard"
+                    onClick={() => setExpandedPanel(prev => prev === 'bottom' ? 'none' : 'bottom')}
+                    className="p-1 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
+                    title={expandedPanel === 'bottom' ? 'Collapse' : 'Expand'}
                   >
-                    {copied ? (
-                      <CheckIcon className="w-3.5 h-3.5 text-patina" />
+                    {expandedPanel === 'bottom' ? (
+                      <Minimize2Icon className="w-3.5 h-3.5" />
                     ) : (
-                      <ClipboardCopyIcon className="w-3.5 h-3.5" />
+                      <Maximize2Icon className="w-3.5 h-3.5" />
                     )}
                   </button>
-                )}
+                </div>
               </div>
             ) : null}
 
