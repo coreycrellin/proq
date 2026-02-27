@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ProjectsProvider } from './ProjectsProvider';
 import { TerminalTabsProvider } from './TerminalTabsProvider';
 import { Sidebar } from './Sidebar';
@@ -8,58 +8,28 @@ import { MissingPathModal } from './MissingPathModal';
 import { useProjects } from './ProjectsProvider';
 import type { Project } from '@/lib/types';
 
-const SIDEBAR_MIN = 40;
-const SIDEBAR_MAX = 480;
-const SIDEBAR_DEFAULT = 260;
-const SIDEBAR_STORAGE_KEY = 'proq-sidebar-width';
+const SIDEBAR_OPEN_KEY = 'proq-sidebar-open';
 
 function ShellInner({ children }: { children: React.ReactNode }) {
   const { refreshProjects, isLoaded } = useProjects();
   const [missingProject, setMissingProject] = useState<Project | null>(null);
 
-  // ── Resizable sidebar ────────────────────────────────────
-  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
-  const isDragging = useRef(false);
+  // ── Collapsible sidebar ────────────────────────────────────
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Hydrate from localStorage after mount
   useEffect(() => {
-    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    if (stored) {
-      const w = parseInt(stored, 10);
-      if (w >= SIDEBAR_MIN && w <= SIDEBAR_MAX) setSidebarWidth(w);
-    }
+    const stored = localStorage.getItem(SIDEBAR_OPEN_KEY);
+    if (stored !== null) setSidebarOpen(stored !== 'false');
   }, []);
 
-  const startResize = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
-    const startX = e.clientX;
-    const startW = sidebarWidth;
-
-    function onMove(ev: MouseEvent) {
-      if (!isDragging.current) return;
-      const newW = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, startW + (ev.clientX - startX)));
-      setSidebarWidth(newW);
-    }
-
-    function onUp() {
-      isDragging.current = false;
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      // Persist
-      setSidebarWidth((w) => {
-        localStorage.setItem(SIDEBAR_STORAGE_KEY, String(w));
-        return w;
-      });
-    }
-
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }, [sidebarWidth]);
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => {
+      const next = !prev;
+      localStorage.setItem(SIDEBAR_OPEN_KEY, String(next));
+      return next;
+    });
+  }, []);
 
   const handleAddProject = useCallback(async () => {
     const res = await fetch('/api/folder-picker', { method: 'POST' });
@@ -101,16 +71,23 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen w-full bg-surface-base text-bronze-900 dark:text-zinc-100 overflow-hidden font-sans">
-      <Sidebar
-        onAddProject={handleAddProject}
-        onMissingPath={setMissingProject}
-        width={sidebarWidth}
-      />
-      {/* Resize handle */}
-      <div
-        onMouseDown={startResize}
-        className="w-[3px] flex-shrink-0 cursor-col-resize"
-      />
+      {sidebarOpen && (
+        <Sidebar
+          onAddProject={handleAddProject}
+          onMissingPath={setMissingProject}
+          onCollapse={toggleSidebar}
+        />
+      )}
+      {!sidebarOpen && (
+        <button
+          onClick={toggleSidebar}
+          className="flex-shrink-0 w-7 h-full flex items-start pt-[18px] justify-center bg-surface-secondary border-r border-border-default hover:bg-surface-hover transition-colors group"
+          title="Open sidebar"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/proq-logo-vector.svg" alt="proq" width={12} height={12} className="opacity-40 group-hover:opacity-80 transition-opacity" />
+        </button>
+      )}
       <div className="flex-1 flex flex-col min-w-0">
         {children}
       </div>
