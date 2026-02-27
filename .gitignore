@@ -39,3 +39,9 @@ next-env.d.ts
 /data/
 
 .proq-worktrees
+
+# claude code local settings
+.claude/
+
+# generated changelogs
+CHANGELOG-*.pdf
