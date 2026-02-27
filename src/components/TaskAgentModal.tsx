@@ -473,7 +473,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
           )}
 
           {/* Bottom half: agent findings & summary */}
-          <div ref={bottomPanelRef} className={`flex-1 min-h-0 overflow-y-auto ${expandedPanel === 'top' ? 'hidden' : ''} ${isDispatched && !isQueued && findings.length === 0 ? 'flex flex-col items-center justify-center p-5' : 'p-5 space-y-4'}`}>
+          <div ref={bottomPanelRef} className={`flex-1 min-h-0 overflow-y-auto ${expandedPanel === 'top' ? 'hidden' : ''} ${isDispatched && !isQueued && findings.length === 0 ? 'flex flex-col items-center justify-center p-5' : 'p-5 space-y-4'} ${expandedPanel === 'bottom' ? 'pt-12' : ''}`}>
             {findings.length > 0 || !isDispatched || isQueued ? (
               <div className="flex items-center gap-2">
                 <ClipboardListIcon className="w-3.5 h-3.5 text-bronze-600 dark:text-zinc-500" />
