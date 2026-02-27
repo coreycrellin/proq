@@ -40,7 +40,6 @@ export function ProjectTaskList({
     () => new Set(['todo', 'in-progress', 'verify', 'done'])
   );
   const [listPercent, setListPercent] = useState(55);
-  const [detailExpanded, setDetailExpanded] = useState(false);
   const prevListPercentRef = useRef(55);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
@@ -58,7 +57,6 @@ export function ProjectTaskList({
       const clamped = Math.min(Math.max(pct, 25), 75);
       setListPercent(clamped);
       prevListPercentRef.current = clamped;
-      setDetailExpanded(false);
     };
     const onMouseUp = () => {
       isDraggingRef.current = false;
@@ -72,18 +70,6 @@ export function ProjectTaskList({
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   }, []);
-
-  const toggleDetailExpanded = useCallback(() => {
-    setDetailExpanded((prev) => {
-      if (!prev) {
-        prevListPercentRef.current = listPercent;
-        setListPercent(30);
-      } else {
-        setListPercent(prevListPercentRef.current);
-      }
-      return !prev;
-    });
-  }, [listPercent]);
 
   // Flatten all tasks from columns
   const allTasks = useMemo(() => {
@@ -262,16 +248,6 @@ export function ProjectTaskList({
           >
             <div className="absolute inset-y-0 -left-2 -right-2" />
             <div className="w-px h-full bg-bronze-300 dark:bg-zinc-800 group-hover/divider:bg-steel dark:group-hover/divider:bg-zinc-600 transition-colors" />
-            {/* Show more / Show less toggle */}
-            <button
-              onClick={(e) => { e.stopPropagation(); toggleDetailExpanded(); }}
-              onMouseDown={(e) => e.stopPropagation()}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 px-1 py-2 cursor-pointer"
-            >
-              <span className="text-[10px] font-medium text-bronze-400 dark:text-zinc-600 group-hover/divider:text-steel dark:group-hover/divider:text-zinc-400 transition-colors whitespace-nowrap [writing-mode:vertical-lr]">
-                {detailExpanded ? 'Show less' : 'Show more'}
-              </span>
-            </button>
           </div>
         )}
 
