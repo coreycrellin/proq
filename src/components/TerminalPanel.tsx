@@ -331,7 +331,7 @@ export default function TerminalPanel({ projectId, projectName, projectPath, sty
                 className="w-full text-left px-3 py-1.5 text-sm text-bronze-700 dark:text-zinc-300 hover:bg-bronze-200 dark:hover:bg-zinc-700 flex items-center gap-2"
               >
                 <SquareChevronUpIcon className="w-3.5 h-3.5" />
-                New Supervisor
+                {projectName ? `${projectName} Supervisor` : 'Project Supervisor'}
               </button>
             </div>
           )}
