@@ -428,13 +428,13 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress, i
               return isImage && att.dataUrl ? (
                 <div
                   key={att.id}
-                  className="relative group rounded-md overflow-hidden border border-bronze-400/50 dark:border-zinc-700/50 bg-bronze-200/60 dark:bg-zinc-800/60 cursor-pointer"
+                  className="relative group rounded-md overflow-hidden border border-bronze-400/50 dark:border-zinc-700/50 bg-bronze-200/60 dark:bg-zinc-800/60 cursor-pointer min-w-[2.5rem]"
                   onClick={() => openDataUrl(att.dataUrl!)}
                 >
                   <img
                     src={att.dataUrl}
                     alt={att.name}
-                    className="h-20 w-auto max-w-[120px] object-cover block"
+                    className="h-20 w-auto max-w-[120px] object-cover block mx-auto"
                   />
                   <button
                     onClick={(e) => { e.stopPropagation(); removeAttachment(att.id); }}
