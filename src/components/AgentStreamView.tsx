@@ -586,6 +586,50 @@ function UserMessageBlock({ block }: { block: RenderBlock }) {
   );
 }
 
+/* ─── Context window indicator ─── */
+
+const CONTEXT_WINDOW_MAX = 200_000; // Claude context window size in tokens
+
+function ContextWindowIndicator({ tokens }: { tokens: number }) {
+  const pct = Math.min((tokens / CONTEXT_WINDOW_MAX) * 100, 100);
+  const size = 28;
+  const strokeWidth = 3.5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const filled = (pct / 100) * circumference;
+
+  // Color ramps: green → yellow → red
+  const color = pct < 50 ? 'var(--color-patina, #34d399)'
+    : pct < 80 ? 'var(--color-amber, #fbbf24)'
+    : 'var(--color-crimson, #f87171)';
+
+  return (
+    <div className="flex items-center gap-1.5" title={`Context: ${Math.round(pct)}% (${(tokens / 1000).toFixed(0)}k / ${CONTEXT_WINDOW_MAX / 1000}k tokens)`}>
+      <svg width={size} height={size} className="rotate-[-90deg]">
+        {/* Background ring */}
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none"
+          stroke="currentColor"
+          className="text-zinc-700/40"
+          strokeWidth={strokeWidth}
+        />
+        {/* Filled arc */}
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${filled} ${circumference - filled}`}
+          strokeLinecap="round"
+          className="transition-all duration-500"
+        />
+      </svg>
+      <span className="text-[11px] text-text-chrome tabular-nums">{Math.round(pct)}%</span>
+    </div>
+  );
+}
+
 /* ─── Main component ─── */
 
 interface AgentStreamViewProps {
@@ -611,6 +655,8 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
   // Default is 1 so blocks start collapsed (auto-collapse)
   const [collapseSignal, setCollapseSignal] = useState(1);
   const isCollapsed = collapseSignal > 0;
+  // Token usage tracking for context window indicator
+  const [contextTokens, setContextTokens] = useState(0);
   // Incremented to force WebSocket reconnection (e.g. after bridge restart)
   const [reconnectKey, setReconnectKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -664,6 +710,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
   const forceReconnect = useCallback(() => {
     setBlocks([]);
     setRawText('');
+    setContextTokens(0);
     blockIdCounter.current = 0;
     toolBlockMap.current.clear();
     bufferRef.current = '';
@@ -724,6 +771,10 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     }
 
     if (event.type === 'assistant' && event.message?.content) {
+      // Track context window usage from input_tokens (latest value = current context size)
+      if (event.message.usage?.input_tokens) {
+        setContextTokens(event.message.usage.input_tokens);
+      }
       const content = event.message.content;
       const newBlocks: RenderBlock[] = [];
 
@@ -1004,9 +1055,14 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
 
   return (
     <div className="absolute inset-0 flex flex-col bg-surface-base">
-      {/* Collapse-all toggle */}
+      {/* Top-right controls: context window + collapse toggle */}
       {blocks.length > 0 && (
-        <div className="absolute top-2 right-5 z-10">
+        <div className="absolute top-2 right-5 z-10 flex items-center gap-2">
+          {contextTokens > 0 && (
+            <div className="px-2 py-1 rounded-md bg-surface-primary/80 border border-border-default backdrop-blur-sm">
+              <ContextWindowIndicator tokens={contextTokens} />
+            </div>
+          )}
           <button
             onClick={() => setCollapseSignal(prev => prev > 0 ? -Math.abs(prev) - 1 : Math.abs(prev) + 1)}
             className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-text-chrome hover:text-text-chrome-active bg-surface-primary/80 hover:bg-surface-hover/80 border border-border-default backdrop-blur-sm transition-colors"
