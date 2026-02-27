@@ -138,7 +138,7 @@ export function ProjectTaskList({
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Filters bar */}
-      <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-border-subtle bg-surface-base">
+      <div className="shrink-0 flex items-center gap-2 px-6 pt-6 pb-4 bg-surface-base">
         {/* Search */}
         <div className="relative flex-shrink-0 w-48">
           <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-bronze-400 dark:text-zinc-600" />
