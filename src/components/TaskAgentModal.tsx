@@ -73,6 +73,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
   const modalRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const isDraggingVerticalRef = useRef(false);
+  const isDraggingCornerRef = useRef(false);
 
   // Horizontal resize (top/bottom split within right panel)
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
@@ -123,6 +124,39 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
       document.body.style.userSelect = '';
     };
     document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, []);
+
+  // Corner resize (both vertical and horizontal simultaneously)
+  const handleCornerResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isDraggingCornerRef.current = true;
+    const modal = modalRef.current;
+    const panel = rightPanelRef.current;
+    if (!modal || !panel) return;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingCornerRef.current || !modal || !panel) return;
+      // Vertical (left/right split)
+      const modalRect = modal.getBoundingClientRect();
+      const rightPct = ((modalRect.right - ev.clientX) / modalRect.width) * 100;
+      setRightPanelPercent(Math.min(Math.max(rightPct, 20), 70));
+      // Horizontal (top/bottom split within right panel)
+      const panelRect = panel.getBoundingClientRect();
+      const topPct = ((ev.clientY - panelRect.top) / panelRect.height) * 100;
+      setTopPanelPercent(Math.min(Math.max(topPct, 15), 85));
+    };
+    const onMouseUp = () => {
+      isDraggingCornerRef.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'move';
     document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
@@ -301,6 +335,16 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
               {/* Visible line */}
               <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-bronze-300 dark:bg-zinc-800" />
             </div>
+            {/* Corner resize handle at intersection of vertical + horizontal dividers */}
+            {expandedPanel === 'none' && (
+              <div
+                onMouseDown={handleCornerResizeMouseDown}
+                className="absolute z-30 w-5 h-5 -translate-x-1/2 -translate-y-1/2 cursor-move group/corner"
+                style={{ top: `${topPanelPercent}%`, left: '50%' }}
+              >
+                <div className="absolute inset-0 rounded-full bg-bronze-400/0 dark:bg-zinc-600/0 group-hover/corner:bg-bronze-400/40 dark:group-hover/corner:bg-zinc-600/40 transition-colors" />
+              </div>
+            )}
           </div>
         )}
 
