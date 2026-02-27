@@ -29,6 +29,7 @@ import {
   AlertTriangleIcon,
   PencilIcon,
   FolderOpenIcon,
+  PanelLeftCloseIcon,
 } from "lucide-react";
 import type { Project, Task, TaskStatus, TaskColumns } from "@/lib/types";
 import { useProjects } from "./ProjectsProvider";
@@ -41,7 +42,7 @@ function folderName(project: Project): string {
 interface SidebarProps {
   onAddProject: () => void;
   onMissingPath?: (project: Project) => void;
-  width?: number;
+  onCollapse?: () => void;
 }
 
 function TaskStatusSummary({ columns }: { columns: TaskColumns }) {
@@ -300,7 +301,7 @@ function SortableProject({
 
 // ── Sidebar ──────────────────────────────────────────────
 
-export function Sidebar({ onAddProject, onMissingPath, width }: SidebarProps) {
+export function Sidebar({ onAddProject, onMissingPath, onCollapse }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { projects, tasksByProject, refreshProjects, setProjects } = useProjects();
@@ -390,24 +391,34 @@ export function Sidebar({ onAddProject, onMissingPath, width }: SidebarProps) {
 
   return (
     <aside
-      className="h-full bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0 overflow-hidden"
-      style={{ width: width ?? 260 }}
+      className="h-full w-[260px] bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0 overflow-hidden"
     >
       {/* Header */}
-      <Link
-        href="/settings"
-        className={`h-16 flex items-center gap-2.5 px-4 pl-[18px] group/logo hover:bg-bronze-100/60 dark:hover:bg-zinc-800/40 transition-colors relative
-          ${pathname === '/settings' ? 'bg-bronze-300 dark:bg-zinc-800/50' : ''}`}
-      >
-        {pathname === '/settings' && (
-          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-600 dark:bg-bronze-500" />
+      <div className="h-16 flex items-center relative">
+        <Link
+          href="/settings"
+          className={`flex-1 h-full flex items-center gap-2.5 px-4 pl-[18px] group/logo hover:bg-bronze-100/60 dark:hover:bg-zinc-800/40 transition-colors
+            ${pathname === '/settings' ? 'bg-bronze-300 dark:bg-zinc-800/50' : ''}`}
+        >
+          {pathname === '/settings' && (
+            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-600 dark:bg-bronze-500" />
+          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/proq-logo-vector.svg" alt="proq" width={12} height={12} className="translate-y-[3px]" />
+          <span className="text-lg font-[var(--font-gemunu-libre)] text-bronze-900 dark:text-zinc-100 lowercase" style={{ fontFamily: 'var(--font-gemunu-libre)' }}>
+            proq
+          </span>
+        </Link>
+        {onCollapse && (
+          <button
+            onClick={onCollapse}
+            className="h-full px-2.5 flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-bronze-100/60 dark:hover:bg-zinc-800/40 transition-colors"
+            title="Collapse sidebar"
+          >
+            <PanelLeftCloseIcon className="w-4 h-4" />
+          </button>
         )}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/proq-logo-vector.svg" alt="proq" width={12} height={12} className="translate-y-[3px]" />
-        <span className="text-lg font-[var(--font-gemunu-libre)] text-bronze-900 dark:text-zinc-100 lowercase" style={{ fontFamily: 'var(--font-gemunu-libre)' }}>
-          proq
-        </span>
-      </Link>
+      </div>
 
       {/* Main Chat Item */}
       <Link
