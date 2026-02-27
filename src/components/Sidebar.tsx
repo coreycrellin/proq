@@ -41,6 +41,7 @@ function folderName(project: Project): string {
 interface SidebarProps {
   onAddProject: () => void;
   onMissingPath?: (project: Project) => void;
+  width?: number;
 }
 
 function TaskStatusSummary({ columns }: { columns: TaskColumns }) {
@@ -299,7 +300,7 @@ function SortableProject({
 
 // ── Sidebar ──────────────────────────────────────────────
 
-export function Sidebar({ onAddProject, onMissingPath }: SidebarProps) {
+export function Sidebar({ onAddProject, onMissingPath, width }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { projects, tasksByProject, refreshProjects, setProjects } = useProjects();
@@ -388,7 +389,10 @@ export function Sidebar({ onAddProject, onMissingPath }: SidebarProps) {
   }, []);
 
   return (
-    <aside className="w-[260px] h-full bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0">
+    <aside
+      className="h-full bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0 overflow-hidden"
+      style={{ width: width ?? 260 }}
+    >
       {/* Header */}
       <Link
         href="/settings"
