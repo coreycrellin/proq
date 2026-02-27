@@ -191,7 +191,7 @@ export default function TerminalPanel({ projectId, projectName, projectPath, sty
           }`}
         >
           <SquareChevronUpIcon className="w-3 h-3" />
-          <span className="max-w-[200px] truncate block">{projectName ? `${projectName} Supervisor` : 'Supervisor'}</span>
+          <span className="max-w-[200px] truncate block">{projectName ? `${projectName} Supervisor` : 'Project Supervisor'}</span>
         </button>
 
         {/* ── Separator ── */}
