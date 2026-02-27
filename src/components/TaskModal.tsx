@@ -11,6 +11,7 @@ interface TaskModalProps {
   onClose: (isEmpty: boolean, data?: { title: string; description: string }) => void;
   onSave: (taskId: string, updates: Partial<Task>) => void;
   onMoveToInProgress?: (taskId: string, currentData: Partial<Task>) => Promise<void>;
+  initialDescription?: string;
 }
 
 function openDataUrl(dataUrl: string) {
@@ -29,7 +30,7 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }: TaskModalProps) {
+export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress, initialDescription }: TaskModalProps) {
   const [title, setTitle] = useState(task.title || '');
   const [description, setDescription] = useState(task.description);
   const [mode, setMode] = useState<TaskMode>(task.mode || 'code');
@@ -47,16 +48,23 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
 
   useEffect(() => {
     setTitle(task.title || '');
-    setDescription(task.description);
+    setDescription(initialDescription ?? task.description);
     setMode(task.mode || 'code');
     setOutputMode(task.outputMode || 'pretty');
     setAttachments(task.attachments || []);
-  }, [task.id]);
+  }, [task.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const wasOpen = useRef(false);
   useEffect(() => {
     if (isOpen && !wasOpen.current) {
-      setTimeout(() => descriptionRef.current?.focus(), 50);
+      setTimeout(() => {
+        const el = descriptionRef.current;
+        if (el) {
+          el.focus();
+          const len = el.value.length;
+          if (len > 0) el.setSelectionRange(len, len);
+        }
+      }, 50);
     }
     wasOpen.current = isOpen;
   }, [isOpen, task.id]);
