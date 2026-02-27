@@ -1003,6 +1003,24 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
                   setTimeout(() => fileInputRef.current?.click(), 0);
                   return;
                 }
+                // Detect /atr to attach most recent desktop image
+                if (before >= 0 && val.substring(before, cursor) === '/atr' && (before === 0 || /\s/.test(val[before - 1]))) {
+                  setFollowUpInput(val.substring(0, before) + val.substring(cursor));
+                  fetch('/api/recent-desktop-image')
+                    .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+                    .then((img: { name: string; size: number; type: string; dataUrl: string }) => {
+                      const att: TaskAttachment = {
+                        id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                        name: img.name,
+                        size: img.size,
+                        type: img.type,
+                        dataUrl: img.dataUrl,
+                      };
+                      setFollowUpAttachments(prev => [...prev, att]);
+                    })
+                    .catch(err => console.error('[/atr] failed to fetch recent desktop image:', err));
+                  return;
+                }
                 setFollowUpInput(val);
               }}
               onKeyDown={(e) => {

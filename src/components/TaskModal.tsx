@@ -285,6 +285,30 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
                 setTimeout(() => fileInputRef.current?.click(), 0);
                 return;
               }
+              // Detect /atr slash command to attach most recent desktop image
+              if (before >= 0 && val.substring(before, cursor) === '/atr' && (before === 0 || /\s/.test(val[before - 1]))) {
+                const cleaned = val.substring(0, before) + val.substring(cursor);
+                pendingCursor.current = before;
+                handleDescriptionChange(cleaned);
+                fetch('/api/recent-desktop-image')
+                  .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+                  .then((img: { name: string; size: number; type: string; dataUrl: string }) => {
+                    const att: TaskAttachment = {
+                      id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                      name: img.name,
+                      size: img.size,
+                      type: img.type,
+                      dataUrl: img.dataUrl,
+                    };
+                    setAttachments(prev => {
+                      const updated = [...prev, att];
+                      autosave(title, description, updated, mode, outputMode);
+                      return updated;
+                    });
+                  })
+                  .catch(err => console.error('[/atr] failed to fetch recent desktop image:', err));
+                return;
+              }
               handleDescriptionChange(val);
             }}
             onKeyDown={(e) => {
