@@ -1,7 +1,7 @@
 // ── Project ──────────────────────────────────────────────
 export type ProjectStatus = 'active' | 'review' | 'idle' | 'error';
 
-export type ProjectTab = 'project' | 'list' | 'live' | 'code';
+export type ProjectTab = 'project' | 'list' | 'timeline' | 'live' | 'code';
 
 export interface Project {
   id: string;
@@ -55,8 +55,25 @@ export interface Task {
   };
   attachments?: TaskAttachment[];
   outputMode?: TaskOutputMode;
+  events?: TaskEvent[];
   createdAt: string;
   updatedAt: string;
+}
+
+export type TaskEventType =
+  | 'created'
+  | 'status_changed'
+  | 'dispatched'
+  | 'dispatch_cleared'
+  | 'edited'
+  | 'merged';
+
+export interface TaskEvent {
+  type: TaskEventType;
+  timestamp: string;
+  from?: string;
+  to?: string;
+  detail?: string;
 }
 
 export type TaskColumns = Record<TaskStatus, Task[]>;
@@ -144,4 +161,26 @@ export interface ProjectState {
   supervisorDraft?: string;
   // Legacy field — present only in unmigrated files
   tasks?: Task[];
+}
+
+// ── Timeline ──────────────────────────────────────────
+export interface TimelineBullet {
+  text: string;
+  authors: string[];
+  commits: number;
+}
+
+export interface TimelineWeek {
+  weekStart: string;     // ISO date of Monday (YYYY-MM-DD)
+  weekEnd: string;       // ISO date of Sunday
+  commitCount: number;
+  authors: string[];
+  bullets: TimelineBullet[];
+  types: string[];       // 'feature' | 'fix' | 'infra' | 'chore' etc.
+  hasMilestone: boolean;
+}
+
+export interface TimelineData {
+  weeks: TimelineWeek[];
+  generatedAt: string;
 }

@@ -24,6 +24,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
   const tabs: { id: TabOption; label: string }[] = [
     { id: 'project', label: 'Board' },
     { id: 'list', label: 'List' },
+    { id: 'timeline', label: 'Timeline' },
     { id: 'live', label: 'Live' },
     { id: 'code', label: 'Code' },
   ];

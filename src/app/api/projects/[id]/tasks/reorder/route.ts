@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { moveTask, getProject, getTask, updateTask } from "@/lib/db";
+import { moveTask, getProject, getTask, updateTask, appendTaskEvent } from "@/lib/db";
 import { abortTask, processQueue, getInitialDispatch, scheduleCleanup, cancelCleanup } from "@/lib/agent-dispatch";
 import { mergeWorktree, removeWorktree, getCurrentBranch, checkoutBranch, isPreviewBranch, sourceProqBranch, deletePreviewBranch, popAutoStash } from "@/lib/worktree";
 import type { TaskStatus } from "@/lib/types";
@@ -83,6 +83,7 @@ export async function PUT(request: Request, { params }: Params) {
         const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
         popAutoStash(projectPath);
         if (result.success) {
+          await appendTaskEvent(id, taskId, { type: 'merged', detail: prevTask.branch });
           await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
         } else {
           // Can't move to done with conflict — land in verify
@@ -121,6 +122,7 @@ export async function PUT(request: Request, { params }: Params) {
             await processQueue(id);
             return NextResponse.json({ success: false, error: result.error });
           }
+          await appendTaskEvent(id, taskId, { type: 'merged', detail: prevTask.branch });
           await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
         } else {
           popAutoStash(projectPath);

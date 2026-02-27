@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getTask, getProject, updateTask, deleteTask } from "@/lib/db";
+import { getTask, getProject, updateTask, deleteTask, appendTaskEvent } from "@/lib/db";
 import type { Task } from "@/lib/types";
 import { abortTask, processQueue, getInitialDispatch, scheduleCleanup, cancelCleanup, notify } from "@/lib/agent-dispatch";
 import { mergeWorktree, removeWorktree, getCurrentBranch, checkoutBranch, isPreviewBranch, sourceProqBranch, deletePreviewBranch, popAutoStash } from "@/lib/worktree";
@@ -76,6 +76,7 @@ export async function PATCH(request: Request, { params }: Params) {
           const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
           popAutoStash(projectPath);
           if (result.success) {
+            await appendTaskEvent(id, taskId, { type: 'merged', detail: prevTask.branch });
             await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
           } else {
             // Can't complete with conflict — stay in verify
@@ -120,6 +121,7 @@ export async function PATCH(request: Request, { params }: Params) {
               if (fresh) return NextResponse.json(fresh);
               return NextResponse.json(updated);
             }
+            await appendTaskEvent(id, taskId, { type: 'merged', detail: prevTask.branch });
             await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined });
           } else {
             popAutoStash(projectPath);

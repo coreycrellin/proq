@@ -310,6 +310,33 @@ export function deletePreviewBranch(
   } catch { /* may not exist */ }
 }
 
+export interface GitCommit {
+  hash: string;
+  message: string;
+  author: string;
+  date: string; // ISO string
+}
+
+export function getCommitHistory(
+  projectPath: string,
+  maxCount = 500,
+): GitCommit[] {
+  try {
+    const SEP = "<<SEP>>";
+    const raw = execSync(
+      `git -C '${projectPath}' log --format='%H${SEP}%s${SEP}%an${SEP}%aI' -n ${maxCount}`,
+      { timeout: 15_000, encoding: "utf-8" },
+    ).trim();
+    if (!raw) return [];
+    return raw.split("\n").filter(Boolean).map((line) => {
+      const [hash, message, author, date] = line.split(SEP);
+      return { hash, message, author, date };
+    });
+  } catch {
+    return [];
+  }
+}
+
 export function ensureGitignore(projectPath: string): void {
   const gitignorePath = join(projectPath, ".gitignore");
   try {

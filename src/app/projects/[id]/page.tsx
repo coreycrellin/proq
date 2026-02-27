@@ -8,6 +8,7 @@ import TerminalPanel from '@/components/TerminalPanel';
 import { LiveTab } from '@/components/LiveTab';
 import { CodeTab } from '@/components/CodeTab';
 import { ProjectTaskList } from '@/components/ProjectTaskList';
+import { TimelineTab } from '@/components/TimelineTab';
 import { TaskModal } from '@/components/TaskModal';
 import { TaskAgentModal } from '@/components/TaskAgentModal';
 import { UndoModal } from '@/components/UndoModal';
@@ -15,7 +16,7 @@ import { ParallelModeModal } from '@/components/ParallelModeModal';
 import { AlertModal } from '@/components/Modal';
 import { useProjects } from '@/components/ProjectsProvider';
 import { emptyColumns } from '@/components/ProjectsProvider';
-import type { Task, TaskStatus, TaskColumns, ExecutionMode } from '@/lib/types';
+import type { Task, TaskStatus, TaskColumns, ExecutionMode, TimelineData } from '@/lib/types';
 
 export default function ProjectPage() {
   const params = useParams();
@@ -35,6 +36,8 @@ export default function ProjectPage() {
   const [showModeBlockedModal, setShowModeBlockedModal] = useState(false);
   const [currentBranch, setCurrentBranch] = useState<string>('main');
   const [branches, setBranches] = useState<string[]>([]);
+  const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
+  const timelineFetchedRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Quick capture — type on the board to create a new task
@@ -99,6 +102,18 @@ export default function ProjectPage() {
     }
   }, [projectId]);
 
+  const fetchTimeline = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/timeline-summary`);
+      if (res.ok) {
+        const data = await res.json();
+        setTimelineData(data);
+      }
+    } catch {
+      // best effort
+    }
+  }, [projectId]);
+
   const refresh = useCallback(() => {
     refreshTasks(projectId);
     fetchExecutionMode();
@@ -113,6 +128,20 @@ export default function ProjectPage() {
       fetchBranchState();
     }
   }, [projectId, fetchExecutionMode, fetchBranchState]);
+
+  // Fetch timeline when tab is activated (once per project)
+  useEffect(() => {
+    if (activeTab === 'timeline' && projectId && !timelineFetchedRef.current) {
+      timelineFetchedRef.current = true;
+      fetchTimeline();
+    }
+  }, [activeTab, projectId, fetchTimeline]);
+
+  // Reset timeline fetch flag when project changes
+  useEffect(() => {
+    timelineFetchedRef.current = false;
+    setTimelineData(null);
+  }, [projectId]);
 
   // Auto-refresh tasks every 5 seconds
   useEffect(() => {
@@ -569,6 +598,7 @@ export default function ProjectPage() {
           />
         )}
 
+        {activeTab === 'timeline' && project && <TimelineTab data={timelineData} />}
         {activeTab === 'live' && project && <LiveTab project={project} />}
         {activeTab === 'code' && project && <CodeTab project={project} />}
       </main>

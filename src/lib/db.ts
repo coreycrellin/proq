@@ -8,6 +8,7 @@ import type {
   Task,
   TaskStatus,
   TaskColumns,
+  TaskEvent,
   ChatLogEntry,
   ExecutionMode,
   DeletedTaskEntry,
@@ -130,6 +131,12 @@ function findTask(data: ProjectState, taskId: string): [Task, TaskStatus, number
     if (idx !== -1) return [col[idx], status, idx];
   }
   return null;
+}
+
+// ── Event recording helper ──
+function appendEvent(task: Task, event: Omit<TaskEvent, 'timestamp'>): void {
+  if (!task.events) task.events = [];
+  task.events.push({ ...event, timestamp: new Date().toISOString() });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -262,6 +269,7 @@ export async function createTask(
       createdAt: now,
       updatedAt: now,
     };
+    appendEvent(task, { type: 'created' });
     state.columns.todo.unshift(task);
     writeProject(projectId, state);
     return task;
@@ -285,6 +293,9 @@ export async function moveTask(
     state.columns[fromColumn].splice(fromIndex, 1);
 
     // Update status
+    if (fromColumn !== toColumn) {
+      appendEvent(task, { type: 'status_changed', from: fromColumn, to: toColumn });
+    }
     task.status = toColumn;
     task.updatedAt = new Date().toISOString();
 
@@ -301,7 +312,7 @@ export async function moveTask(
 export async function updateTask(
   projectId: string,
   taskId: string,
-  data: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "findings" | "humanSteps" | "agentLog" | "dispatch" | "attachments" | "mode" | "worktreePath" | "branch" | "mergeConflict">>
+  data: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "findings" | "humanSteps" | "agentLog" | "dispatch" | "attachments" | "mode" | "worktreePath" | "branch" | "mergeConflict" | "events">>
 ): Promise<Task | null> {
   return withWriteLock(`project:${projectId}`, async () => {
     const state = getProjectData(projectId);
@@ -310,16 +321,44 @@ export async function updateTask(
 
     const [task, currentColumn, currentIndex] = found;
 
+    // Snapshot previous values for event recording
+    const prevDispatch = task.dispatch;
+
     // If status is changing, move between columns
     if (data.status && data.status !== currentColumn) {
+      appendEvent(task, { type: 'status_changed', from: currentColumn, to: data.status });
       state.columns[currentColumn].splice(currentIndex, 1);
       task.status = data.status;
       state.columns[data.status].unshift(task);
     }
 
+    // Record dispatch changes
+    if (data.dispatch !== undefined && data.dispatch !== prevDispatch) {
+      if (data.dispatch) {
+        appendEvent(task, { type: 'dispatched', from: prevDispatch || 'none', to: data.dispatch });
+      } else {
+        appendEvent(task, { type: 'dispatch_cleared', from: prevDispatch || 'none' });
+      }
+    }
+
     Object.assign(task, data, { updatedAt: new Date().toISOString() });
     writeProject(projectId, state);
     return task;
+  });
+}
+
+export async function appendTaskEvent(
+  projectId: string,
+  taskId: string,
+  event: Omit<TaskEvent, 'timestamp'>
+): Promise<void> {
+  return withWriteLock(`project:${projectId}`, async () => {
+    const state = getProjectData(projectId);
+    const found = findTask(state, taskId);
+    if (!found) return;
+    const [task] = found;
+    appendEvent(task, event);
+    writeProject(projectId, state);
   });
 }
 
