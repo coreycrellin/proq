@@ -127,6 +127,7 @@ export type ExecutionMode = 'sequential' | 'parallel';
 export interface TerminalTabInfo {
   id: string;
   label: string;
+  type?: 'shell' | 'supervisor';
 }
 
 export interface ProjectState {

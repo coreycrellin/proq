@@ -61,7 +61,9 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [drawerView, setDrawerView] = useState<DrawerView>('supervisor');
+  const [showNewMenu, setShowNewMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const newMenuRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   // Hydrate persisted shell tabs on mount
@@ -96,15 +98,18 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
 
   // Close dropdown on outside click
   useEffect(() => {
-    if (!menuTabId) return;
+    if (!menuTabId && !showNewMenu) return;
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (menuTabId && menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuTabId(null);
+      }
+      if (showNewMenu && newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) {
+        setShowNewMenu(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [menuTabId]);
+  }, [menuTabId, showNewMenu]);
 
   // Focus rename input when it appears
   useEffect(() => {
@@ -132,6 +137,12 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
     openTab(projectId, id, `Terminal ${shellCount}`, 'shell');
   }, [tabs, openTab, projectId, projectPath]);
 
+  const addSupervisorTab = useCallback(() => {
+    const id = `supervisor-${uuidv4().slice(0, 8)}`;
+    const supCount = tabs.filter((t) => t.type === 'supervisor').length + 1;
+    openTab(projectId, id, `Supervisor ${supCount}`, 'supervisor');
+  }, [tabs, openTab, projectId]);
+
   const removeTab = useCallback(
     (tabId: string) => {
       closeTab(projectId, tabId);
@@ -140,7 +151,7 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
   );
 
   const tabAccentColor = (tab: TerminalTab) =>
-    tab.type === 'task' ? 'text-steel' : 'text-bronze-500';
+    tab.type === 'task' ? 'text-steel' : tab.type === 'supervisor' ? 'text-bronze-600 dark:text-bronze-400' : 'text-bronze-500';
 
   return (
     <div
@@ -218,7 +229,7 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
                   : 'text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-bronze-300/30 dark:hover:bg-zinc-800/30'
               }`}
             >
-              <TerminalIcon className="w-3 h-3" />
+              {tab.type === 'supervisor' ? <SquareChevronUpIcon className="w-3 h-3" /> : <TerminalIcon className="w-3 h-3" />}
               <span className="relative">
                 <span className={`max-w-[120px] truncate block ${renamingTabId === tab.id ? 'invisible' : ''}`}>
                   {tab.status === 'done' ? '\u2705 ' : ''}
@@ -277,24 +288,53 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
                   className="w-full text-left px-3 py-1.5 text-sm text-crimson hover:bg-bronze-200 dark:hover:bg-zinc-700 flex items-center gap-2"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  Kill Terminal
+                  {tab.type === 'supervisor' ? 'Close' : 'Kill Terminal'}
                 </button>
               </div>
             )}
           </div>
         ))}
 
-        <button
-          onClick={() => {
-            setDrawerView('terminal');
-            addShellTab();
-            if (collapsed) (onExpand ?? onToggleCollapsed)();
-          }}
-          className="flex items-center justify-center w-12 self-stretch text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-bronze-300/30 dark:hover:bg-zinc-800/30 shrink-0"
-          title="New terminal"
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
+        <div className="relative flex items-stretch shrink-0">
+          <button
+            onClick={() => setShowNewMenu((v) => !v)}
+            className="flex items-center justify-center w-12 self-stretch text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-bronze-300/30 dark:hover:bg-zinc-800/30"
+            title="New tab"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          {showNewMenu && (
+            <div
+              ref={newMenuRef}
+              className="absolute left-0 top-full mt-1 w-44 bg-bronze-50 dark:bg-zinc-800 border border-bronze-400 dark:border-zinc-700 rounded-md shadow-lg z-50 py-1"
+            >
+              <button
+                onClick={() => {
+                  setShowNewMenu(false);
+                  setDrawerView('terminal');
+                  addShellTab();
+                  if (collapsed) (onExpand ?? onToggleCollapsed)();
+                }}
+                className="w-full text-left px-3 py-1.5 text-sm text-bronze-700 dark:text-zinc-300 hover:bg-bronze-200 dark:hover:bg-zinc-700 flex items-center gap-2"
+              >
+                <TerminalIcon className="w-3.5 h-3.5" />
+                New Terminal
+              </button>
+              <button
+                onClick={() => {
+                  setShowNewMenu(false);
+                  setDrawerView('terminal');
+                  addSupervisorTab();
+                  if (collapsed) (onExpand ?? onToggleCollapsed)();
+                }}
+                className="w-full text-left px-3 py-1.5 text-sm text-bronze-700 dark:text-zinc-300 hover:bg-bronze-200 dark:hover:bg-zinc-700 flex items-center gap-2"
+              >
+                <SquareChevronUpIcon className="w-3.5 h-3.5" />
+                New Supervisor
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Spacer — fills remaining space for grab target */}
         <div className="flex-1" />
@@ -311,16 +351,25 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
             onTaskCreated={onTaskCreated}
           />
 
-          {/* Terminal panes (always mounted to preserve state, visibility toggled) */}
-          {tabs.map((tab) => (
-            <TerminalPane
-              key={tab.id}
-              tabId={tab.id}
-              visible={!isSupervisorActive && activeTabId === tab.id}
-              cwd={projectPath}
-              enableDrop
-            />
-          ))}
+          {/* Terminal + supervisor panes (always mounted to preserve state, visibility toggled) */}
+          {tabs.map((tab) =>
+            tab.type === 'supervisor' ? (
+              <ProjectSupervisorPane
+                key={tab.id}
+                projectId={projectId}
+                visible={!isSupervisorActive && activeTabId === tab.id}
+                onTaskCreated={onTaskCreated}
+              />
+            ) : (
+              <TerminalPane
+                key={tab.id}
+                tabId={tab.id}
+                visible={!isSupervisorActive && activeTabId === tab.id}
+                cwd={projectPath}
+                enableDrop
+              />
+            )
+          )}
         </div>
       )}
 
