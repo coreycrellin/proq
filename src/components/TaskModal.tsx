@@ -33,7 +33,7 @@ function formatSize(bytes: number): string {
 export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress, initialDescription }: TaskModalProps) {
   const [title, setTitle] = useState(task.title || '');
   const [description, setDescription] = useState(task.description);
-  const [mode, setMode] = useState<TaskMode>(task.mode || 'code');
+  const [mode, setMode] = useState<TaskMode>(task.mode || 'auto');
   const [outputMode, setOutputMode] = useState<TaskOutputMode>(task.outputMode || 'pretty');
   const [attachments, setAttachments] = useState<TaskAttachment[]>(
     task.attachments || [],
@@ -49,7 +49,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress, i
   useEffect(() => {
     setTitle(task.title || '');
     setDescription(initialDescription ?? task.description);
-    setMode(task.mode || 'code');
+    setMode(task.mode || 'auto');
     setOutputMode(task.outputMode || 'pretty');
     setAttachments(task.attachments || []);
   }, [task.id]); // eslint-disable-line react-hooks/exhaustive-deps
