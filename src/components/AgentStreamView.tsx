@@ -1055,14 +1055,9 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
 
   return (
     <div className="absolute inset-0 flex flex-col bg-surface-base">
-      {/* Top-right controls: context window + collapse toggle */}
+      {/* Collapse-all toggle */}
       {blocks.length > 0 && (
-        <div className="absolute top-2 right-5 z-10 flex items-center gap-2">
-          {contextTokens > 0 && (
-            <div className="px-2 py-1 rounded-md bg-surface-primary/80 border border-border-default backdrop-blur-sm">
-              <ContextWindowIndicator tokens={contextTokens} />
-            </div>
-          )}
+        <div className="absolute top-2 right-5 z-10">
           <button
             onClick={() => setCollapseSignal(prev => prev > 0 ? -Math.abs(prev) - 1 : Math.abs(prev) + 1)}
             className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-text-chrome hover:text-text-chrome-active bg-surface-primary/80 hover:bg-surface-hover/80 border border-border-default backdrop-blur-sm transition-colors"
@@ -1216,6 +1211,9 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
             >
               <PaperclipIcon className="w-4 h-4" />
             </button>
+            {contextTokens > 0 && (
+              <ContextWindowIndicator tokens={contextTokens} />
+            )}
             {!exited && connected && (
               <button
                 onClick={handleStop}
