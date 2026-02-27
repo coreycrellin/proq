@@ -12,6 +12,7 @@ import {
   BellIcon,
   CogIcon,
   InfoIcon,
+  KeyboardIcon,
 } from "lucide-react";
 import type { ProqSettings } from "@/lib/types";
 
@@ -22,7 +23,8 @@ type SettingsSection =
   | "appearance"
   | "notifications"
   | "process"
-  | "about";
+  | "about"
+  | "shortcuts";
 
 const SECTIONS: {
   id: SettingsSection;
@@ -34,6 +36,11 @@ const SECTIONS: {
   { id: "agent", label: "Agent", icon: <BotIcon className="w-4 h-4" /> },
   { id: "process", label: "Process", icon: <CogIcon className="w-4 h-4" /> },
   { id: "git", label: "Git", icon: <GitBranchIcon className="w-4 h-4" /> },
+  {
+    id: "shortcuts",
+    label: "Shortcuts",
+    icon: <KeyboardIcon className="w-4 h-4" />,
+  },
   {
     id: "appearance",
     label: "Appearance",
@@ -484,6 +491,79 @@ export default function SettingsPage() {
               </div>
             </section>
 
+            {/* Shortcuts */}
+            <section
+              ref={(el) => {
+                sectionRefs.current.shortcuts = el;
+              }}
+              id="settings-shortcuts"
+            >
+              <SectionHeading
+                icon={<KeyboardIcon className="w-4 h-4" />}
+                label="Shortcuts"
+              />
+              <p className="text-sm text-bronze-700 dark:text-zinc-400 leading-relaxed mb-5">
+                Keyboard shortcuts and slash commands available throughout proq.
+              </p>
+
+              {/* Keyboard Shortcuts */}
+              <h3 className="text-sm font-semibold text-bronze-800 dark:text-zinc-300 mb-3">
+                Keyboard Shortcuts
+              </h3>
+              <div className="rounded-lg border border-border-default overflow-hidden mb-6">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-bronze-200/50 dark:bg-zinc-800/50 border-b border-border-default">
+                      <th className="text-left px-4 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Shortcut</th>
+                      <th className="text-left px-4 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Action</th>
+                      <th className="text-left px-4 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Context</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-default">
+                    <ShortcutRow keys={["\u2318", "Z"]} action="Undo last deleted task" context="Board" />
+                    <ShortcutRow keys={["\u2318", "\u23CE"]} action="Dispatch task (Start Now)" context="Task modal" />
+                    <ShortcutRow keys={["\u2318", "\u21E7", "A"]} action="Attach file" context="Task modal" />
+                    <ShortcutRow keys={["Tab"]} action="Indent bullet list" context="Task description" />
+                    <ShortcutRow keys={["\u21E7", "Tab"]} action="Outdent bullet list" context="Task description" />
+                    <ShortcutRow keys={["Esc"]} action="Close modal / Cancel" context="Any modal" />
+                    <ShortcutRow keys={["type anywhere"]} action="Quick capture — start typing to create a task" context="Board" />
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Slash Commands */}
+              <h3 className="text-sm font-semibold text-bronze-800 dark:text-zinc-300 mb-3">
+                Slash Commands
+              </h3>
+              <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">
+                Type these in the task description field. They trigger immediately when typed.
+              </p>
+              <div className="rounded-lg border border-border-default overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-bronze-200/50 dark:bg-zinc-800/50 border-b border-border-default">
+                      <th className="text-left px-4 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Command</th>
+                      <th className="text-left px-4 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-default">
+                    <tr className="hover:bg-bronze-100/50 dark:hover:bg-zinc-800/30">
+                      <td className="px-4 py-2.5">
+                        <code className="px-2 py-0.5 bg-bronze-200 dark:bg-zinc-800 rounded text-xs font-mono text-bronze-800 dark:text-zinc-200">/att</code>
+                      </td>
+                      <td className="px-4 py-2.5 text-bronze-700 dark:text-zinc-400">Open file picker to attach an image or file to the task</td>
+                    </tr>
+                    <tr className="hover:bg-bronze-100/50 dark:hover:bg-zinc-800/30">
+                      <td className="px-4 py-2.5">
+                        <code className="px-2 py-0.5 bg-bronze-200 dark:bg-zinc-800 rounded text-xs font-mono text-bronze-800 dark:text-zinc-200">/atr</code>
+                      </td>
+                      <td className="px-4 py-2.5 text-bronze-700 dark:text-zinc-400">Attach the most recent screenshot from your Desktop</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
             {/* Appearance */}
             <section
               ref={(el) => {
@@ -622,6 +702,35 @@ function Field({
       )}
       {children}
     </div>
+  );
+}
+
+function ShortcutRow({
+  keys,
+  action,
+  context,
+}: {
+  keys: string[];
+  action: string;
+  context: string;
+}) {
+  return (
+    <tr className="hover:bg-bronze-100/50 dark:hover:bg-zinc-800/30">
+      <td className="px-4 py-2.5">
+        <span className="inline-flex items-center gap-1">
+          {keys.map((key, i) => (
+            <span key={i} className="flex items-center gap-1">
+              {i > 0 && <span className="text-zinc-400 dark:text-zinc-600 text-xs">+</span>}
+              <kbd className="inline-block min-w-[24px] text-center px-1.5 py-0.5 bg-bronze-200 dark:bg-zinc-800 border border-bronze-300 dark:border-zinc-700 rounded text-xs font-mono text-bronze-800 dark:text-zinc-200 shadow-sm">
+                {key}
+              </kbd>
+            </span>
+          ))}
+        </span>
+      </td>
+      <td className="px-4 py-2.5 text-bronze-700 dark:text-zinc-400">{action}</td>
+      <td className="px-4 py-2.5 text-xs text-zinc-400 dark:text-zinc-500">{context}</td>
+    </tr>
   );
 }
 
