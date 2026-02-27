@@ -349,7 +349,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
               className="absolute inset-y-0 -left-2 -right-2 z-20 cursor-col-resize group"
             >
               {/* Visible line */}
-              <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-bronze-300 dark:bg-zinc-800 group-hover:w-1 group-hover:bg-steel/40 group-active:bg-steel/50 transition-all" />
+              <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-bronze-300 dark:bg-zinc-800 group-hover:w-0.5 group-hover:bg-steel/40 group-active:bg-steel/50 transition-all" />
             </div>
           </div>
         )}
@@ -468,7 +468,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
               onMouseDown={handleResizeMouseDown}
               className="absolute inset-x-0 -top-2 -bottom-2 z-20 cursor-row-resize group"
             >
-              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-bronze-300 dark:bg-zinc-800 group-hover:h-1 group-hover:bg-steel/40 group-active:bg-steel/50 transition-all" />
+              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-bronze-300 dark:bg-zinc-800 group-hover:h-0.5 group-hover:bg-steel/40 group-active:bg-steel/50 transition-all" />
             </div>
           </div>
 
