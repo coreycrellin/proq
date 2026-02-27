@@ -8,7 +8,7 @@ import { MissingPathModal } from './MissingPathModal';
 import { useProjects } from './ProjectsProvider';
 import type { Project } from '@/lib/types';
 
-const SIDEBAR_MIN = 120;
+const SIDEBAR_MIN = 40;
 const SIDEBAR_MAX = 480;
 const SIDEBAR_DEFAULT = 260;
 const SIDEBAR_STORAGE_KEY = 'proq-sidebar-width';
