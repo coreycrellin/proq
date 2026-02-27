@@ -20,6 +20,7 @@ import {
   LayersIcon,
   UserIcon,
   WrenchIcon,
+  HelpCircleIcon,
 } from 'lucide-react';
 
 /* ─── Types for stream-json events ─── */
@@ -91,6 +92,7 @@ export function getToolIcon(name: string) {
     case 'WebFetch':
     case 'WebSearch': return GlobeIcon;
     case 'Task': return LayersIcon;
+    case 'AskUserQuestion': return HelpCircleIcon;
     default: return WrenchIcon;
   }
 }
@@ -117,6 +119,10 @@ export function getToolDescription(name: string, input: Record<string, unknown>)
       return truncate(input.description as string, 60) || truncate(input.prompt as string, 60) || 'Run sub-agent';
     case 'NotebookEdit':
       return truncate(input.notebook_path as string, 60) || 'Edit notebook';
+    case 'AskUserQuestion': {
+      const qs = input.questions as Array<{ question: string }> | undefined;
+      return qs?.[0]?.question ? truncate(qs[0].question, 60) : 'Asking a question';
+    }
     default:
       return name;
   }
@@ -147,6 +153,8 @@ export function getToolInputDisplay(name: string, input: Record<string, unknown>
       return `pattern: ${input.pattern || ''}${input.path ? `\npath: ${input.path}` : ''}`;
     case 'Task':
       return truncateLines(input.prompt as string, 5) || null;
+    case 'AskUserQuestion':
+      return null; // Custom rendering handled in ToolBlock
     default:
       return null;
   }
@@ -319,6 +327,68 @@ export function TextBlock({ block, collapseSignal, neverCollapse }: { block: Ren
   );
 }
 
+export function AskUserQuestionContent({ input, result }: { input: Record<string, unknown>; result?: string }) {
+  const questions = (input.questions as Array<{
+    question: string;
+    header?: string;
+    options: Array<{ label: string; description?: string; markdown?: string }>;
+    multiSelect?: boolean;
+  }>) || [];
+
+  // Try to parse answers from the result JSON
+  let answers: Record<string, string> = {};
+  if (result) {
+    try {
+      const parsed = JSON.parse(result);
+      if (parsed.answers) answers = parsed.answers;
+    } catch {
+      // result might be plain text
+    }
+  }
+
+  return (
+    <div className="space-y-3 px-3 py-2.5">
+      {questions.map((q, i) => {
+        const answer = answers[q.question];
+        return (
+          <div key={i}>
+            {q.header && (
+              <span className="text-[10px] font-medium text-text-chrome uppercase tracking-wider">{q.header}</span>
+            )}
+            <p className="text-[12px] text-bronze-800 dark:text-zinc-200 font-medium mt-0.5">{q.question}</p>
+            <div className="mt-1.5 space-y-1">
+              {q.options.map((opt, j) => {
+                const isSelected = answer === opt.label;
+                return (
+                  <div
+                    key={j}
+                    className={`flex items-start gap-2 px-2.5 py-1.5 rounded-md text-[12px] ${
+                      isSelected
+                        ? 'bg-steel/10 border border-steel/30 text-steel dark:text-blue-300'
+                        : 'text-bronze-600 dark:text-zinc-400'
+                    }`}
+                  >
+                    <span className="shrink-0 mt-px">{isSelected ? '\u25CF' : '\u25CB'}</span>
+                    <div>
+                      <span className={isSelected ? 'font-medium' : ''}>{opt.label}</span>
+                      {opt.description && (
+                        <span className="ml-1.5 text-text-chrome">{opt.description}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+      {result && !Object.keys(answers).length && (
+        <div className="text-[11px] text-text-chrome italic">{result}</div>
+      )}
+    </div>
+  );
+}
+
 export function ToolBlock({ block, collapseSignal }: { block: RenderBlock; collapseSignal: number }) {
   const [collapsed, setCollapsed] = useState(collapseSignal > 0);
 
@@ -332,6 +402,7 @@ export function ToolBlock({ block, collapseSignal }: { block: RenderBlock; colla
   const inputDisplay = getToolInputDisplay(block.toolName || '', block.toolInput || {});
   const hasResult = block.toolResult !== undefined;
   const isActive = block.status === 'active' && !hasResult;
+  const isAskQuestion = block.toolName === 'AskUserQuestion';
 
   return (
     <div className="flex gap-3 py-2.5">
@@ -352,7 +423,7 @@ export function ToolBlock({ block, collapseSignal }: { block: RenderBlock; colla
           className="flex items-center gap-2 group w-full text-left"
         >
           <Icon className="w-3.5 h-3.5 text-text-chrome shrink-0" />
-          <span className="text-[13px] font-semibold text-bronze-800 dark:text-zinc-200">{block.toolName}</span>
+          <span className="text-[13px] font-semibold text-bronze-800 dark:text-zinc-200">{isAskQuestion ? 'Question' : block.toolName}</span>
           <span className="text-[12px] text-text-chrome truncate">{description}</span>
           <span className="ml-auto shrink-0 text-text-chrome group-hover:text-text-chrome-hover transition-colors">
             {collapsed ? <ChevronRightIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
@@ -361,29 +432,35 @@ export function ToolBlock({ block, collapseSignal }: { block: RenderBlock; colla
 
         {!collapsed && (
           <div className="mt-2 rounded-md border border-border-default bg-surface-secondary overflow-hidden">
-            {inputDisplay && (
-              <div className="px-3 py-2 border-b border-border-subtle">
-                <span className="text-[10px] font-medium text-text-chrome uppercase tracking-wider mr-2">IN</span>
-                <pre className="mt-1 text-[11px] font-mono text-bronze-600 dark:text-zinc-400 whitespace-pre-wrap break-all leading-relaxed">
-                  {inputDisplay}
-                </pre>
-              </div>
-            )}
-            {hasResult && (
-              <div className="px-3 py-2">
-                <CollapsibleOutput
-                  label="OUT"
-                  content={block.toolResult || ''}
-                  defaultOpen={true}
-                  maxLines={25}
-                  isError={block.toolError}
-                />
-              </div>
+            {isAskQuestion ? (
+              <AskUserQuestionContent input={block.toolInput || {}} result={block.toolResult} />
+            ) : (
+              <>
+                {inputDisplay && (
+                  <div className="px-3 py-2 border-b border-border-subtle">
+                    <span className="text-[10px] font-medium text-text-chrome uppercase tracking-wider mr-2">IN</span>
+                    <pre className="mt-1 text-[11px] font-mono text-bronze-600 dark:text-zinc-400 whitespace-pre-wrap break-all leading-relaxed">
+                      {inputDisplay}
+                    </pre>
+                  </div>
+                )}
+                {hasResult && (
+                  <div className="px-3 py-2">
+                    <CollapsibleOutput
+                      label="OUT"
+                      content={block.toolResult || ''}
+                      defaultOpen={true}
+                      maxLines={25}
+                      isError={block.toolError}
+                    />
+                  </div>
+                )}
+              </>
             )}
             {isActive && (
               <div className="px-3 py-2 flex items-center gap-2">
                 <Loader2Icon className="w-3 h-3 text-steel dark:text-blue-400 animate-spin" />
-                <span className="text-[11px] text-steel dark:text-blue-400/80">Running...</span>
+                <span className="text-[11px] text-steel dark:text-blue-400/80">{isAskQuestion ? 'Waiting for answer...' : 'Running...'}</span>
               </div>
             )}
           </div>
