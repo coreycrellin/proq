@@ -40,12 +40,20 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const body = await req.json();
   const message = body.message as string | undefined;
+  const attachments = body.attachments as Array<{ name: string; type: string; dataUrl?: string }> | undefined;
   if (!message?.trim()) {
     return NextResponse.json({ error: "message is required" }, { status: 400 });
   }
 
+  // Build full message with attachment info
+  let fullMessage = message.trim();
+  if (attachments && attachments.length > 0) {
+    const attNames = attachments.map((a) => a.name).join(", ");
+    fullMessage += `\n[Attached: ${attNames}]`;
+  }
+
   // Save user message
-  await addProjectSupervisorMessage(id, { role: "user", message: message.trim() });
+  await addProjectSupervisorMessage(id, { role: "user", message: fullMessage });
 
   // Get history for context
   const history = await getProjectSupervisorChatLog(id);
@@ -78,12 +86,18 @@ export async function POST(req: NextRequest, { params }: Params) {
         let fullText = "";
         const toolCalls: ToolCall[] = [];
 
+        // Collect image data URLs for passing to supervisor
+        const imageDataUrls = (attachments || [])
+          .filter((a) => a.type?.startsWith("image/") && a.dataUrl)
+          .map((a) => a.dataUrl as string);
+
         try {
           for await (const chunk of runSupervisor(
             history.slice(0, -1), // exclude the user message we just added
-            message.trim(),
+            fullMessage,
             abortController.signal,
             projectContext,
+            imageDataUrls.length > 0 ? imageDataUrls : undefined,
           )) {
             // Accumulate for persistence
             if (chunk.type === "text_delta") {

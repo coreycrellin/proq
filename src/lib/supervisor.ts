@@ -1,4 +1,7 @@
 import { spawn, type ChildProcess } from "child_process";
+import { writeFileSync, mkdirSync, unlinkSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
 import type { ChatLogEntry, ToolCall } from "./types";
 
 const CLAUDE = process.env.CLAUDE_BIN || "claude";
@@ -117,6 +120,7 @@ export async function* runSupervisor(
   userMessage: string,
   signal?: AbortSignal,
   projectContext?: ProjectContext,
+  imageDataUrls?: string[],
 ): AsyncGenerator<SupervisorChunk> {
   const systemPrompt = buildSystemPrompt(projectContext);
   const conversationPrompt = buildConversationPrompt(history, userMessage);
@@ -130,6 +134,23 @@ export async function* runSupervisor(
     "--append-system-prompt", systemPrompt,
     "-p", conversationPrompt,
   ];
+
+  // Write image attachments to temp files and pass via --images
+  const tempFiles: string[] = [];
+  if (imageDataUrls && imageDataUrls.length > 0) {
+    const tempDir = join(tmpdir(), "proq-supervisor");
+    try { mkdirSync(tempDir, { recursive: true }); } catch {}
+    for (const dataUrl of imageDataUrls) {
+      const match = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (match) {
+        const ext = match[1] === "jpeg" ? "jpg" : match[1];
+        const tempPath = join(tempDir, `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`);
+        writeFileSync(tempPath, Buffer.from(match[2], "base64"));
+        tempFiles.push(tempPath);
+        args.push("--images", tempPath);
+      }
+    }
+  }
 
   // Strip env vars that would confuse a nested Claude instance
   const env = { ...process.env };
@@ -251,5 +272,10 @@ export async function* runSupervisor(
 
   if (child.exitCode && child.exitCode !== 0) {
     yield { type: "error", error: stderr.trim().slice(0, 500) || `Process exited with code ${child.exitCode}` };
+  }
+
+  // Clean up temp image files
+  for (const f of tempFiles) {
+    try { unlinkSync(f); } catch {}
   }
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Trash2Icon } from 'lucide-react';
 import { ChatPanel, type StreamingMessage } from './ChatPanel';
-import type { ChatLogEntry, ToolCall } from '@/lib/types';
+import type { ChatLogEntry, ToolCall, TaskAttachment } from '@/lib/types';
 
 interface ProjectSupervisorPaneProps {
   projectId: string;
@@ -48,7 +48,13 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
     }, 500);
   }, [projectId]);
 
-  const handleSendMessage = useCallback(async (text: string) => {
+  const handleStop = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+  }, []);
+
+  const handleSendMessage = useCallback(async (text: string, attachments?: TaskAttachment[]) => {
     // Optimistic user message
     const userEntry: ChatLogEntry = {
       role: 'user',
@@ -71,10 +77,15 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
       const controller = new AbortController();
       abortRef.current = controller;
 
+      const payload: Record<string, unknown> = { message: text };
+      if (attachments && attachments.length > 0) {
+        payload.attachments = attachments;
+      }
+
       const res = await fetch(`/api/projects/${projectId}/supervisor`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       });
 
@@ -182,6 +193,7 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
         isLoading={isLoading}
         initialValue={draft}
         onDraftChange={handleDraftChange}
+        onStop={handleStop}
         style={{ flex: 1 }}
       />
     </div>
