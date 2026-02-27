@@ -6,7 +6,7 @@ import {
   getSupervisorDraft,
   setSupervisorDraft,
 } from "@/lib/db";
-import { runSupervisor, type SupervisorChunk } from "@/lib/supervisor";
+import { runSupervisor, formatToolDetail } from "@/lib/supervisor";
 import type { ToolCall } from "@/lib/types";
 
 export async function GET() {
@@ -43,10 +43,11 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
-      // Run async work without blocking the stream from becoming ready
       (async () => {
-        let fullText = "";
+        const textBlocks: string[] = [];
         const toolCalls: ToolCall[] = [];
+        let resultText = "";
+        const emittedToolIds = new Set<string>();
 
         try {
           for await (const chunk of runSupervisor(
@@ -54,27 +55,56 @@ export async function POST(req: NextRequest) {
             message.trim(),
             abortController.signal,
           )) {
-            // Accumulate for persistence
-            if (chunk.type === "text_delta") {
-              fullText += chunk.text;
-            } else if (chunk.type === "tool_call") {
-              toolCalls.push({ action: chunk.action, detail: chunk.detail });
-            } else if (chunk.type === "result" && !fullText) {
-              fullText = chunk.text;
-            }
+            if (chunk.type === "stream_event") {
+              const event = chunk.event;
+              const eventType = event.type as string;
 
-            // Stream to client
-            controller.enqueue(encoder.encode(JSON.stringify(chunk) + "\n"));
+              // Forward raw event to client
+              controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+
+              // Accumulate for persistence
+              if (eventType === "assistant" && event.message) {
+                const msg = event.message as { content?: Array<Record<string, unknown>> };
+                if (msg.content) {
+                  for (const block of msg.content) {
+                    if (block.type === "text" && block.text) {
+                      textBlocks.push(block.text as string);
+                    }
+                    if (block.type === "tool_use" && block.name) {
+                      const toolId = String(block.id || "");
+                      if (!emittedToolIds.has(toolId)) {
+                        emittedToolIds.add(toolId);
+                        toolCalls.push({
+                          action: String(block.name),
+                          detail: formatToolDetail(
+                            String(block.name),
+                            (block.input as Record<string, unknown>) || {},
+                          ),
+                        });
+                      }
+                    }
+                  }
+                }
+              }
+
+              if (eventType === "result") {
+                const result = event.result as string | undefined;
+                if (result) resultText = result;
+              }
+            } else if (chunk.type === "error") {
+              controller.enqueue(
+                encoder.encode(JSON.stringify({ type: "error", error: chunk.error }) + "\n")
+              );
+            }
           }
         } catch (err) {
-          const errorChunk: SupervisorChunk = {
-            type: "error",
-            error: String(err),
-          };
-          controller.enqueue(encoder.encode(JSON.stringify(errorChunk) + "\n"));
+          controller.enqueue(
+            encoder.encode(JSON.stringify({ type: "error", error: String(err) }) + "\n")
+          );
         }
 
         // Persist the supervisor response
+        const fullText = resultText || textBlocks.join("\n");
         if (fullText.trim() || toolCalls.length > 0) {
           await addSupervisorMessage({
             role: "proq",

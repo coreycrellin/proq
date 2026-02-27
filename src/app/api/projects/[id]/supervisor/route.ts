@@ -8,7 +8,7 @@ import {
   getProject,
   getAllTasks,
 } from "@/lib/db";
-import { runSupervisor, type SupervisorChunk, type ProjectContext } from "@/lib/supervisor";
+import { runSupervisor, formatToolDetail, type ProjectContext } from "@/lib/supervisor";
 import type { ToolCall } from "@/lib/types";
 
 type Params = { params: Promise<{ id: string }> };
@@ -83,8 +83,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   const stream = new ReadableStream({
     start(controller) {
       (async () => {
-        let fullText = "";
+        const textBlocks: string[] = [];
         const toolCalls: ToolCall[] = [];
+        let resultText = "";
+        let didCreateTask = false;
+
+        // Track tool calls we've already recorded to avoid duplicates
+        const emittedToolIds = new Set<string>();
 
         // Collect image data URLs for passing to supervisor
         const imageDataUrls = (attachments || [])
@@ -99,27 +104,62 @@ export async function POST(req: NextRequest, { params }: Params) {
             projectContext,
             imageDataUrls.length > 0 ? imageDataUrls : undefined,
           )) {
-            // Accumulate for persistence
-            if (chunk.type === "text_delta") {
-              fullText += chunk.text;
-            } else if (chunk.type === "tool_call") {
-              toolCalls.push({ action: chunk.action, detail: chunk.detail });
-            } else if (chunk.type === "result" && !fullText) {
-              fullText = chunk.text;
-            }
+            if (chunk.type === "stream_event") {
+              const event = chunk.event;
+              const eventType = event.type as string;
 
-            // Stream to client
-            controller.enqueue(encoder.encode(JSON.stringify(chunk) + "\n"));
+              // Forward raw event to client
+              controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+
+              // Accumulate for persistence
+              if (eventType === "assistant" && event.message) {
+                const msg = event.message as { content?: Array<Record<string, unknown>> };
+                if (msg.content) {
+                  for (const block of msg.content) {
+                    if (block.type === "text" && block.text) {
+                      textBlocks.push(block.text as string);
+                    }
+                    if (block.type === "tool_use" && block.name) {
+                      const toolId = String(block.id || "");
+                      if (!emittedToolIds.has(toolId)) {
+                        emittedToolIds.add(toolId);
+                        const tc: ToolCall = {
+                          action: String(block.name),
+                          detail: formatToolDetail(
+                            String(block.name),
+                            (block.input as Record<string, unknown>) || {},
+                          ),
+                        };
+                        toolCalls.push(tc);
+
+                        // Detect task creation via API call
+                        if (tc.action === "Bash" && tc.detail?.includes("/tasks")) {
+                          didCreateTask = true;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
+              if (eventType === "result") {
+                const result = event.result as string | undefined;
+                if (result) {
+                  resultText = result;
+                }
+              }
+            } else if (chunk.type === "error") {
+              controller.enqueue(encoder.encode(JSON.stringify({ type: "error", error: chunk.error }) + "\n"));
+            }
           }
         } catch (err) {
-          const errorChunk: SupervisorChunk = {
-            type: "error",
-            error: String(err),
-          };
-          controller.enqueue(encoder.encode(JSON.stringify(errorChunk) + "\n"));
+          controller.enqueue(
+            encoder.encode(JSON.stringify({ type: "error", error: String(err) }) + "\n")
+          );
         }
 
         // Persist the supervisor response
+        const fullText = resultText || textBlocks.join("\n");
         if (fullText.trim() || toolCalls.length > 0) {
           await addProjectSupervisorMessage(id, {
             role: "proq",
@@ -127,6 +167,9 @@ export async function POST(req: NextRequest, { params }: Params) {
             toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
           });
         }
+
+        // Notify parent to refresh tasks if a task was created
+        // (client detects this from the streamed events)
 
         controller.close();
       })().catch((err) => {
