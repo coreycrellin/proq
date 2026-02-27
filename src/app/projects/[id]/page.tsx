@@ -524,6 +524,7 @@ export default function ProjectPage() {
               cleanupTimes={cleanupTimes}
               onResizeStart={handleResizeStart}
               isDragging={isDragging}
+              onTaskCreated={refresh}
             />
           </>
         )}

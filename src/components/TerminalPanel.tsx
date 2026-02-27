@@ -6,10 +6,13 @@ import React, {
   useCallback,
   useState,
 } from 'react';
-import { Plus, TerminalIcon, ChevronUp, ChevronDown, MoreHorizontal, PencilIcon, Trash2 } from 'lucide-react';
+import { Plus, TerminalIcon, ChevronUp, ChevronDown, MoreHorizontal, PencilIcon, Trash2, SquareChevronUpIcon } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useTerminalTabs, type TerminalTab } from './TerminalTabsProvider';
 import { TerminalPane } from './TerminalPane';
+import { ProjectSupervisorPane } from './ProjectSupervisorPane';
+
+type DrawerView = 'supervisor' | 'terminal';
 
 interface TerminalPanelProps {
   projectId: string;
@@ -21,11 +24,8 @@ interface TerminalPanelProps {
   cleanupTimes?: Record<string, number>;
   onResizeStart?: (e: React.MouseEvent) => void;
   isDragging?: boolean;
+  onTaskCreated?: () => void;
 }
-
-/* -------------------------------------------------------------------------- */
-/*  Panel component                                                            */
-/* -------------------------------------------------------------------------- */
 
 /* -------------------------------------------------------------------------- */
 /*  Cleanup countdown helper                                                   */
@@ -54,12 +54,13 @@ function useCleanupCountdown(expiresAt: number | undefined): string | null {
   return `process will be terminated in ${mins}m`;
 }
 
-export default function TerminalPanel({ projectId, projectPath, style, collapsed, onToggleCollapsed, onExpand, cleanupTimes, onResizeStart, isDragging }: TerminalPanelProps) {
+export default function TerminalPanel({ projectId, projectPath, style, collapsed, onToggleCollapsed, onExpand, cleanupTimes, onResizeStart, isDragging, onTaskCreated }: TerminalPanelProps) {
   const { getTabs, getActiveTabId, setActiveTabId, openTab, closeTab, renameTab, hydrateProject } = useTerminalTabs();
   const panelRef = useRef<HTMLDivElement>(null);
   const [menuTabId, setMenuTabId] = useState<string | null>(null);
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [drawerView, setDrawerView] = useState<DrawerView>('supervisor');
   const menuRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -69,11 +70,12 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
   const tabs = getTabs(projectId);
   const activeTabId = getActiveTabId(projectId);
 
+  const isSupervisorActive = drawerView === 'supervisor';
+
   // Find cleanup expiry for the active task tab
   const activeTab = tabs.find((t) => t.id === activeTabId);
   let activeCleanupExpiresAt: number | undefined;
-  if (activeTab?.type === 'task' && cleanupTimes) {
-    // Tab ID is "task-{first8}", cleanup keys are full task IDs
+  if (!isSupervisorActive && activeTab?.type === 'task' && cleanupTimes) {
     const shortId = activeTab.id.replace('task-', '');
     const matchingKey = Object.keys(cleanupTimes).find((k) => k.startsWith(shortId));
     if (matchingKey) activeCleanupExpiresAt = cleanupTimes[matchingKey];
@@ -162,7 +164,6 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
             isDragging ? 'cursor-grabbing' : 'cursor-grab'
           }`}
           onMouseDown={(e) => {
-            // Don't start resize if clicking on interactive elements
             const target = e.target as HTMLElement;
             if (target.closest('button') || target.closest('[data-clickable]')) return;
             onResizeStart?.(e);
@@ -171,14 +172,38 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
         <button
           onClick={onToggleCollapsed}
           className="flex items-center justify-center w-12 self-stretch text-zinc-400 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-bronze-300/30 dark:hover:bg-zinc-800/30 shrink-0"
-          title={collapsed ? 'Expand terminal' : 'Collapse terminal'}
+          title={collapsed ? 'Expand panel' : 'Collapse panel'}
         >
           {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
+
+        {/* ── Supervisor tab (always first, pinned) ── */}
+        <button
+          onClick={() => {
+            setDrawerView('supervisor');
+            if (collapsed) (onExpand ?? onToggleCollapsed)();
+          }}
+          className={`relative flex items-center gap-1.5 px-3 self-stretch text-xs transition-colors min-w-[100px] ${
+            isSupervisorActive
+              ? 'bg-bronze-300/60 dark:bg-zinc-800/60 text-bronze-600 dark:text-bronze-400'
+              : 'text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-bronze-300/30 dark:hover:bg-zinc-800/30'
+          }`}
+        >
+          <SquareChevronUpIcon className="w-3 h-3" />
+          <span className="max-w-[140px] truncate block">Supervisor</span>
+        </button>
+
+        {/* ── Separator ── */}
+        {tabs.length > 0 && (
+          <div className="w-px h-5 self-center bg-bronze-400/30 dark:bg-zinc-700/50 mx-0.5" />
+        )}
+
+        {/* ── Terminal/task tabs ── */}
         {tabs.map((tab) => (
           <div key={tab.id} className="group/tab flex items-stretch shrink-0 relative">
             <button
               onClick={() => {
+                setDrawerView('terminal');
                 setActiveTabId(projectId, tab.id);
                 if (collapsed) (onExpand ?? onToggleCollapsed)();
               }}
@@ -188,14 +213,13 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
                 setRenameValue(tab.label);
               }}
               className={`relative flex items-center gap-1.5 px-3 self-stretch text-xs transition-colors min-w-[100px] ${
-                activeTabId === tab.id
+                !isSupervisorActive && activeTabId === tab.id
                   ? 'bg-bronze-300/60 dark:bg-zinc-800/60 ' + tabAccentColor(tab)
                   : 'text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-bronze-300/30 dark:hover:bg-zinc-800/30'
               }`}
             >
               <TerminalIcon className="w-3 h-3" />
               <span className="relative">
-                {/* Always rendered to preserve tab width */}
                 <span className={`max-w-[120px] truncate block ${renamingTabId === tab.id ? 'invisible' : ''}`}>
                   {tab.status === 'done' ? '\u2705 ' : ''}
                   {tab.label}
@@ -262,6 +286,7 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
 
         <button
           onClick={() => {
+            setDrawerView('terminal');
             addShellTab();
             if (collapsed) (onExpand ?? onToggleCollapsed)();
           }}
@@ -276,17 +301,31 @@ export default function TerminalPanel({ projectId, projectPath, style, collapsed
         </div>
       </div>
 
-      {/* Terminal Panes — each manages its own xterm lifecycle */}
+      {/* Content area — supervisor pane or terminal panes */}
       {!collapsed && (
         <div className="flex-1 relative" style={{ minHeight: 0 }}>
+          {/* Supervisor pane */}
+          <ProjectSupervisorPane
+            projectId={projectId}
+            visible={isSupervisorActive}
+            onTaskCreated={onTaskCreated}
+          />
+
+          {/* Terminal panes (always mounted to preserve state, visibility toggled) */}
           {tabs.map((tab) => (
-            <TerminalPane key={tab.id} tabId={tab.id} visible={activeTabId === tab.id} cwd={projectPath} enableDrop />
+            <TerminalPane
+              key={tab.id}
+              tabId={tab.id}
+              visible={!isSupervisorActive && activeTabId === tab.id}
+              cwd={projectPath}
+              enableDrop
+            />
           ))}
         </div>
       )}
 
       {/* Cleanup countdown footer */}
-      {!collapsed && countdownText && (
+      {!collapsed && !isSupervisorActive && countdownText && (
         <div className="px-3 py-1 text-xs text-zinc-600 dark:text-zinc-600 font-mono shrink-0">
           {countdownText}
         </div>
