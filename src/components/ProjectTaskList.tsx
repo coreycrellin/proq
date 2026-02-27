@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { SearchIcon, XIcon, ListTodoIcon } from 'lucide-react';
 import { TaskListItem } from '@/components/TaskListItem';
 import { TaskDetailPanel } from '@/components/TaskDetailPanel';
@@ -39,6 +39,34 @@ export function ProjectTaskList({
   const [activeStatuses, setActiveStatuses] = useState<Set<TaskStatus>>(
     () => new Set(['todo', 'in-progress', 'verify', 'done'])
   );
+  const [listPercent, setListPercent] = useState(55);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+
+  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingRef.current || !container) return;
+      const rect = container.getBoundingClientRect();
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setListPercent(Math.min(Math.max(pct, 25), 75));
+    };
+    const onMouseUp = () => {
+      isDraggingRef.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, []);
 
   // Flatten all tasks from columns
   const allTasks = useMemo(() => {
@@ -165,10 +193,11 @@ export function ProjectTaskList({
       </div>
 
       {/* Content: list + detail */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
+      <div ref={containerRef} className="flex-1 flex min-h-0 overflow-hidden">
         {/* Task list */}
         <div
-          className={`${selectedTask ? 'w-[55%]' : 'w-full'} border-r border-border-subtle overflow-y-auto transition-all`}
+          style={selectedTask || filteredTasks.length > 0 ? { width: `${listPercent}%` } : undefined}
+          className={`${!selectedTask && filteredTasks.length === 0 ? 'w-full' : ''} overflow-y-auto`}
         >
           {filteredTasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
@@ -208,9 +237,20 @@ export function ProjectTaskList({
           )}
         </div>
 
+        {/* Draggable vertical divider */}
+        {(selectedTask || filteredTasks.length > 0) && (
+          <div
+            className="relative flex-shrink-0 cursor-col-resize group/divider"
+            onMouseDown={handleDividerMouseDown}
+          >
+            <div className="absolute inset-y-0 -left-2 -right-2" />
+            <div className="w-px h-full bg-bronze-300 dark:bg-zinc-800 group-hover/divider:bg-steel dark:group-hover/divider:bg-zinc-600 transition-colors" />
+          </div>
+        )}
+
         {/* Detail panel */}
         {selectedTask ? (
-          <div className="w-[45%] bg-surface-primary overflow-hidden">
+          <div style={{ width: `${100 - listPercent}%` }} className="bg-surface-primary overflow-hidden">
             <TaskDetailPanel
               task={selectedTask}
               projectId={projectId}
@@ -221,7 +261,7 @@ export function ProjectTaskList({
             />
           </div>
         ) : filteredTasks.length > 0 ? (
-          <div className="w-[45%] bg-surface-primary flex items-center justify-center">
+          <div style={{ width: `${100 - listPercent}%` }} className="bg-surface-primary flex items-center justify-center">
             <div className="text-center">
               <ListTodoIcon className="w-8 h-8 text-bronze-300 dark:text-zinc-700 mx-auto mb-2" />
               <p className="text-sm text-bronze-400 dark:text-zinc-600">Select a task to see details</p>
