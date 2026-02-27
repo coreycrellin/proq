@@ -2,13 +2,12 @@ import { execSync } from "child_process";
 import { existsSync, writeFileSync, readFileSync, mkdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import { getAllProjects, getAllTasks, getExecutionMode, getTask, updateTask } from "./db";
+import { getAllProjects, getAllTasks, getExecutionMode, getSettings, getTask, updateTask } from "./db";
 import { stripAnsi } from "./utils";
 import { createWorktree, removeWorktree } from "./worktree";
 import type { TaskAttachment, TaskMode, TaskOutputMode } from "./types";
 
 const MC_API = "http://localhost:1337";
-const CLAUDE = process.env.CLAUDE_BIN || "claude";
 
 export function notify(message: string) {
   const bin = process.env.OPENCLAW_BIN;
@@ -119,6 +118,10 @@ export async function dispatchTask(
   outputMode?: TaskOutputMode,
   findings?: string,
 ): Promise<string | undefined> {
+  // Resolve claude binary from settings
+  const settings = await getSettings();
+  const CLAUDE = settings.claudeBin || "claude";
+
   // Look up project path
   const projects = await getAllProjects();
   const project = projects.find((p) => p.id === projectId);

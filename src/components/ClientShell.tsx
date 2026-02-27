@@ -5,6 +5,7 @@ import { ProjectsProvider } from './ProjectsProvider';
 import { TerminalTabsProvider } from './TerminalTabsProvider';
 import { Sidebar } from './Sidebar';
 import { MissingPathModal } from './MissingPathModal';
+import { SetupPage } from './SetupPage';
 import { useProjects } from './ProjectsProvider';
 import type { Project } from '@/lib/types';
 
@@ -13,6 +14,38 @@ const SIDEBAR_OPEN_KEY = 'proq-sidebar-open';
 function ShellInner({ children }: { children: React.ReactNode }) {
   const { refreshProjects, isLoaded } = useProjects();
   const [missingProject, setMissingProject] = useState<Project | null>(null);
+
+  // ── First-run setup gate ─────────────────────────────────────
+  const [setupState, setSetupState] = useState<'checking' | 'needed' | 'done'>('checking');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/setup/check');
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (data.setupComplete) {
+          setSetupState('done');
+        } else if (data.claude.found && data.tmux.found) {
+          // All prerequisites met — auto-complete setup silently
+          await fetch('/api/setup/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ claudeBin: data.claude.path }),
+          });
+          if (!cancelled) setSetupState('done');
+        } else {
+          setSetupState('needed');
+        }
+      } catch {
+        // If check fails, skip setup to avoid blocking
+        if (!cancelled) setSetupState('done');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // ── Collapsible sidebar ────────────────────────────────────
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -61,12 +94,16 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     await refreshProjects();
   }, [refreshProjects]);
 
-  if (!isLoaded) {
+  if (setupState === 'checking' || !isLoaded) {
     return (
       <div className="flex h-screen w-full bg-surface-base text-bronze-900 dark:text-zinc-100 items-center justify-center">
         <div className="text-zinc-500 text-sm">Loading...</div>
       </div>
     );
+  }
+
+  if (setupState === 'needed') {
+    return <SetupPage onComplete={() => setSetupState('done')} />;
   }
 
   return (

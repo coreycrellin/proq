@@ -628,6 +628,9 @@ export async function setProjectSupervisorDraft(projectId: string, draft: string
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 
 const DEFAULT_SETTINGS: ProqSettings = {
+  // Setup
+  setupComplete: false,
+
   // System
   port: 1337,
 

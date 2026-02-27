@@ -107,6 +107,9 @@ export interface DeletedTaskEntry {
 
 // ── Settings ─────────────────────────────────────────
 export interface ProqSettings {
+  // Setup
+  setupComplete: boolean;
+
   // System
   port: number;
 
