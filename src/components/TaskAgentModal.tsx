@@ -398,13 +398,19 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
               <span className="ml-auto text-[10px] text-bronze-500 dark:text-zinc-600 font-mono">{shortId}</span>
               <button
                 onClick={() => setExpandedPanel(prev => prev === 'top' ? 'none' : 'top')}
-                className="p-1 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
                 title={expandedPanel === 'top' ? 'Collapse' : 'Expand'}
               >
                 {expandedPanel === 'top' ? (
-                  <Minimize2Icon className="w-3.5 h-3.5" />
+                  <>
+                    <Minimize2Icon className="w-3 h-3" />
+                    <span>Show less</span>
+                  </>
                 ) : (
-                  <Maximize2Icon className="w-3.5 h-3.5" />
+                  <>
+                    <Maximize2Icon className="w-3 h-3" />
+                    <span>Show more</span>
+                  </>
                 )}
               </button>
             </div>
@@ -500,13 +506,19 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
                   )}
                   <button
                     onClick={() => setExpandedPanel(prev => prev === 'bottom' ? 'none' : 'bottom')}
-                    className="p-1 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
                     title={expandedPanel === 'bottom' ? 'Collapse' : 'Expand'}
                   >
                     {expandedPanel === 'bottom' ? (
-                      <Minimize2Icon className="w-3.5 h-3.5" />
+                      <>
+                        <Minimize2Icon className="w-3 h-3" />
+                        <span>Show less</span>
+                      </>
                     ) : (
-                      <Maximize2Icon className="w-3.5 h-3.5" />
+                      <>
+                        <Maximize2Icon className="w-3 h-3" />
+                        <span>Show more</span>
+                      </>
                     )}
                   </button>
                 </div>
