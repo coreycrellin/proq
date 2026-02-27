@@ -27,6 +27,7 @@ import {
   SquareIcon,
 } from 'lucide-react';
 import type { TaskAttachment } from '@/lib/types';
+import { ScrambleText } from './ScrambleText';
 
 /* ─── Types for stream-json events ─── */
 
@@ -937,21 +938,16 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
           // After a follow-up message, show "thinking"
           if (lastBlock?.type === 'user-message') {
             return (
-              <div className="max-w-4xl flex items-center gap-2 py-3 pl-5">
-                <Loader2Icon className="w-3.5 h-3.5 text-text-chrome animate-spin" />
-                <span className="text-xs text-text-chrome">Agent thinking...</span>
+              <div className="max-w-4xl py-3 pl-5">
+                <ScrambleText text="Thinking..." />
               </div>
             );
           }
           // For all other cases where the last block is complete, show a subtle "still working" indicator
           if (lastBlock?.status === 'complete') {
             return (
-              <div className="max-w-4xl flex items-center gap-1.5 py-3 pl-5">
-                <span className="flex items-center gap-[3px]">
-                  <span className="w-1 h-1 rounded-full bg-bronze-500 dark:bg-zinc-600 animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1.2s' }} />
-                  <span className="w-1 h-1 rounded-full bg-bronze-500 dark:bg-zinc-600 animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1.2s' }} />
-                  <span className="w-1 h-1 rounded-full bg-bronze-500 dark:bg-zinc-600 animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1.2s' }} />
-                </span>
+              <div className="max-w-4xl py-3 pl-5">
+                <ScrambleText text="Working..." />
               </div>
             );
           }
