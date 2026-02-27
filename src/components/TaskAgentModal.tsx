@@ -463,11 +463,13 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
           </div>
 
           {/* Resize handle */}
-          <div
-            onMouseDown={handleResizeMouseDown}
-            className="shrink-0 h-1 cursor-row-resize border-t border-bronze-300 dark:border-zinc-800 hover:bg-steel/20 active:bg-steel/30 transition-colors group relative"
-          >
-            <div className="absolute inset-x-0 -top-1 -bottom-1" />
+          <div className="shrink-0 h-px relative z-10">
+            <div
+              onMouseDown={handleResizeMouseDown}
+              className="absolute inset-x-0 -top-2 -bottom-2 z-20 cursor-row-resize group"
+            >
+              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-bronze-300 dark:bg-zinc-800 group-hover:h-1 group-hover:bg-steel/40 group-active:bg-steel/50 transition-all" />
+            </div>
           </div>
 
           {/* Bottom half: agent findings & summary */}
