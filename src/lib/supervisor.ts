@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from "child_process";
 import { writeFileSync, mkdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import type { ChatLogEntry, ToolCall } from "./types";
+import type { ChatLogEntry } from "./types";
 
 const CLAUDE = process.env.CLAUDE_BIN || "claude";
 const MODEL = process.env.SUPERVISOR_MODEL || "sonnet";
@@ -10,9 +10,7 @@ const MODEL = process.env.SUPERVISOR_MODEL || "sonnet";
 // ── Types ────────────────────────────────────────────────
 
 export type SupervisorChunk =
-  | { type: "tool_call"; action: string; detail: string }
-  | { type: "text_delta"; text: string }
-  | { type: "result"; text: string }
+  | { type: "stream_event"; event: Record<string, unknown> }
   | { type: "error"; error: string };
 
 export interface ProjectContext {
@@ -94,9 +92,9 @@ function buildConversationPrompt(
   return lines.join("\n\n");
 }
 
-// ── Tool detail formatting ───────────────────────────────
+// ── Tool detail formatting (exported for use in API routes) ─
 
-function formatToolDetail(toolName: string, input: Record<string, unknown>): string {
+export function formatToolDetail(toolName: string, input: Record<string, unknown>): string {
   if (toolName === "Bash" && input.command) return String(input.command).slice(0, 200);
   if (toolName === "Read" && input.file_path) return String(input.file_path);
   if (toolName === "Write" && input.file_path) return String(input.file_path);
@@ -178,11 +176,7 @@ export async function* runSupervisor(
     child.on("close", () => signal.removeEventListener("abort", onAbort));
   }
 
-  // Track tool calls we've already emitted to avoid duplicates
-  const emittedTools = new Set<string>();
-
   let buffer = "";
-  const lines: string[] = [];
 
   const processLine = function* (line: string): Generator<SupervisorChunk> {
     if (!line.trim()) return;
@@ -194,46 +188,7 @@ export async function* runSupervisor(
       return;
     }
 
-    const msgType = parsed.type as string;
-
-    // assistant message — extract tool_use blocks
-    if (msgType === "assistant" && parsed.message) {
-      const msg = parsed.message as { content?: Array<Record<string, unknown>> };
-      if (msg.content) {
-        for (const block of msg.content) {
-          if (block.type === "tool_use" && block.name) {
-            const toolKey = `${block.id}`;
-            if (!emittedTools.has(toolKey)) {
-              emittedTools.add(toolKey);
-              yield {
-                type: "tool_call",
-                action: String(block.name),
-                detail: formatToolDetail(
-                  String(block.name),
-                  (block.input as Record<string, unknown>) || {},
-                ),
-              };
-            }
-          }
-        }
-      }
-    }
-
-    // content_block_delta — text streaming
-    if (msgType === "content_block_delta") {
-      const delta = parsed.delta as { type?: string; text?: string } | undefined;
-      if (delta?.type === "text_delta" && delta.text) {
-        yield { type: "text_delta", text: delta.text };
-      }
-    }
-
-    // result — final output
-    if (msgType === "result") {
-      const result = parsed.result as string | undefined;
-      if (result) {
-        yield { type: "result", text: result };
-      }
-    }
+    yield { type: "stream_event", event: parsed };
   };
 
   // Collect stderr concurrently to avoid deadlock
