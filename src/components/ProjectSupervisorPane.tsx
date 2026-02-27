@@ -36,6 +36,7 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
   const [streamBlocks, setStreamBlocks] = useState<RenderBlock[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [queueLength, setQueueLength] = useState(0);
   const [draft, setDraft] = useState('');
   const [inputValue, setInputValue] = useState('');
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
@@ -50,6 +51,10 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
   const autoScrollRef = useRef(true);
   const blockIdCounter = useRef(0);
   const toolBlockMap = useRef<Map<string, string>>(new Map());
+  const messageQueueRef = useRef<Array<{text: string, atts: TaskAttachment[]}>>([]);
+  const isLoadingRef = useRef(false);
+  const streamBlocksRef = useRef<RenderBlock[]>([]);
+  const executeSendRef = useRef<(text: string, atts: TaskAttachment[]) => Promise<void>>(() => Promise.resolve());
 
   const nextBlockId = useCallback(() => {
     blockIdCounter.current += 1;
@@ -100,6 +105,9 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
     loadedRef.current = projectId;
     setHistoryBlocks([]);
     setStreamBlocks([]);
+    streamBlocksRef.current = [];
+    messageQueueRef.current = [];
+    setQueueLength(0);
     setDraft('');
     setInputValue('');
     blockIdCounter.current = 0;
@@ -176,7 +184,7 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
       }
 
       if (newBlocks.length > 0) {
-        setStreamBlocks(prev => [...prev, ...newBlocks]);
+        setStreamBlocks(prev => { const next = [...prev, ...newBlocks]; streamBlocksRef.current = next; return next; });
       }
     }
 
@@ -190,27 +198,35 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
           if (blockId) {
             const resultStr = normalizeToolResult(block.content);
             const isError = block.is_error === true;
-            setStreamBlocks(prev => prev.map(b =>
-              b.id === blockId
-                ? { ...b, toolResult: resultStr, toolError: isError, status: 'complete' as const }
-                : b
-            ));
+            setStreamBlocks(prev => {
+              const next = prev.map(b =>
+                b.id === blockId
+                  ? { ...b, toolResult: resultStr, toolError: isError, status: 'complete' as const }
+                  : b
+              );
+              streamBlocksRef.current = next;
+              return next;
+            });
           }
         }
       }
     }
 
     if (eventType === 'result') {
-      setStreamBlocks(prev => [...prev, {
-        id: nextBlockId(),
-        type: 'result',
-        resultText: (event.result as string) || '',
-        costUsd: event.cost_usd as number | undefined,
-        durationMs: event.duration_ms as number | undefined,
-        numTurns: event.num_turns as number | undefined,
-        isError: event.is_error as boolean | undefined,
-        status: 'complete',
-      }]);
+      setStreamBlocks(prev => {
+        const next = [...prev, {
+          id: nextBlockId(),
+          type: 'result' as const,
+          resultText: (event.result as string) || '',
+          costUsd: event.cost_usd as number | undefined,
+          durationMs: event.duration_ms as number | undefined,
+          numTurns: event.num_turns as number | undefined,
+          isError: event.is_error as boolean | undefined,
+          status: 'complete' as const,
+        }];
+        streamBlocksRef.current = next;
+        return next;
+      });
     }
   }, [nextBlockId]);
 
@@ -240,50 +256,40 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
-  const handleSendMessage = useCallback(async () => {
-    const text = inputValue.trim();
-    if (!text && attachments.length === 0) return;
-    if (isLoading) return;
+  // Core send logic — always takes text/atts directly to avoid stale closures
+  const executeSend = useCallback(async (text: string, atts: TaskAttachment[]) => {
+    isLoadingRef.current = true;
 
-    const atts = attachments.length > 0 ? [...attachments] : undefined;
-
-    // Add user message block immediately (with inline images if any)
-    const imageUrls = (atts || [])
+    const imageUrls = atts
       .filter(a => a.type?.startsWith('image/') && a.dataUrl)
       .map(a => a.dataUrl!);
 
-    // Merge stream blocks into history (previous conversation turns) before starting new exchange
-    setHistoryBlocks(prev => [...prev, ...streamBlocks]);
+    // Flush any stream blocks from previous turn into history, then add user message
+    const currentStreamBlocks = streamBlocksRef.current;
+    setHistoryBlocks(prev => [
+      ...prev,
+      ...currentStreamBlocks,
+      {
+        id: nextBlockId(),
+        type: 'user-message' as const,
+        userMessage: text,
+        userImages: imageUrls.length > 0 ? imageUrls : undefined,
+        status: 'complete' as const,
+      },
+    ]);
     setStreamBlocks([]);
+    streamBlocksRef.current = [];
     toolBlockMap.current.clear();
 
-    // Add user message block
-    const userBlock: RenderBlock = {
-      id: nextBlockId(),
-      type: 'user-message',
-      userMessage: text,
-      userImages: imageUrls.length > 0 ? imageUrls : undefined,
-      status: 'complete',
-    };
-    setHistoryBlocks(prev => [...prev, userBlock]);
-
-    setInputValue('');
-    setAttachments([]);
     setIsLoading(true);
     setIsStreaming(true);
-
-    // Clear persisted draft immediately
-    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
-    handleDraftChange('');
 
     try {
       const controller = new AbortController();
       abortRef.current = controller;
 
       const payload: Record<string, unknown> = { message: text };
-      if (atts && atts.length > 0) {
-        payload.attachments = atts;
-      }
+      if (atts.length > 0) payload.attachments = atts;
 
       const res = await fetch(`/api/projects/${projectId}/supervisor`, {
         method: 'POST',
@@ -292,9 +298,7 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
         signal: controller.signal,
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error(`HTTP ${res.status}`);
-      }
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -314,20 +318,14 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
           try {
             const event = JSON.parse(line) as Record<string, unknown>;
 
-            // Handle error events (from supervisor error chunks)
             if (event.type === 'error') {
-              setStreamBlocks(prev => [...prev, {
-                id: nextBlockId(),
-                type: 'text',
-                text: `Error: ${event.error}`,
-                status: 'complete',
-              }]);
+              const errBlock: RenderBlock = { id: nextBlockId(), type: 'text', text: `Error: ${event.error}`, status: 'complete' };
+              setStreamBlocks(prev => { const next = [...prev, errBlock]; streamBlocksRef.current = next; return next; });
               continue;
             }
 
             processStreamEvent(event);
 
-            // Detect task creation from tool_use events
             if (event.type === 'assistant') {
               const msg = event.message as { content?: Array<Record<string, unknown>> } | undefined;
               if (msg?.content) {
@@ -347,29 +345,59 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
         }
       }
 
-      if (didCreateTask) {
-        onTaskCreated?.();
-      }
+      if (didCreateTask) onTaskCreated?.();
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        setStreamBlocks(prev => [...prev, {
-          id: nextBlockId(),
-          type: 'text',
-          text: `Error: ${err}`,
-          status: 'complete',
-        }]);
+        const errBlock: RenderBlock = { id: nextBlockId(), type: 'text', text: `Error: ${err}`, status: 'complete' };
+        setStreamBlocks(prev => { const next = [...prev, errBlock]; streamBlocksRef.current = next; return next; });
       }
     } finally {
       setIsStreaming(false);
       setIsLoading(false);
+      isLoadingRef.current = false;
       abortRef.current = null;
+
+      // Process next queued message
+      const next = messageQueueRef.current.shift();
+      if (next) {
+        setQueueLength(messageQueueRef.current.length);
+        setTimeout(() => executeSendRef.current(next.text, next.atts), 0);
+      } else {
+        setQueueLength(0);
+      }
     }
-  }, [inputValue, attachments, isLoading, streamBlocks, projectId, nextBlockId, processStreamEvent, handleDraftChange, onTaskCreated]);
+  }, [projectId, nextBlockId, processStreamEvent, onTaskCreated]);
+
+  // Keep ref up to date so queue processor always calls latest version
+  executeSendRef.current = executeSend;
+
+  const handleSendMessage = useCallback(() => {
+    const text = inputValue.trim();
+    const atts = attachments.length > 0 ? [...attachments] : [];
+    if (!text && atts.length === 0) return;
+
+    setInputValue('');
+    setAttachments([]);
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    handleDraftChange('');
+
+    if (isLoadingRef.current) {
+      // Queue for after current response finishes
+      messageQueueRef.current.push({ text, atts });
+      setQueueLength(messageQueueRef.current.length);
+      return;
+    }
+
+    executeSend(text, atts);
+  }, [inputValue, attachments, handleDraftChange, executeSend]);
 
   const handleClear = useCallback(async () => {
     await fetch(`/api/projects/${projectId}/supervisor`, { method: 'DELETE' });
     setHistoryBlocks([]);
     setStreamBlocks([]);
+    streamBlocksRef.current = [];
+    messageQueueRef.current = [];
+    setQueueLength(0);
     blockIdCounter.current = 0;
     toolBlockMap.current.clear();
   }, [projectId]);
@@ -579,7 +607,16 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
                 handleSendMessage();
               }
             }}
-            placeholder={isLoading ? "Waiting for response..." : "Message supervisor... (/att to attach, /atr for screenshot)"}
+            onPaste={(e) => {
+              const items = Array.from(e.clipboardData.items);
+              const imageItems = items.filter(item => item.type.startsWith('image/'));
+              if (imageItems.length > 0) {
+                e.preventDefault();
+                const files = imageItems.map(item => item.getAsFile()).filter(Boolean) as File[];
+                addFiles(files);
+              }
+            }}
+            placeholder={isLoading ? `Queue message... (${queueLength} queued)` : "Message supervisor... (/att to attach, /atr for screenshot)"}
             rows={1}
             className="flex-1 bg-surface-primary border border-border-default rounded-md px-3 py-2 text-sm text-bronze-800 dark:text-zinc-200 placeholder-text-chrome focus:outline-none focus:border-steel/50 resize-none"
           />
@@ -601,7 +638,7 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
           )}
           <button
             onClick={handleSendMessage}
-            disabled={(!inputValue.trim() && attachments.length === 0) || isLoading}
+            disabled={!inputValue.trim() && attachments.length === 0}
             className="shrink-0 px-3 py-2 rounded-md bg-steel/20 text-steel hover:bg-steel/30 transition-colors disabled:opacity-30 disabled:pointer-events-none"
           >
             <SendIcon className="w-4 h-4" />

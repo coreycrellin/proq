@@ -1044,6 +1044,15 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
                   handleSendFollowUp();
                 }
               }}
+              onPaste={(e) => {
+                const items = Array.from(e.clipboardData.items);
+                const imageItems = items.filter(item => item.type.startsWith('image/'));
+                if (imageItems.length > 0) {
+                  e.preventDefault();
+                  const files = imageItems.map(item => item.getAsFile()).filter(Boolean) as File[];
+                  addFiles(files);
+                }
+              }}
               placeholder={exited ? "Reply to the agent..." : "Send a message..."}
               rows={1}
               className="flex-1 bg-surface-primary border border-border-default rounded-md px-3 py-2 text-sm text-bronze-800 dark:text-zinc-200 placeholder-text-chrome focus:outline-none focus:border-steel/50 resize-none"
