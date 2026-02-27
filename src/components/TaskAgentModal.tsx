@@ -182,7 +182,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Left panel: terminal or queued state ── */}
-        <div className={`min-h-0 flex flex-col ${rightPanelExpanded ? 'hidden' : ''}`} style={{ flex: `0 0 calc(${100 - rightPanelPercent}% - 3px)` }}>
+        <div className={`min-h-0 flex flex-col ${rightPanelExpanded ? 'hidden' : ''}`} style={{ flex: `0 0 calc(${100 - rightPanelPercent}% - 1px)` }}>
           {/* Worktree status — only in parallel mode */}
           {parallelMode && (
             <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-zinc-900/50">
@@ -342,27 +342,20 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
 
         {/* ── Vertical resize handle (between terminal and details) ── */}
         {(showTerminal || isQueued || showStaticLog) && !rightPanelExpanded && (
-          <div className="shrink-0 w-1.5 relative z-10">
-            {/* Hit target — wider than visible handle for easy grabbing */}
+          <div className="shrink-0 w-px relative z-10">
+            {/* Hit target — wider than visible line for easy grabbing */}
             <div
               onMouseDown={handleVerticalResizeMouseDown}
               className="absolute inset-y-0 -left-2 -right-2 z-20 cursor-col-resize group"
             >
-              {/* Visible bar */}
-              <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1.5 bg-bronze-200/60 dark:bg-zinc-800/80 group-hover:bg-steel/30 group-active:bg-steel/40 transition-colors flex items-center justify-center">
-                {/* Grip dots */}
-                <div className="flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="w-0.5 h-0.5 rounded-full bg-zinc-500" />
-                  <div className="w-0.5 h-0.5 rounded-full bg-zinc-500" />
-                  <div className="w-0.5 h-0.5 rounded-full bg-zinc-500" />
-                </div>
-              </div>
+              {/* Visible line */}
+              <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-bronze-300 dark:bg-zinc-800 group-hover:w-1 group-hover:bg-steel/40 group-active:bg-steel/50 transition-all" />
             </div>
           </div>
         )}
 
         {/* ── Right panel: task details ── */}
-        <div ref={rightPanelRef} className={`${rightPanelExpanded ? 'w-full' : (showTerminal || isQueued || showStaticLog ? '' : 'w-full')} shrink-0 flex flex-col overflow-hidden bg-bronze-50 dark:bg-[#141414]`} style={(showTerminal || isQueued || showStaticLog) && !rightPanelExpanded ? { flex: `0 0 calc(${rightPanelPercent}% - 3px)` } : undefined}>
+        <div ref={rightPanelRef} className={`${rightPanelExpanded ? 'w-full' : (showTerminal || isQueued || showStaticLog ? '' : 'w-full')} shrink-0 flex flex-col overflow-hidden bg-bronze-50 dark:bg-[#141414]`} style={(showTerminal || isQueued || showStaticLog) && !rightPanelExpanded ? { flex: `0 0 ${rightPanelPercent}%` } : undefined}>
           {/* Expand / Close buttons */}
           <div className="absolute top-4 right-4 flex items-center gap-1 z-10">
             {(showTerminal || isQueued || showStaticLog) && (
