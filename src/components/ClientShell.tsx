@@ -109,7 +109,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
       {/* Resize handle */}
       <div
         onMouseDown={startResize}
-        className="w-[3px] flex-shrink-0 cursor-col-resize hover:bg-steel/40 active:bg-steel/60 transition-colors"
+        className="w-[3px] flex-shrink-0 cursor-col-resize"
       />
       <div className="flex-1 flex flex-col min-w-0">
         {children}
