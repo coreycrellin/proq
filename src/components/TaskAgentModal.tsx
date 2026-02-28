@@ -297,7 +297,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
               ) : (
                 /* Pretty output mode: stream view */
                 <div className="flex-1 min-h-0 relative">
-                  <AgentStreamView tabId={terminalTabId} visible={true} mode="pretty" onSendFollowUp={handleSendFollowUp} />
+                  <AgentStreamView tabId={terminalTabId} visible={true} mode="pretty" onSendFollowUp={handleSendFollowUp} initialPrompt={task.description} initialImages={task.attachments?.filter(a => a.type?.startsWith('image/') && a.dataUrl).map(a => a.dataUrl!)} />
                 </div>
               )}
               {countdownText && (
@@ -310,7 +310,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
             <div className="flex-1 relative min-h-0 flex flex-col">
               {task.agentLog && task.agentLog.trimStart().startsWith('{') ? (
                 <div className="flex-1 min-h-0 relative">
-                  <AgentStreamView tabId={terminalTabId} visible={true} staticData={task.agentLog} mode="pretty" onSendFollowUp={handleSendFollowUp} />
+                  <AgentStreamView tabId={terminalTabId} visible={true} staticData={task.agentLog} mode="pretty" onSendFollowUp={handleSendFollowUp} initialPrompt={task.description} initialImages={task.attachments?.filter(a => a.type?.startsWith('image/') && a.dataUrl).map(a => a.dataUrl!)} />
                 </div>
               ) : (
                 <pre className="flex-1 min-h-0 overflow-y-auto p-4 text-[12px] font-mono text-bronze-700 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed bg-bronze-100/50 dark:bg-black">

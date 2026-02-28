@@ -611,9 +611,13 @@ interface AgentStreamViewProps {
   mode?: 'pretty' | 'raw';
   /** Called when user sends a follow-up message after agent exits. Returns bridgeRestarted if session was dead and bridge was restarted. */
   onSendFollowUp?: (message: string, attachments?: TaskAttachment[]) => Promise<{ bridgeRestarted?: boolean } | void>;
+  /** Initial prompt text to show at the top of the stream (e.g. task description) */
+  initialPrompt?: string;
+  /** Image data URLs to show alongside the initial prompt */
+  initialImages?: string[];
 }
 
-export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', onSendFollowUp }: AgentStreamViewProps) {
+export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', onSendFollowUp, initialPrompt, initialImages }: AgentStreamViewProps) {
   const [blocks, setBlocks] = useState<RenderBlock[]>([]);
   const [rawText, setRawText] = useState('');
   const [connected, setConnected] = useState(false);
@@ -989,17 +993,36 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
       }
     }
 
-    return blocks.map((block) => {
+    const elements: React.ReactNode[] = [];
+
+    // Prepend initial prompt as the first user message
+    if (initialPrompt) {
+      elements.push(
+        <UserMessageBlock
+          key="initial-prompt"
+          block={{
+            id: 'initial-prompt',
+            type: 'user-message',
+            userMessage: initialPrompt,
+            userImages: initialImages,
+            status: 'complete',
+          }}
+        />
+      );
+    }
+
+    for (const block of blocks) {
       switch (block.type) {
-        case 'text': return <TextBlock key={block.id} block={block} collapseSignal={collapseSignal} neverCollapse={block.id === lastTextBeforeResult} />;
-        case 'tool': return <ToolBlock key={block.id} block={block} collapseSignal={collapseSignal} onAnswer={block.toolName === 'AskUserQuestion' && onSendFollowUp ? (answer) => sendFollowUpMessage(answer) : undefined} />;
-        case 'thinking': return <ThinkingBlock key={block.id} block={block} collapseSignal={collapseSignal} />;
-        case 'result': return <ResultBlock key={block.id} block={block} />;
-        case 'user-message': return <UserMessageBlock key={block.id} block={block} />;
-        default: return null;
+        case 'text': elements.push(<TextBlock key={block.id} block={block} collapseSignal={collapseSignal} neverCollapse={block.id === lastTextBeforeResult} />); break;
+        case 'tool': elements.push(<ToolBlock key={block.id} block={block} collapseSignal={collapseSignal} onAnswer={block.toolName === 'AskUserQuestion' && onSendFollowUp ? (answer) => sendFollowUpMessage(answer) : undefined} />); break;
+        case 'thinking': elements.push(<ThinkingBlock key={block.id} block={block} collapseSignal={collapseSignal} />); break;
+        case 'result': elements.push(<ResultBlock key={block.id} block={block} />); break;
+        case 'user-message': elements.push(<UserMessageBlock key={block.id} block={block} />); break;
       }
-    });
-  }, [blocks, collapseSignal, onSendFollowUp, sendFollowUpMessage]);
+    }
+
+    return elements;
+  }, [blocks, collapseSignal, onSendFollowUp, sendFollowUpMessage, initialPrompt, initialImages]);
 
   if (!visible) return null;
 
@@ -1058,7 +1081,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-4 py-3 min-h-0"
       >
-        {blocks.length === 0 && !exited && (
+        {blocks.length === 0 && !initialPrompt && !exited && (
           <div className="flex items-center justify-center h-full">
             <div className="flex items-center gap-2.5">
               <Loader2Icon className="w-4 h-4 text-text-chrome animate-spin" />
@@ -1068,7 +1091,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
             </div>
           </div>
         )}
-        {blocks.length === 0 && exited && (
+        {blocks.length === 0 && !initialPrompt && exited && (
           <div className="flex items-center justify-center h-full">
             <span className="text-sm text-text-chrome">No output captured</span>
           </div>
@@ -1077,8 +1100,16 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
           {renderedBlocks}
         </div>
         {/* Processing indicator — shows agent is still alive */}
-        {blocks.length > 0 && !exited && (() => {
+        {(blocks.length > 0 || initialPrompt) && !exited && (() => {
           const lastBlock = blocks[blocks.length - 1];
+          // No stream blocks yet but we have an initial prompt — agent is starting
+          if (!lastBlock && initialPrompt) {
+            return (
+              <div className="max-w-4xl py-3 pl-5">
+                <ScrambleText text={connected ? 'Working...' : 'Starting...'} />
+              </div>
+            );
+          }
           // After a follow-up message, show "thinking"
           if (lastBlock?.type === 'user-message') {
             return (
