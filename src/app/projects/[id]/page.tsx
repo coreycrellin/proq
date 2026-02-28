@@ -29,6 +29,7 @@ export default function ProjectPage() {
   const [terminalCollapsed, setTerminalCollapsed] = useState(true);
   const [modalTask, setModalTask] = useState<Task | null>(null);
   const [agentModalTask, setAgentModalTask] = useState<Task | null>(null);
+  const [agentModalVisible, setAgentModalVisible] = useState(false);
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('sequential');
   const [cleanupTimes, setCleanupTimes] = useState<Record<string, number>>({});
   const [undoEntry, setUndoEntry] = useState<{ task: Task; column: TaskStatus } | null>(null);
@@ -176,16 +177,16 @@ export default function ProjectPage() {
 
   // Keep hasModalRef in sync for quick capture
   useEffect(() => {
-    hasModalRef.current = !!modalTask || !!agentModalTask || !!undoEntry || showParallelModal || showModeBlockedModal;
-  }, [modalTask, agentModalTask, undoEntry, showParallelModal, showModeBlockedModal]);
+    hasModalRef.current = !!modalTask || agentModalVisible || !!undoEntry || showParallelModal || showModeBlockedModal;
+  }, [modalTask, agentModalVisible, undoEntry, showParallelModal, showModeBlockedModal]);
 
   // Cancel quick capture if another modal opens (e.g. Cmd+Z undo)
   useEffect(() => {
-    if ((undoEntry || agentModalTask || showParallelModal || showModeBlockedModal) && quickCaptureRef.current.active) {
+    if ((undoEntry || agentModalVisible || showParallelModal || showModeBlockedModal) && quickCaptureRef.current.active) {
       quickCaptureRef.current = { active: false, buffer: '' };
       setQuickCaptureText('');
     }
-  }, [undoEntry, agentModalTask, showParallelModal, showModeBlockedModal]);
+  }, [undoEntry, agentModalVisible, showParallelModal, showModeBlockedModal]);
 
   // Clear quick capture state when task modal opens from capture
   useEffect(() => {
@@ -291,12 +292,19 @@ export default function ProjectPage() {
   useEffect(() => {
     if (agentModalTask) {
       // Search across all columns
+      let found = false;
       for (const col of Object.values(columns)) {
         const updated = col.find((t) => t.id === agentModalTask.id);
         if (updated) {
           setAgentModalTask(updated);
+          found = true;
           break;
         }
+      }
+      // Task was deleted — unmount the modal
+      if (!found) {
+        setAgentModalTask(null);
+        setAgentModalVisible(false);
       }
     }
   }, [columns]);
@@ -346,6 +354,7 @@ export default function ProjectPage() {
       body: JSON.stringify({ taskId, toColumn: 'in-progress', toIndex: 0 }),
     });
     setAgentModalTask(null);
+    setAgentModalVisible(false);
     refresh();
   };
 
@@ -535,6 +544,7 @@ export default function ProjectPage() {
                     setModalTask(task);
                   } else {
                     setAgentModalTask(task);
+                    setAgentModalVisible(true);
                   }
                 }}
                 onRefreshTasks={refresh}
@@ -569,6 +579,7 @@ export default function ProjectPage() {
                 setModalTask(task);
               } else {
                 setAgentModalTask(task);
+                setAgentModalVisible(true);
               }
             }}
             onStatusChange={async (taskId, newStatus) => {
@@ -609,12 +620,14 @@ export default function ProjectPage() {
         <TaskAgentModal
           task={agentModalTask}
           projectId={projectId}
+          visible={agentModalVisible}
           isQueued={agentModalTask.dispatch === 'queued'}
           cleanupExpiresAt={cleanupTimes[agentModalTask.id]}
-          onClose={() => setAgentModalTask(null)}
+          onClose={() => setAgentModalVisible(false)}
           onComplete={async (taskId) => {
             await updateTask(taskId, { status: 'done' });
             setAgentModalTask(null);
+            setAgentModalVisible(false);
             fetchBranchState();
           }}
           onContinueToCode={handleContinueToCode}

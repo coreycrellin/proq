@@ -27,6 +27,7 @@ import { ConflictModal } from './ConflictModal';
 interface TaskAgentModalProps {
   task: Task;
   projectId: string;
+  visible?: boolean;
   isQueued?: boolean;
   cleanupExpiresAt?: number;
   onClose: () => void;
@@ -37,7 +38,7 @@ interface TaskAgentModalProps {
   onSwitchBranch?: (branch: string) => void;
 }
 
-export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, onClose, onComplete, onContinueToCode, parallelMode, currentBranch, onSwitchBranch }: TaskAgentModalProps) {
+export function TaskAgentModal({ task, projectId, visible = true, isQueued, cleanupExpiresAt, onClose, onComplete, onContinueToCode, parallelMode, currentBranch, onSwitchBranch }: TaskAgentModalProps) {
   const shortId = task.id.slice(0, 8);
   const terminalTabId = `task-${shortId}`;
   const steps = parseLines(task.humanSteps);
@@ -197,13 +198,14 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, on
     }
   }, []);
 
-  // Escape to close
-  useEscapeKey(onClose);
+  // Escape to close (only when visible)
+  useEscapeKey(onClose, visible);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={onClose}
+      style={visible ? undefined : { display: 'none' }}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-none" />
