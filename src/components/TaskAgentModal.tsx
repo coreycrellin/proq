@@ -18,6 +18,7 @@ import {
   GitBranchIcon,
   Maximize2Icon,
   Minimize2Icon,
+  SendIcon,
 } from 'lucide-react';
 import type { Task, TaskAttachment } from '@/lib/types';
 import { AgentStreamView } from './AgentStreamView';
@@ -50,6 +51,8 @@ export function TaskAgentModal({ task, projectId, visible = true, isQueued, clea
   const [showConflictModal, setShowConflictModal] = useState(false);
   // forceShowLive overrides static mode when a follow-up reply restarts the bridge
   const [forceShowLive, setForceShowLive] = useState(false);
+  const [staticFollowUp, setStaticFollowUp] = useState('');
+  const [staticFollowUpSending, setStaticFollowUpSending] = useState(false);
   // Show terminal for done tasks too; fall back to static log only after cleanup has captured agentLog
   const showStaticLog = task.status === 'done' && !cleanupExpiresAt && !!task.agentLog && !forceShowLive;
   const showTerminal = (task.status === 'in-progress' || task.status === 'verify' || (task.status === 'done' && !showStaticLog)) && !isQueued;
@@ -315,9 +318,45 @@ export function TaskAgentModal({ task, projectId, visible = true, isQueued, clea
                   <AgentStreamView tabId={terminalTabId} visible={true} staticData={task.agentLog} mode="pretty" onSendFollowUp={handleSendFollowUp} initialPrompt={task.description} initialImages={task.attachments?.filter(a => a.type?.startsWith('image/') && a.dataUrl).map(a => a.dataUrl!)} />
                 </div>
               ) : (
+                <>
                 <pre className="flex-1 min-h-0 overflow-y-auto p-4 text-[12px] font-mono text-bronze-700 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed bg-bronze-100/50 dark:bg-black">
                   {task.agentLog}
                 </pre>
+                <div className="shrink-0 border-t border-border-default bg-surface-base px-4 py-3">
+                  <div className="max-w-4xl flex gap-2">
+                    <textarea
+                      value={staticFollowUp}
+                      onChange={(e) => setStaticFollowUp(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (!staticFollowUp.trim() || staticFollowUpSending) return;
+                          const msg = staticFollowUp.trim();
+                          setStaticFollowUp('');
+                          setStaticFollowUpSending(true);
+                          handleSendFollowUp(msg).finally(() => setStaticFollowUpSending(false));
+                        }
+                      }}
+                      placeholder="Reply to the agent..."
+                      rows={1}
+                      className="flex-1 bg-surface-primary border border-border-default rounded-md px-3 py-2 text-sm text-bronze-800 dark:text-zinc-200 placeholder-text-chrome focus:outline-none focus:border-steel/50 resize-none"
+                    />
+                    <button
+                      onClick={() => {
+                        if (!staticFollowUp.trim() || staticFollowUpSending) return;
+                        const msg = staticFollowUp.trim();
+                        setStaticFollowUp('');
+                        setStaticFollowUpSending(true);
+                        handleSendFollowUp(msg).finally(() => setStaticFollowUpSending(false));
+                      }}
+                      disabled={!staticFollowUp.trim() || staticFollowUpSending}
+                      className="shrink-0 px-3 py-2 rounded-md bg-steel/20 text-steel hover:bg-steel/30 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                    >
+                      <SendIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </>
               )}
               <div className="shrink-0 px-3 py-1.5 text-[11px] text-bronze-500 dark:text-zinc-600 font-mono border-t border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-[#0a0a0a]">
                 Session ended
