@@ -438,6 +438,8 @@ export function ProjectSupervisorPane({ projectId, visible, onTaskCreated }: Pro
     if (!autoScrollRef.current || !containerRef.current) return;
     const el = containerRef.current;
     requestAnimationFrame(() => {
+      // Re-check inside RAF — user may have scrolled up between effect and frame
+      if (!autoScrollRef.current) return;
       el.scrollTop = el.scrollHeight;
     });
   }, [allBlocks]);

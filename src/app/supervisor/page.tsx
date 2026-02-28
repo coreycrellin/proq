@@ -299,7 +299,12 @@ export default function SupervisorPage() {
 
   useEffect(() => {
     if (!autoScrollRef.current || !containerRef.current) return;
-    requestAnimationFrame(() => { containerRef.current!.scrollTop = containerRef.current!.scrollHeight; });
+    const el = containerRef.current;
+    requestAnimationFrame(() => {
+      // Re-check inside RAF — user may have scrolled up between effect and frame
+      if (!autoScrollRef.current) return;
+      el.scrollTop = el.scrollHeight;
+    });
   }, [allBlocks]);
 
   const handleScroll = useCallback(() => {
@@ -355,7 +360,7 @@ export default function SupervisorPage() {
         </div>
       </header>
       <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 flex flex-col bg-surface-base">
+        <div className="flex-1 flex flex-col bg-surface-base min-h-0">
           <div
             ref={containerRef}
             onScroll={handleScroll}

@@ -942,6 +942,8 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     const el = containerRef.current;
     // Use requestAnimationFrame to ensure DOM has updated
     requestAnimationFrame(() => {
+      // Re-check inside RAF — user may have scrolled up between effect and frame
+      if (!autoScrollRef.current) return;
       el.scrollTop = el.scrollHeight;
     });
   }, [blocks]);
@@ -951,6 +953,7 @@ export function AgentStreamView({ tabId, visible, staticData, mode = 'pretty', o
     if (mode !== 'raw' || !rawAutoScrollRef.current || !rawContainerRef.current) return;
     const el = rawContainerRef.current;
     requestAnimationFrame(() => {
+      if (!rawAutoScrollRef.current) return;
       el.scrollTop = el.scrollHeight;
     });
   }, [rawText, mode]);
