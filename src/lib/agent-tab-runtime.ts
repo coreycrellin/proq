@@ -311,24 +311,32 @@ export async function continueAgentTabSession(
     throw new Error("Session is already running");
   }
 
-  // Handle image attachments
+  // Handle attachments
   let promptText = text;
   if (attachments?.length) {
     const imageFiles: string[] = [];
+    const otherFiles: string[] = [];
     const attachDir = join(tmpdir(), "proq-prompts", `agent-${tabId}-${Date.now()}`);
     mkdirSync(attachDir, { recursive: true });
     for (const att of attachments) {
-      if (att.dataUrl && att.type.startsWith("image/")) {
+      if (att.dataUrl) {
         const match = att.dataUrl.match(/^data:[^;]+;base64,(.+)$/);
         if (match) {
           const filePath = join(attachDir, att.name);
           writeFileSync(filePath, Buffer.from(match[1], "base64"));
-          imageFiles.push(filePath);
+          if (att.type.startsWith("image/")) {
+            imageFiles.push(filePath);
+          } else {
+            otherFiles.push(filePath);
+          }
         }
       }
     }
     if (imageFiles.length > 0) {
       promptText += `\n\n## Attached Images\nThe following image files are attached to this message. Use your Read tool to view them:\n${imageFiles.map((f) => `- ${f}`).join("\n")}\n`;
+    }
+    if (otherFiles.length > 0) {
+      promptText += `\n\n## Attached Files\nThe following files are attached to this message. Use your Read tool to view them:\n${otherFiles.map((f) => `- ${f}`).join("\n")}\n`;
     }
   }
 

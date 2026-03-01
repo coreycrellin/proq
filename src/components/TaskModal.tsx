@@ -172,24 +172,16 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
         size: f.size,
         type: f.type,
       };
-      if (f.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          att.dataUrl = e.target?.result as string;
-          setAttachments((prev) => {
-            const updated = [...prev, att];
-            autosave(title, description, updated, mode);
-            return updated;
-          });
-        };
-        reader.readAsDataURL(f);
-      } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        att.dataUrl = e.target?.result as string;
         setAttachments((prev) => {
           const updated = [...prev, att];
-          autosave(title, description, updated);
+          autosave(title, description, updated, mode);
           return updated;
         });
-      }
+      };
+      reader.readAsDataURL(f);
     });
   };
 

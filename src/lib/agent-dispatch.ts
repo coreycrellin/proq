@@ -286,8 +286,9 @@ export async function dispatchTask(
     const proqSystemPrompt = buildProqSystemPrompt(projectId, taskId, mode, project.name);
     const mcpConfigPath = writeMcpConfig(projectId, taskId);
 
-    // Write image attachments to temp files so the agent can read them
+    // Write attachments to temp files so the agent can read them
     const imageFiles: string[] = [];
+    const otherFiles: string[] = [];
     if (attachments?.length) {
       const attachDir = join(
         tmpdir(),
@@ -296,17 +297,24 @@ export async function dispatchTask(
       );
       mkdirSync(attachDir, { recursive: true });
       for (const att of attachments) {
-        if (att.dataUrl && att.type.startsWith("image/")) {
+        if (att.dataUrl) {
           const match = att.dataUrl.match(/^data:[^;]+;base64,(.+)$/);
           if (match) {
             const filePath = join(attachDir, att.name);
             writeFileSync(filePath, Buffer.from(match[1], "base64"));
-            imageFiles.push(filePath);
+            if (att.type.startsWith("image/")) {
+              imageFiles.push(filePath);
+            } else {
+              otherFiles.push(filePath);
+            }
           }
         }
       }
       if (imageFiles.length > 0) {
         prompt += `\n## Attached Images\nThe following image files are attached to this task. Use your Read tool to view them:\n${imageFiles.map((f) => `- ${f}`).join("\n")}\n`;
+      }
+      if (otherFiles.length > 0) {
+        prompt += `\n## Attached Files\nThe following files are attached to this task. Use your Read tool to view them:\n${otherFiles.map((f) => `- ${f}`).join("\n")}\n`;
       }
     }
 
@@ -361,9 +369,10 @@ export async function dispatchTask(
     prompt = `${heading}\n\nWhen completely finished, stage and commit the changes with a descriptive message.`;
   }
 
-  // Append image attachments
+  // Append file attachments
   if (attachments?.length) {
     const imageFiles: string[] = [];
+    const otherFiles: string[] = [];
     const attachDir = join(
       tmpdir(),
       "proq-prompts",
@@ -371,17 +380,24 @@ export async function dispatchTask(
     );
     mkdirSync(attachDir, { recursive: true });
     for (const att of attachments) {
-      if (att.dataUrl && att.type.startsWith("image/")) {
+      if (att.dataUrl) {
         const match = att.dataUrl.match(/^data:[^;]+;base64,(.+)$/);
         if (match) {
           const filePath = join(attachDir, att.name);
           writeFileSync(filePath, Buffer.from(match[1], "base64"));
-          imageFiles.push(filePath);
+          if (att.type.startsWith("image/")) {
+            imageFiles.push(filePath);
+          } else {
+            otherFiles.push(filePath);
+          }
         }
       }
     }
     if (imageFiles.length > 0) {
       prompt += `\n\n## Attached Images\nThe following image files are attached to this task. Use your Read tool to view them:\n${imageFiles.map((f) => `- ${f}`).join("\n")}\n`;
+    }
+    if (otherFiles.length > 0) {
+      prompt += `\n\n## Attached Files\nThe following files are attached to this task. Use your Read tool to view them:\n${otherFiles.map((f) => `- ${f}`).join("\n")}\n`;
     }
   }
 
