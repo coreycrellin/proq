@@ -460,6 +460,7 @@ export async function continueSession(
     session.mcpConfig = writeMcpConfig(projectId, taskId);
   }
   args.push("--mcp-config", session.mcpConfig);
+  args.push("--allowedTools", "mcp__proq__*");
 
   // Emit init block for the new session turn
   if (!canResume || !session.sessionId) {
