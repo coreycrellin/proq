@@ -40,7 +40,7 @@ export async function PUT(request: Request, { params }: Params) {
   if (prevStatus && prevStatus !== toColumn) {
     if (toColumn === "in-progress" && prevStatus !== "in-progress") {
       cancelCleanup(taskId);
-      if (prevStatus !== "verify") {
+      if (prevStatus !== "verify" && prevStatus !== "done") {
         const settings = await getSettings();
         const dispatch = await getInitialDispatch(id, taskId);
         const renderMode = prevTask?.renderMode || settings.agentRenderMode || 'structured';
