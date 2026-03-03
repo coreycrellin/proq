@@ -225,6 +225,17 @@ export default function ProjectPage() {
     } catch { /* best effort */ }
   }, [projectId]);
 
+  const handleFetch = useCallback(async () => {
+    try {
+      await fetch(`/api/projects/${projectId}/git`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'fetch' }),
+      });
+      await fetchBranchState();
+    } catch { /* best effort */ }
+  }, [projectId, fetchBranchState]);
+
   const handleInitGit = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${projectId}/git`, {
@@ -611,6 +622,7 @@ export default function ProjectPage() {
         gitStatus={gitStatus}
         onPush={handlePush}
         onPull={handlePull}
+        onFetch={handleFetch}
         onInitGit={handleInitGit}
       />
 

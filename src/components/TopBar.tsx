@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon } from 'lucide-react';
 import type { Project, ProjectTab } from '@/lib/types';
 import {
   DropdownMenu,
@@ -31,12 +31,17 @@ interface TopBarProps {
   taskBranchMap?: Record<string, string>;
   onSwitchBranch?: (branch: string) => void;
   gitStatus?: GitStatus;
-  onPush?: () => void;
-  onPull?: () => void;
+  onPush?: () => Promise<void>;
+  onPull?: () => Promise<void>;
+  onFetch?: () => Promise<void>;
   onInitGit?: () => void;
 }
 
-export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, gitStatus, onPush, onPull, onInitGit }: TopBarProps) {
+export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, gitStatus, onPush, onPull, onFetch, onInitGit }: TopBarProps) {
+  const [pushing, setPushing] = useState(false);
+  const [pulling, setPulling] = useState(false);
+  const [fetching, setFetching] = useState(false);
+
   const tabs: { id: TabOption; label: string }[] = [
     { id: 'project', label: 'Project' },
     { id: 'live', label: 'Live' },
@@ -129,27 +134,54 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
               )}
             </div>
 
-            {/* Pull / Push buttons */}
+            {/* Pull / Push / Synced buttons */}
             {gitStatus?.hasRemote && (
               <div className="flex items-center gap-1.5">
                 {gitStatus.behind > 0 && (
                   <button
-                    onClick={onPull}
-                    title={`Pull ${gitStatus.behind} ${gitStatus.behind === 1 ? 'commit' : 'commits'} from upstream`}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border border-border-default bg-surface-secondary text-blue-400 hover:bg-surface-hover transition-colors"
+                    onClick={async () => { if (pulling || !onPull) return; setPulling(true); try { await onPull(); } finally { setPulling(false); } }}
+                    disabled={pulling}
+                    title={`${gitStatus.behind} ${gitStatus.behind === 1 ? 'commit' : 'commits'} behind upstream. Click to pull now.`}
+                    className="flex items-center text-xs font-medium rounded-md border border-border-default bg-surface-secondary text-blue-400 hover:bg-surface-hover transition-colors overflow-hidden"
                   >
-                    <ArrowDownIcon className="w-3.5 h-3.5" />
-                    Pull
+                    <span className="px-2 py-1.5 border-r border-border-default tabular-nums">{gitStatus.behind}</span>
+                    <span className="flex items-center gap-1.5 px-2.5 py-1.5">
+                      Pull
+                      {pulling
+                        ? <Loader2Icon className="w-3.5 h-3.5 text-bronze-500 animate-spin" />
+                        : <ArrowDownIcon className="w-3.5 h-3.5" />
+                      }
+                    </span>
                   </button>
                 )}
                 {gitStatus.ahead > 0 && (
                   <button
-                    onClick={onPush}
-                    title={`Push ${gitStatus.ahead} ${gitStatus.ahead === 1 ? 'commit' : 'commits'} to upstream`}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border border-border-default bg-surface-secondary text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
+                    onClick={async () => { if (pushing || !onPush) return; setPushing(true); try { await onPush(); } finally { setPushing(false); } }}
+                    disabled={pushing}
+                    title={`${gitStatus.ahead} ${gitStatus.ahead === 1 ? 'commit' : 'commits'} ahead of upstream. Click to push now.`}
+                    className="flex items-center text-xs font-medium rounded-md border border-border-default bg-surface-secondary text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors overflow-hidden"
                   >
-                    <ArrowUpIcon className="w-3.5 h-3.5" />
-                    Push
+                    <span className="px-2 py-1.5 border-r border-border-default tabular-nums">{gitStatus.ahead}</span>
+                    <span className="flex items-center gap-1.5 px-2.5 py-1.5">
+                      Push
+                      {pushing
+                        ? <Loader2Icon className="w-3.5 h-3.5 text-bronze-500 animate-spin" />
+                        : <ArrowUpIcon className="w-3.5 h-3.5" />
+                      }
+                    </span>
+                  </button>
+                )}
+                {gitStatus.ahead === 0 && gitStatus.behind === 0 && !pushing && !pulling && (
+                  <button
+                    onClick={async () => { if (fetching || !onFetch) return; setFetching(true); try { await onFetch(); } finally { setFetching(false); } }}
+                    disabled={fetching}
+                    title="Up to date with upstream. Click to check."
+                    className="flex items-center p-1.5 rounded-md border border-border-default bg-surface-secondary text-bronze-500 hover:bg-surface-hover transition-colors"
+                  >
+                    {fetching
+                      ? <Loader2Icon className="w-3.5 h-3.5 text-bronze-500 animate-spin" />
+                      : <CheckIcon className="w-3.5 h-3.5" />
+                    }
                   </button>
                 )}
               </div>
