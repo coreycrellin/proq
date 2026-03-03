@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon } from 'lucide-react';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, RefreshCwIcon } from 'lucide-react';
 import type { Project, ProjectTab } from '@/lib/types';
 import {
   DropdownMenu,
@@ -176,11 +176,14 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                     onClick={async () => { if (fetching || !onFetch) return; setFetching(true); try { await onFetch(); } finally { setFetching(false); } }}
                     disabled={fetching}
                     title="Up to date with upstream. Click to check."
-                    className="flex items-center p-1.5 rounded-md border border-border-default bg-surface-secondary text-bronze-500 hover:bg-surface-hover transition-colors"
+                    className="group flex items-center p-1.5 rounded-md border border-border-default bg-surface-secondary text-bronze-500 hover:bg-surface-hover transition-colors"
                   >
                     {fetching
                       ? <Loader2Icon className="w-3.5 h-3.5 text-bronze-500 animate-spin" />
-                      : <CheckIcon className="w-3.5 h-3.5" />
+                      : <>
+                          <CheckIcon className="w-3.5 h-3.5 group-hover:hidden" />
+                          <RefreshCwIcon className="w-3.5 h-3.5 hidden group-hover:block" />
+                        </>
                     }
                   </button>
                 )}
