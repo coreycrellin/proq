@@ -43,6 +43,7 @@ interface KanbanBoardProps {
   onRefreshTasks?: () => void;
   executionMode?: ExecutionMode;
   onExecutionModeChange?: (mode: ExecutionMode) => void;
+  onDragActiveChange?: (active: boolean) => void;
   activeBranch?: string;
 }
 
@@ -147,6 +148,7 @@ export function KanbanBoard({
   onRefreshTasks,
   executionMode = 'sequential',
   onExecutionModeChange,
+  onDragActiveChange,
   activeBranch,
 }: KanbanBoardProps) {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -193,6 +195,7 @@ export function KanbanBoard({
     const node = event.active.rect.current.initial;
     if (node) setDragWidth(node.width);
     setLocalColumns(deepCopyColumns(tasks));
+    onDragActiveChange?.(true);
   }
 
   function handleDragOver(event: DragOverEvent) {
@@ -263,6 +266,7 @@ export function KanbanBoard({
     setOverColumnId(null);
     setDragWidth(null);
     lastOverIdRef.current = null;
+    onDragActiveChange?.(false);
 
     if (!localColumns) {
       setLocalColumns(null);
@@ -310,6 +314,7 @@ export function KanbanBoard({
     setDragWidth(null);
     lastOverIdRef.current = null;
     setLocalColumns(null);
+    onDragActiveChange?.(false);
   }
 
   return (

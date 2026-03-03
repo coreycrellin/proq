@@ -40,6 +40,7 @@ export default function ProjectPage() {
   const followUpDraftsRef = useRef<Map<string, FollowUpDraft>>(new Map());
   const [boardDragOver, setBoardDragOver] = useState(false);
   const boardDragCounter = useRef(0);
+  const kanbanDraggingRef = useRef(false);
 
   const project = projects.find((p) => p.id === projectId);
   const columns: TaskColumns = tasksByProject[projectId] || emptyColumns();
@@ -147,17 +148,24 @@ export default function ProjectPage() {
 
   useTaskEvents(projectId, handleTaskUpdate);
 
-  // Slow fallback poll: catches anything SSE misses (supervisor creates, branch state, etc.)
+  // 5s task poll as consistency backstop — skips during active drags
   useEffect(() => {
     if (!projectId) return;
     const interval = setInterval(() => {
-      refreshTasks(projectId);
-      fetchExecutionMode();
+      if (!kanbanDraggingRef.current) refreshTasks(projectId);
+    }, 5_000);
+    return () => clearInterval(interval);
+  }, [projectId, refreshTasks]);
+
+  // 30s poll for branch state (preview fast-forward, branch list)
+  useEffect(() => {
+    if (!projectId) return;
+    const interval = setInterval(() => {
       fetchBranchState();
       refreshDetachedHead();
     }, 30_000);
     return () => clearInterval(interval);
-  }, [projectId, refreshTasks, fetchExecutionMode, fetchBranchState, refreshDetachedHead]);
+  }, [projectId, fetchBranchState, refreshDetachedHead]);
 
   // Cmd+Z to undo last delete — peeks without restoring
   useEffect(() => {
@@ -564,6 +572,7 @@ export default function ProjectPage() {
                 onRefreshTasks={refresh}
                 executionMode={executionMode}
                 onExecutionModeChange={handleExecutionModeChange}
+                onDragActiveChange={(active) => { kanbanDraggingRef.current = active; }}
                 activeBranch={currentBranch}
               />
             </div>
