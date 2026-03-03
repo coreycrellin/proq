@@ -449,6 +449,145 @@ export function ensureOnMainForMerge(projectPath: string, taskBranch: string): v
   deletePreviewBranch(projectPath, taskBranch);
 }
 
+// ── Git sync operations ──
+
+/**
+ * Auto-commit any uncommitted changes in a working directory.
+ * Used as a safety net when agent sessions end without committing.
+ * Returns true if a commit was made.
+ */
+export function autoCommitIfDirty(
+  projectPath: string,
+  taskTitle?: string,
+): boolean {
+  try {
+    const status = execSync(
+      `git -C '${projectPath}' status --porcelain`,
+      { timeout: 10_000, encoding: "utf-8" },
+    ).trim();
+    if (!status) return false;
+
+    const message = taskTitle
+      ? `Commit leftover changes for: ${taskTitle}`
+      : "Commit leftover changes";
+    execSync(`git -C '${projectPath}' add -A`, { timeout: 10_000 });
+    execSync(`git -C '${projectPath}' commit -m '${message.replace(/'/g, "'\\''")}'`, {
+      timeout: 15_000,
+    });
+    console.log(`[git] auto-committed leftover changes in ${projectPath}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Get sync status for a git repository (ahead/behind upstream, dirty file count) */
+export function getGitSyncStatus(
+  projectPath: string,
+): { hasRemote: boolean; ahead: number; behind: number; dirty: number } {
+  const result = { hasRemote: false, ahead: 0, behind: 0, dirty: 0 };
+
+  try {
+    const remotes = execSync(
+      `git -C '${projectPath}' remote`,
+      { timeout: 5_000, encoding: "utf-8" },
+    ).trim();
+    result.hasRemote = remotes.length > 0;
+  } catch {
+    return result;
+  }
+
+  // Dirty file count
+  try {
+    const status = execSync(
+      `git -C '${projectPath}' status --porcelain`,
+      { timeout: 10_000, encoding: "utf-8" },
+    ).trim();
+    if (status) {
+      result.dirty = status.split("\n").filter(Boolean).length;
+    }
+  } catch { /* best effort */ }
+
+  // Ahead/behind upstream
+  if (result.hasRemote) {
+    try {
+      const output = execSync(
+        `git -C '${projectPath}' rev-list --count --left-right '@{upstream}...HEAD'`,
+        { timeout: 10_000, encoding: "utf-8" },
+      ).trim();
+      const [behind, ahead] = output.split(/\s+/).map(Number);
+      result.ahead = ahead || 0;
+      result.behind = behind || 0;
+    } catch {
+      // No tracking branch or no upstream — leave at 0
+    }
+  }
+
+  return result;
+}
+
+/** Fetch from all remotes (best-effort, short timeout) */
+export function gitFetch(projectPath: string): void {
+  try {
+    execSync(`git -C '${projectPath}' fetch --quiet --all`, {
+      timeout: 30_000,
+    });
+    console.log(`[git] fetched from remotes for ${projectPath}`);
+  } catch {
+    // Best effort — network may be unavailable
+  }
+}
+
+/** Push to upstream. Returns success/error. */
+export function gitPush(
+  projectPath: string,
+): { success: boolean; error?: string } {
+  try {
+    execSync(`git -C '${projectPath}' push`, {
+      timeout: 30_000,
+      encoding: "utf-8",
+    });
+    console.log(`[git] pushed to upstream from ${projectPath}`);
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Push failed";
+    console.error(`[git] push failed:`, message);
+    return { success: false, error: message };
+  }
+}
+
+/** Pull from upstream (fast-forward only). Returns success/error. */
+export function gitPull(
+  projectPath: string,
+): { success: boolean; error?: string } {
+  try {
+    execSync(`git -C '${projectPath}' pull --ff-only`, {
+      timeout: 30_000,
+      encoding: "utf-8",
+    });
+    console.log(`[git] pulled from upstream into ${projectPath}`);
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Pull failed";
+    console.error(`[git] pull failed:`, message);
+    return { success: false, error: message };
+  }
+}
+
+/** Initialize a git repo with an initial commit */
+export function gitInit(projectPath: string): void {
+  execSync(`git -C '${projectPath}' init`, { timeout: 10_000 });
+  execSync(`git -C '${projectPath}' add -A`, { timeout: 15_000 });
+  try {
+    execSync(`git -C '${projectPath}' commit -m 'Initial commit'`, {
+      timeout: 15_000,
+    });
+  } catch {
+    // May fail if directory is empty — that's fine
+  }
+  console.log(`[git] initialized repo in ${projectPath}`);
+}
+
 export function ensureGitignore(projectPath: string): void {
   const gitignorePath = join(projectPath, ".gitignore");
   try {

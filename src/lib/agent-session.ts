@@ -9,6 +9,7 @@ import {
   writeMcpConfig,
 } from "./agent-dispatch";
 import { emitTaskUpdate } from "./task-events";
+import { autoCommitIfDirty } from "./worktree";
 import type WebSocket from "ws";
 
 const CLAUDE = process.env.CLAUDE_BIN || "claude";
@@ -157,6 +158,17 @@ function wireProcess(
     // Check if task is still in-progress (agent didn't call update_task)
     const task = await getTask(projectId, taskId);
     const stillInProgress = task?.status === "in-progress";
+
+    // Safety net: auto-commit any leftover uncommitted changes
+    if (task && !endedOnQuestion && !endedOnPlanExit) {
+      const effectivePath = task.worktreePath || await (async () => {
+        const proj = await getProject(projectId);
+        return proj?.path.replace(/^~/, process.env.HOME || "~");
+      })();
+      if (effectivePath) {
+        autoCommitIfDirty(effectivePath, task.title);
+      }
+    }
 
     if (stillInProgress) {
       // Safety net: move to verify and clear agentStatus

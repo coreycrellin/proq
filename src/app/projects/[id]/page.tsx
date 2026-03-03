@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, type DragEvent } from 'react';
 import { useParams } from 'next/navigation';
-import { TopBar, type TabOption } from '@/components/TopBar';
+import { TopBar, type TabOption, type GitStatus } from '@/components/TopBar';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import WorkbenchPanel from '@/components/WorkbenchPanel';
 import { LiveTab } from '@/components/LiveTab';
@@ -36,6 +36,7 @@ export default function ProjectPage() {
   const [showModeBlockedModal, setShowModeBlockedModal] = useState(false);
   const [currentBranch, setCurrentBranch] = useState<string>('main');
   const [branches, setBranches] = useState<string[]>([]);
+  const [gitStatus, setGitStatus] = useState<GitStatus>({ hasGit: true, hasRemote: false, ahead: 0, behind: 0, dirty: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const followUpDraftsRef = useRef<Map<string, FollowUpDraft>>(new Map());
   const [boardDragOver, setBoardDragOver] = useState(false);
@@ -85,6 +86,13 @@ export default function ProjectPage() {
         const data = await res.json();
         setCurrentBranch(data.current || 'main');
         setBranches(data.branches || []);
+        setGitStatus({
+          hasGit: data.hasGit !== false,
+          hasRemote: data.hasRemote || false,
+          ahead: data.ahead || 0,
+          behind: data.behind || 0,
+          dirty: data.dirty || 0,
+        });
       }
     } catch {
       // git API may not be available for non-git projects
@@ -117,10 +125,16 @@ export default function ProjectPage() {
   // SSE delivers targeted {taskId, changes} — merge directly into local state.
   // No fetching. Only server-initiated changes (agentStatus, status) come via SSE.
   const handleTaskUpdate = useCallback((event: TaskUpdateEvent) => {
+    const newStatus = event.changes.status as TaskStatus | undefined;
+
+    // Reactively refresh git state when a task completes (verify/done = agent committed)
+    if (newStatus === 'verify' || newStatus === 'done') {
+      fetchBranchState();
+    }
+
     setTasksByProject((prev) => {
       const cols = prev[projectId] || emptyColumns();
       const { taskId, changes } = event;
-      const newStatus = changes.status as TaskStatus | undefined;
 
       // Find the task in any column
       for (const status of ['todo', 'in-progress', 'verify', 'done'] as TaskStatus[]) {
@@ -144,7 +158,7 @@ export default function ProjectPage() {
       }
       return prev; // task not found — ignore
     });
-  }, [projectId, setTasksByProject]);
+  }, [projectId, setTasksByProject, fetchBranchState]);
 
   useTaskEvents(projectId, handleTaskUpdate);
 
@@ -157,7 +171,7 @@ export default function ProjectPage() {
     return () => clearInterval(interval);
   }, [projectId, refreshTasks]);
 
-  // 30s poll for branch state (preview fast-forward, branch list)
+  // 30s poll for branch state (preview fast-forward, branch list, local dirty count)
   useEffect(() => {
     if (!projectId) return;
     const interval = setInterval(() => {
@@ -166,6 +180,63 @@ export default function ProjectPage() {
     }, 30_000);
     return () => clearInterval(interval);
   }, [projectId, fetchBranchState, refreshDetachedHead]);
+
+  // 5-min upstream fetch to keep ahead/behind counts fresh
+  useEffect(() => {
+    if (!projectId) return;
+    const interval = setInterval(async () => {
+      try {
+        await fetch(`/api/projects/${projectId}/git`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'fetch' }),
+        });
+        fetchBranchState();
+      } catch { /* best effort */ }
+    }, 5 * 60_000);
+    return () => clearInterval(interval);
+  }, [projectId, fetchBranchState]);
+
+  const handlePush = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/git`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'push' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGitStatus(prev => ({ ...prev, ahead: data.ahead || 0, behind: data.behind || 0 }));
+      }
+    } catch { /* best effort */ }
+  }, [projectId]);
+
+  const handlePull = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/git`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'pull' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGitStatus(prev => ({ ...prev, ahead: data.ahead || 0, behind: data.behind || 0 }));
+      }
+    } catch { /* best effort */ }
+  }, [projectId]);
+
+  const handleInitGit = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/git`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'init' }),
+      });
+      if (res.ok) {
+        fetchBranchState();
+      }
+    } catch { /* best effort */ }
+  }, [projectId, fetchBranchState]);
 
   // Cmd+Z to undo last delete — peeks without restoring
   useEffect(() => {
@@ -537,6 +608,10 @@ export default function ProjectPage() {
         branches={branches}
         taskBranchMap={taskBranchMap}
         onSwitchBranch={handleSwitchBranch}
+        gitStatus={gitStatus}
+        onPush={handlePush}
+        onPull={handlePull}
+        onInitGit={handleInitGit}
       />
 
       <main ref={containerRef} className="flex-1 flex flex-col overflow-hidden relative">

@@ -71,7 +71,8 @@ You have MCP tools from the **proq** server for reporting progress. Use them ins
 
 ### Task Tools
 - \`read_task\` — Read current task state and any existing findings
-- \`update_task\` — Update findings and move task to Verify for review`,
+- \`update_task\` — Update findings and move task to Verify for review
+- \`commit_changes\` — Stage and commit all current changes with a message`,
   ];
 
   if (mode === "answer") {
@@ -85,7 +86,7 @@ When finished, use the \`read_task\` tool to check for any existing findings, th
 When finished, use the \`read_task\` tool to check for any existing findings, then use \`update_task\` with a cumulative summary incorporating prior findings.`);
   } else {
     sections.push(`### Code Changes
-Always commit your code changes unless explicitly asked not to. Stage and commit with a descriptive message after each logical unit of work.
+Use the \`commit_changes\` tool to commit after each logical unit of work. Always commit your code changes before reporting — don't leave uncommitted work behind.
 
 ### Reporting Progress
 After making substantial changes (committing code, completing a phase of work), use the \`update_task\` tool to update the task board and move the task to Verify for human review. Before reporting, use \`read_task\` to see existing findings so you can write a cumulative summary.
@@ -285,7 +286,7 @@ export async function dispatchTask(
     } else if (mode === "answer") {
       prompt = `${heading}\n\nIMPORTANT: Do NOT make any code changes. Do NOT create, edit, or delete any files. Do NOT commit anything. Only research and answer the question. Provide your answer as findings.`;
     } else {
-      prompt = `${heading}\n\nWhen completely finished, stage and commit the changes with a descriptive message.`;
+      prompt = `${heading}\n\nWhen completely finished, use the commit_changes tool to commit your changes with a descriptive message.`;
     }
 
     const proqSystemPrompt = buildProqSystemPrompt(projectId, taskId, mode, project.name);
@@ -357,7 +358,7 @@ export async function dispatchTask(
   } else if (mode === "answer") {
     prompt = `${heading}\n\nIMPORTANT: Do NOT make any code changes. Do NOT create, edit, or delete any files. Do NOT commit anything. Only research and answer the question.`;
   } else {
-    prompt = `${heading}\n\nWhen completely finished, stage and commit the changes with a descriptive message.`;
+    prompt = `${heading}\n\nWhen completely finished, use the commit_changes tool to commit your changes with a descriptive message.`;
   }
 
   // Append file attachment paths to prompt

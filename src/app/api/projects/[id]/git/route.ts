@@ -8,6 +8,11 @@ import {
   isPreviewBranch,
   sourceProqBranch,
   isGitRepo,
+  getGitSyncStatus,
+  gitFetch,
+  gitPush,
+  gitPull,
+  gitInit,
 } from "@/lib/worktree";
 
 type Params = { params: Promise<{ id: string }> };
@@ -16,7 +21,7 @@ function resolveProjectPath(path: string): string {
   return path.replace(/^~/, process.env.HOME || "~");
 }
 
-/** GET — current branch + all local branches */
+/** GET — current branch + all local branches + sync status */
 export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
   const project = await getProject(id);
@@ -27,11 +32,21 @@ export async function GET(_request: Request, { params }: Params) {
   const projectPath = resolveProjectPath(project.path);
 
   if (!isGitRepo(projectPath)) {
-    return NextResponse.json({ current: null, detached: false, branches: [] });
+    return NextResponse.json({
+      current: null,
+      detached: false,
+      branches: [],
+      hasGit: false,
+      hasRemote: false,
+      ahead: 0,
+      behind: 0,
+      dirty: 0,
+    });
   }
 
   const current = getCurrentBranch(projectPath);
   const allBranches = listBranches(projectPath);
+  const syncStatus = getGitSyncStatus(projectPath);
 
   // Filter out proq/*/preview branches — they're internal implementation detail
   const branches = allBranches.filter((b) => !isPreviewBranch(b));
@@ -46,10 +61,12 @@ export async function GET(_request: Request, { params }: Params) {
     current: currentName,
     detached: current.detached,
     branches,
+    hasGit: true,
+    ...syncStatus,
   });
 }
 
-/** POST — switch branch */
+/** POST — switch branch or perform git actions (push/pull/fetch/init) */
 export async function POST(request: Request, { params }: Params) {
   const { id } = await params;
   const project = await getProject(id);
@@ -57,15 +74,64 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  const { branch } = await request.json();
+  const body = await request.json();
+  const projectPath = resolveProjectPath(project.path);
+
+  // Action-based dispatch
+  if (body.action) {
+    if (body.action === "init") {
+      if (isGitRepo(projectPath)) {
+        return NextResponse.json({ error: "Already a git repository" }, { status: 400 });
+      }
+      try {
+        gitInit(projectPath);
+        const syncStatus = getGitSyncStatus(projectPath);
+        return NextResponse.json({ hasGit: true, ...syncStatus });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Init failed";
+        return NextResponse.json({ error: message }, { status: 500 });
+      }
+    }
+
+    if (!isGitRepo(projectPath)) {
+      return NextResponse.json({ error: "Project is not a git repository" }, { status: 400 });
+    }
+
+    if (body.action === "fetch") {
+      gitFetch(projectPath);
+      const syncStatus = getGitSyncStatus(projectPath);
+      return NextResponse.json(syncStatus);
+    }
+
+    if (body.action === "push") {
+      const result = gitPush(projectPath);
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 500 });
+      }
+      const syncStatus = getGitSyncStatus(projectPath);
+      return NextResponse.json(syncStatus);
+    }
+
+    if (body.action === "pull") {
+      const result = gitPull(projectPath);
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 500 });
+      }
+      const syncStatus = getGitSyncStatus(projectPath);
+      return NextResponse.json(syncStatus);
+    }
+
+    return NextResponse.json({ error: `Unknown action: ${body.action}` }, { status: 400 });
+  }
+
+  // Branch switch (existing behavior)
+  const { branch } = body;
   if (!branch || typeof branch !== "string") {
     return NextResponse.json(
-      { error: "branch is required" },
+      { error: "branch or action is required" },
       { status: 400 },
     );
   }
-
-  const projectPath = resolveProjectPath(project.path);
 
   if (!isGitRepo(projectPath)) {
     return NextResponse.json(

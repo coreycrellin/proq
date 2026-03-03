@@ -9,6 +9,7 @@
 const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");
 const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js");
 const { z } = require("zod");
+const { execSync } = require("child_process");
 
 const API = "http://localhost:1337";
 const [projectId, taskId] = process.argv.slice(2);
@@ -68,6 +69,64 @@ server.tool(
       return { content: [{ type: "text", text: JSON.stringify(task, null, 2) }] };
     } catch (err) {
       return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  },
+);
+
+/**
+ * Resolve the working directory for git operations.
+ * In parallel mode, agents work in a worktree; otherwise in the project directory.
+ */
+async function resolveWorkDir() {
+  const taskRes = await fetch(taskUrl);
+  if (!taskRes.ok) return null;
+  const task = await taskRes.json();
+  if (task.worktreePath) return task.worktreePath;
+
+  const projRes = await fetch(`${API}/api/projects/${projectId}`);
+  if (!projRes.ok) return null;
+  const proj = await projRes.json();
+  return proj.path?.replace(/^~/, process.env.HOME || "~") || null;
+}
+
+server.tool(
+  "commit_changes",
+  "Stage and commit all current changes. Use after each logical unit of work to keep your progress saved.",
+  {
+    message: z.string().describe("Descriptive commit message summarizing the changes"),
+  },
+  async ({ message }) => {
+    try {
+      const workDir = await resolveWorkDir();
+      if (!workDir) {
+        return { content: [{ type: "text", text: "Could not resolve working directory." }], isError: true };
+      }
+
+      // Check if there's anything to commit
+      const status = execSync(`git -C '${workDir}' status --porcelain`, {
+        timeout: 10_000,
+        encoding: "utf-8",
+      }).trim();
+
+      if (!status) {
+        return { content: [{ type: "text", text: "Nothing to commit — working tree is clean." }] };
+      }
+
+      // Stage all and commit
+      execSync(`git -C '${workDir}' add -A`, { timeout: 10_000 });
+      const safeMsg = message.replace(/'/g, "'\\''");
+      const result = execSync(`git -C '${workDir}' commit -m '${safeMsg}'`, {
+        timeout: 15_000,
+        encoding: "utf-8",
+      }).trim();
+
+      // Extract short hash from commit output
+      const hashMatch = result.match(/\[[\w/.-]+ ([a-f0-9]+)\]/);
+      const hash = hashMatch ? hashMatch[1] : "";
+
+      return { content: [{ type: "text", text: `Committed${hash ? ` (${hash})` : ""}: ${message}` }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Commit failed: ${err.message}` }], isError: true };
     }
   },
 );

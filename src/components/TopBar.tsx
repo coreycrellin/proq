@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon } from 'lucide-react';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
 import type { Project, ProjectTab } from '@/lib/types';
 import {
   DropdownMenu,
@@ -14,6 +14,14 @@ import {
 
 export type TabOption = ProjectTab;
 
+export interface GitStatus {
+  hasGit: boolean;
+  hasRemote: boolean;
+  ahead: number;
+  behind: number;
+  dirty: number;
+}
+
 interface TopBarProps {
   project: Project;
   activeTab: TabOption;
@@ -22,9 +30,13 @@ interface TopBarProps {
   branches?: string[];
   taskBranchMap?: Record<string, string>;
   onSwitchBranch?: (branch: string) => void;
+  gitStatus?: GitStatus;
+  onPush?: () => void;
+  onPull?: () => void;
+  onInitGit?: () => void;
 }
 
-export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch }: TopBarProps) {
+export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, gitStatus, onPush, onPull, onInitGit }: TopBarProps) {
   const tabs: { id: TabOption; label: string }[] = [
     { id: 'project', label: 'Project' },
     { id: 'live', label: 'Live' },
@@ -32,6 +44,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
   ];
 
   const isOnPreviewBranch = currentBranch?.startsWith('proq/') ?? false;
+  const hasGit = gitStatus?.hasGit !== false;
 
   // Sort branches: main first, then proq/* branches, then others
   const sortedBranches = branches ? [...branches].sort((a, b) => {
@@ -85,63 +98,119 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
         </div>
       </div>
 
-      <div className="flex-1 flex justify-end min-w-0">
-        {/* Branch indicator + switcher */}
-        {currentBranch && branches && branches.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono rounded-md border transition-colors outline-none ${
-                  isOnPreviewBranch
-                    ? 'border-gold/40 bg-surface-secondary text-gold shadow-[0_0_8px_rgba(201,168,76,0.1)] hover:text-gold-light hover:bg-surface-hover'
-                    : 'border-border-default bg-surface-secondary text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover'
-                }`}
-              >
-                <GitBranchIcon className={`w-3.5 h-3.5 ${isOnPreviewBranch ? 'text-gold' : ''}`} />
-                <span className="max-w-[180px] truncate">
-                  {isOnPreviewBranch && taskBranchMap?.[currentBranch!]
-                    ? taskBranchMap[currentBranch!].split(/\s+/).slice(0, 4).join(' ')
-                    : currentBranch}
+      <div className="flex-1 flex justify-end items-center gap-2 min-w-0">
+        {!hasGit ? (
+          /* No git — show init button */
+          <button
+            onClick={onInitGit}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border border-border-default bg-surface-secondary text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
+          >
+            <GitBranchIcon className="w-3.5 h-3.5" />
+            Track changes
+          </button>
+        ) : (
+          <>
+            {/* Left of branch selector: state indicators */}
+            <div className="flex items-center gap-3 text-xs whitespace-nowrap">
+              {gitStatus && gitStatus.dirty > 0 && (
+                <span className="text-red-400">
+                  {gitStatus.dirty} uncommitted {gitStatus.dirty === 1 ? 'file' : 'files'}
                 </span>
-                <ChevronDownIcon className="w-3 h-3 opacity-50" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72 max-h-64">
-              <DropdownMenuLabel>Branches</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {mainBranches.map((branch) => (
-                <BranchItem
-                  key={branch}
-                  branch={branch}
-                  isCurrent={branch === currentBranch}
-                  onSelect={() => onSwitchBranch?.(branch)}
-                />
-              ))}
-              {proqBranches.length > 0 && mainBranches.length > 0 && (
-                <DropdownMenuSeparator />
               )}
-              {proqBranches.map((branch) => (
-                <BranchItem
-                  key={branch}
-                  branch={branch}
-                  isCurrent={branch === currentBranch}
-                  taskTitle={taskBranchMap?.[branch]}
-                  onSelect={() => onSwitchBranch?.(branch)}
-                />
-              ))}
-              {otherBranches.length > 0 && (mainBranches.length > 0 || proqBranches.length > 0) && (
-                <DropdownMenuSeparator />
+              {gitStatus && gitStatus.behind > 0 && (
+                <span className="text-blue-400">
+                  {gitStatus.behind} {gitStatus.behind === 1 ? 'commit' : 'commits'} behind
+                </span>
               )}
-              {otherBranches.map((branch) => (
-                <BranchItem
-                  key={branch}
-                  branch={branch}
-                  isCurrent={branch === currentBranch}
-                  onSelect={() => onSwitchBranch?.(branch)}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              {gitStatus && gitStatus.ahead > 0 && (
+                <span className="text-zinc-400">
+                  {gitStatus.ahead} {gitStatus.ahead === 1 ? 'commit' : 'commits'} ahead
+                </span>
+              )}
+            </div>
+
+            {/* Branch selector */}
+            {currentBranch && branches && branches.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono rounded-md border transition-colors outline-none ${
+                      isOnPreviewBranch
+                        ? 'border-gold/40 bg-surface-secondary text-gold shadow-[0_0_8px_rgba(201,168,76,0.1)] hover:text-gold-light hover:bg-surface-hover'
+                        : 'border-border-default bg-surface-secondary text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover'
+                    }`}
+                  >
+                    <GitBranchIcon className={`w-3.5 h-3.5 ${isOnPreviewBranch ? 'text-gold' : ''}`} />
+                    <span className="max-w-[180px] truncate">
+                      {isOnPreviewBranch && taskBranchMap?.[currentBranch!]
+                        ? taskBranchMap[currentBranch!].split(/\s+/).slice(0, 4).join(' ')
+                        : currentBranch}
+                    </span>
+                    <ChevronDownIcon className="w-3 h-3 opacity-50" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72 max-h-64">
+                  <DropdownMenuLabel>Branches</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {mainBranches.map((branch) => (
+                    <BranchItem
+                      key={branch}
+                      branch={branch}
+                      isCurrent={branch === currentBranch}
+                      onSelect={() => onSwitchBranch?.(branch)}
+                    />
+                  ))}
+                  {proqBranches.length > 0 && mainBranches.length > 0 && (
+                    <DropdownMenuSeparator />
+                  )}
+                  {proqBranches.map((branch) => (
+                    <BranchItem
+                      key={branch}
+                      branch={branch}
+                      isCurrent={branch === currentBranch}
+                      taskTitle={taskBranchMap?.[branch]}
+                      onSelect={() => onSwitchBranch?.(branch)}
+                    />
+                  ))}
+                  {otherBranches.length > 0 && (mainBranches.length > 0 || proqBranches.length > 0) && (
+                    <DropdownMenuSeparator />
+                  )}
+                  {otherBranches.map((branch) => (
+                    <BranchItem
+                      key={branch}
+                      branch={branch}
+                      isCurrent={branch === currentBranch}
+                      onSelect={() => onSwitchBranch?.(branch)}
+                    />
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* Right of branch selector: upstream actions */}
+            {gitStatus?.hasRemote && (
+              <div className="flex items-center gap-1">
+                {gitStatus.behind > 0 && (
+                  <button
+                    onClick={onPull}
+                    title={`Pull ${gitStatus.behind} ${gitStatus.behind === 1 ? 'commit' : 'commits'} from upstream`}
+                    className="p-1.5 text-xs rounded-md text-blue-400 hover:bg-surface-hover transition-colors"
+                  >
+                    <ArrowDownIcon className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {gitStatus.ahead > 0 && (
+                  <button
+                    onClick={onPush}
+                    title={`Push ${gitStatus.ahead} ${gitStatus.ahead === 1 ? 'commit' : 'commits'} to upstream`}
+                    className="p-1.5 text-xs rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-surface-hover transition-colors"
+                  >
+                    <ArrowUpIcon className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </header>
