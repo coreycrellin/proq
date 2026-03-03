@@ -2,7 +2,11 @@ import { spawn, type ChildProcess } from "child_process";
 import { join } from "path";
 import type { AgentBlock, TaskAttachment } from "./types";
 import { updateTask, getTask, getProject, getSettings } from "./db";
-import { notify, buildProqSystemPrompt, writeMcpConfig } from "./agent-dispatch";
+import {
+  notify,
+  buildProqSystemPrompt,
+  writeMcpConfig,
+} from "./agent-dispatch";
 import { emitTaskUpdate } from "./task-events";
 import type WebSocket from "ws";
 
@@ -120,19 +124,33 @@ function wireProcess(
     }
 
     // Check if the last tool_use was AskUserQuestion or ExitPlanMode — surface to human
-    const lastToolUse = [...session.blocks].reverse().find((b) => b.type === "tool_use");
-    const endedOnQuestion = lastToolUse?.type === "tool_use" && lastToolUse.name === "AskUserQuestion";
-    const endedOnPlanExit = lastToolUse?.type === "tool_use" && lastToolUse.name === "ExitPlanMode";
+    const lastToolUse = [...session.blocks]
+      .reverse()
+      .find((b) => b.type === "tool_use");
+    const endedOnQuestion =
+      lastToolUse?.type === "tool_use" &&
+      lastToolUse.name === "AskUserQuestion";
+    const endedOnPlanExit =
+      lastToolUse?.type === "tool_use" && lastToolUse.name === "ExitPlanMode";
     let questionFields: { humanSteps?: string; findings?: string } = {};
     if (endedOnQuestion) {
       const input = lastToolUse.input as Record<string, unknown>;
-      const questions = Array.isArray(input.questions) ? input.questions as { question: string }[] : [];
+      const questions = Array.isArray(input.questions)
+        ? (input.questions as { question: string }[])
+        : [];
       const questionText = questions.map((q) => q.question).join("\n");
       if (questionText) {
-        questionFields = { humanSteps: questionText, findings: "Agent has a question — see below." };
+        questionFields = {
+          humanSteps: questionText,
+          findings: "Agent has a question — respond in chat window ←.",
+        };
       }
     } else if (endedOnPlanExit) {
-      questionFields = { humanSteps: "Agent has a plan ready for approval — see below.", findings: "Agent created a plan and is waiting for approval." };
+      questionFields = {
+        humanSteps:
+          "Agent has a plan ready for approval — review plan in chat window ←.",
+        findings: "Agent created a plan and is waiting for approval.",
+      };
     }
 
     // Check if task is still in-progress (agent didn't call update_task)
@@ -144,15 +162,21 @@ function wireProcess(
       await updateTask(projectId, taskId, {
         status: "verify",
         agentStatus: null,
-        findings: session.status === "error"
-          ? `Error: ${stderrOutput.trim() || `CLI exited with code ${code}`}`
-          : undefined,
+        findings:
+          session.status === "error"
+            ? `Error: ${stderrOutput.trim() || `CLI exited with code ${code}`}`
+            : undefined,
         ...questionFields,
         agentBlocks: session.blocks,
         sessionId: session.sessionId,
       });
-      notify(`✅ *${((task?.title || task?.description || "task").slice(0, 40)).replace(/"/g, '\\"')}* → verify`);
-      emitTaskUpdate(projectId, taskId, { status: "verify", agentStatus: null });
+      notify(
+        `✅ *${(task?.title || task?.description || "task").slice(0, 40).replace(/"/g, '\\"')}* → verify`,
+      );
+      emitTaskUpdate(projectId, taskId, {
+        status: "verify",
+        agentStatus: null,
+      });
     } else {
       // Agent already handled status via update_task — just persist agentBlocks
       await updateTask(projectId, taskId, {
@@ -179,7 +203,10 @@ function wireProcess(
         findings: `Error: ${errorMsg}`,
         agentBlocks: session.blocks,
       });
-      emitTaskUpdate(projectId, taskId, { status: "verify", agentStatus: null });
+      emitTaskUpdate(projectId, taskId, {
+        status: "verify",
+        agentStatus: null,
+      });
     } else {
       await updateTask(projectId, taskId, {
         agentBlocks: session.blocks,
@@ -193,7 +220,12 @@ export async function startSession(
   taskId: string,
   prompt: string,
   cwd: string,
-  options?: { model?: string; proqSystemPrompt?: string; mcpConfig?: string; permissionMode?: string },
+  options?: {
+    model?: string;
+    proqSystemPrompt?: string;
+    mcpConfig?: string;
+    permissionMode?: string;
+  },
 ): Promise<void> {
   const session: AgentRuntimeSession = {
     taskId,
@@ -221,10 +253,13 @@ export async function startSession(
 
   // Build CLI args
   const args: string[] = [
-    "-p", prompt,
-    "--output-format", "stream-json",
+    "-p",
+    prompt,
+    "--output-format",
+    "stream-json",
     "--verbose",
-    "--max-turns", "200",
+    "--max-turns",
+    "200",
   ];
 
   // Use --dangerously-skip-permissions for non-plan tasks (the flag is more
@@ -243,7 +278,8 @@ export async function startSession(
 
   // Combine user's system prompt additions with proq system prompt
   const systemParts: string[] = [];
-  if (settings.systemPromptAdditions) systemParts.push(settings.systemPromptAdditions);
+  if (settings.systemPromptAdditions)
+    systemParts.push(settings.systemPromptAdditions);
   if (options?.proqSystemPrompt) systemParts.push(options.proqSystemPrompt);
   if (systemParts.length > 0) {
     args.push("--append-system-prompt", systemParts.join("\n\n"));
@@ -280,7 +316,10 @@ export async function startSession(
   wireProcess(session, proc, { startTime, projectId, taskId });
 }
 
-function processStreamEvent(session: AgentRuntimeSession, event: Record<string, unknown>) {
+function processStreamEvent(
+  session: AgentRuntimeSession,
+  event: Record<string, unknown>,
+) {
   const type = event.type as string;
 
   if (type === "system") {
@@ -291,7 +330,7 @@ function processStreamEvent(session: AgentRuntimeSession, event: Record<string, 
       if (model) {
         // Update the most recent init block's model
         const initBlocks = session.blocks.filter(
-          (b) => b.type === "status" && b.subtype === "init"
+          (b) => b.type === "status" && b.subtype === "init",
         );
         const lastInit = initBlocks[initBlocks.length - 1];
         if (lastInit && lastInit.type === "status") {
@@ -309,7 +348,10 @@ function processStreamEvent(session: AgentRuntimeSession, event: Record<string, 
         if (b.type === "text") {
           appendBlock(session, { type: "text", text: b.text as string });
         } else if (b.type === "thinking") {
-          appendBlock(session, { type: "thinking", thinking: b.thinking as string });
+          appendBlock(session, {
+            type: "thinking",
+            thinking: b.thinking as string,
+          });
         } else if (b.type === "tool_use") {
           appendBlock(session, {
             type: "tool_use",
@@ -335,22 +377,26 @@ function processStreamEvent(session: AgentRuntimeSession, event: Record<string, 
       for (const block of userContent) {
         const b = block as Record<string, unknown>;
         if (b.type === "tool_result") {
-          const output = typeof b.content === "string"
-            ? b.content
-            : Array.isArray(b.content)
-              ? (b.content as { type: string; text: string }[])
-                .filter((c) => c.type === "text")
-                .map((c) => c.text)
-                .join("\n")
-              : JSON.stringify(b.content);
+          const output =
+            typeof b.content === "string"
+              ? b.content
+              : Array.isArray(b.content)
+                ? (b.content as { type: string; text: string }[])
+                    .filter((c) => c.type === "text")
+                    .map((c) => c.text)
+                    .join("\n")
+                : JSON.stringify(b.content);
           // Find the matching tool_use to get its name
           const matchingToolUse = session.blocks.find(
-            (bl) => bl.type === "tool_use" && bl.toolId === b.tool_use_id
+            (bl) => bl.type === "tool_use" && bl.toolId === b.tool_use_id,
           );
           appendBlock(session, {
             type: "tool_result",
             toolId: b.tool_use_id as string,
-            name: matchingToolUse && matchingToolUse.type === "tool_use" ? matchingToolUse.name : "",
+            name:
+              matchingToolUse && matchingToolUse.type === "tool_use"
+                ? matchingToolUse.name
+                : "",
             output,
             isError: b.is_error as boolean | undefined,
           });
@@ -370,7 +416,7 @@ function processStreamEvent(session: AgentRuntimeSession, event: Record<string, 
       costUsd,
       durationMs: event.duration_ms as number | undefined,
       turns: event.num_turns as number | undefined,
-      error: isError ? (resultText || "Agent error") : undefined,
+      error: isError ? resultText || "Agent error" : undefined,
     });
 
     // Mark session done/error based on result — actual DB persistence happens in wireProcess close handler
@@ -429,7 +475,11 @@ export async function continueSession(
   }
 
   // Append user block so it renders immediately
-  appendBlock(session, { type: "user", text, attachments: attachments?.length ? attachments : undefined });
+  appendBlock(session, {
+    type: "user",
+    text,
+    attachments: attachments?.length ? attachments : undefined,
+  });
 
   const settings = await getSettings();
   session.status = "running";
@@ -439,8 +489,12 @@ export async function continueSession(
   // Append file attachment paths to prompt
   let promptText = text;
   if (attachments?.length) {
-    const imageFiles = attachments.filter((a) => a.filePath && a.type.startsWith("image/")).map((a) => a.filePath!);
-    const otherFiles = attachments.filter((a) => a.filePath && !a.type.startsWith("image/")).map((a) => a.filePath!);
+    const imageFiles = attachments
+      .filter((a) => a.filePath && a.type.startsWith("image/"))
+      .map((a) => a.filePath!);
+    const otherFiles = attachments
+      .filter((a) => a.filePath && !a.type.startsWith("image/"))
+      .map((a) => a.filePath!);
     if (imageFiles.length > 0) {
       promptText += `\n\n## Attached Images\nThe following image files are attached to this message. Use your Read tool to view them:\n${imageFiles.map((f) => `- ${f}`).join("\n")}\n`;
     }
@@ -459,10 +513,13 @@ export async function continueSession(
   }
 
   args.push(
-    "-p", promptText,
-    "--output-format", "stream-json",
+    "-p",
+    promptText,
+    "--output-format",
+    "stream-json",
     "--verbose",
-    "--max-turns", "200",
+    "--max-turns",
+    "200",
   );
 
   // Plan tasks stay in plan mode unless the human explicitly approved.
@@ -480,9 +537,15 @@ export async function continueSession(
 
   // Combine user's system prompt additions with proq system prompt
   const systemParts: string[] = [];
-  if (settings.systemPromptAdditions) systemParts.push(settings.systemPromptAdditions);
+  if (settings.systemPromptAdditions)
+    systemParts.push(settings.systemPromptAdditions);
   const project = await getProject(projectId);
-  const proqSysPrompt = buildProqSystemPrompt(projectId, taskId, taskMode as "answer" | "plan" | "build" | undefined, project?.name);
+  const proqSysPrompt = buildProqSystemPrompt(
+    projectId,
+    taskId,
+    taskMode as "answer" | "plan" | "build" | undefined,
+    project?.name,
+  );
   systemParts.push(proqSysPrompt);
 
   // When starting fresh (no --resume), inject previous work context so the
@@ -491,11 +554,16 @@ export async function continueSession(
     const task = await getTask(projectId, taskId);
     const contextParts: string[] = [];
     if (task?.title) contextParts.push(`Task: ${task.title}`);
-    if (task?.description) contextParts.push(`Description: ${task.description}`);
-    if (task?.findings) contextParts.push(`Previous findings:\n${task.findings}`);
-    if (task?.humanSteps) contextParts.push(`Previous action items:\n${task.humanSteps}`);
+    if (task?.description)
+      contextParts.push(`Description: ${task.description}`);
+    if (task?.findings)
+      contextParts.push(`Previous findings:\n${task.findings}`);
+    if (task?.humanSteps)
+      contextParts.push(`Previous action items:\n${task.humanSteps}`);
     if (contextParts.length > 0) {
-      systemParts.push(`## Previous work on this task\nThis task was previously worked on by an agent. Here is the context from that work:\n\n${contextParts.join("\n\n")}`);
+      systemParts.push(
+        `## Previous work on this task\nThis task was previously worked on by an agent. Here is the context from that work:\n\n${contextParts.join("\n\n")}`,
+      );
     }
   }
 
