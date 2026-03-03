@@ -264,7 +264,7 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <Field
                   label="Agent render mode"
-                  hint="Structured shows parsed agent output. CLI shows the raw terminal session."
+                  hint="Chat shows a formatted chat window like Claude Code desktop. CLI shows a raw terminal running the Claude Code CLI."
                 >
                   <Select
                     value={settings.agentRenderMode}
