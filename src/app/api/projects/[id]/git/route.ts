@@ -13,6 +13,10 @@ import {
   gitPush,
   gitPull,
   gitInit,
+  gitStatusFiles,
+  gitLogShort,
+  gitDiffFull,
+  gitLogFull,
 } from "@/lib/worktree";
 
 type Params = { params: Promise<{ id: string }> };
@@ -95,6 +99,28 @@ export async function POST(request: Request, { params }: Params) {
 
     if (!isGitRepo(projectPath)) {
       return NextResponse.json({ error: "Project is not a git repository" }, { status: 400 });
+    }
+
+    if (body.action === "status") {
+      const files = gitStatusFiles(projectPath);
+      return NextResponse.json({ files });
+    }
+
+    if (body.action === "log") {
+      const direction = body.direction === "behind" ? "behind" : "ahead";
+      const commits = gitLogShort(projectPath, direction);
+      return NextResponse.json({ commits });
+    }
+
+    if (body.action === "diff") {
+      const diff = gitDiffFull(projectPath);
+      return NextResponse.json({ diff });
+    }
+
+    if (body.action === "log-full") {
+      const direction = body.direction === "behind" ? "behind" : "ahead";
+      const log = gitLogFull(projectPath, direction);
+      return NextResponse.json({ log });
     }
 
     if (body.action === "fetch") {

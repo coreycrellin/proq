@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, RefreshCwIcon } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, RefreshCwIcon, FileIcon, EyeIcon } from 'lucide-react';
 import type { Project, ProjectTab } from '@/lib/types';
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { GitDetailModal } from '@/components/GitDetailModal';
 
 export type TabOption = ProjectTab;
 
@@ -30,6 +31,7 @@ interface TopBarProps {
   branches?: string[];
   taskBranchMap?: Record<string, string>;
   onSwitchBranch?: (branch: string) => void;
+  projectId?: string;
   gitStatus?: GitStatus;
   onPush?: () => Promise<void>;
   onPull?: () => Promise<void>;
@@ -37,10 +39,73 @@ interface TopBarProps {
   onInitGit?: () => void;
 }
 
-export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, gitStatus, onPush, onPull, onFetch, onInitGit }: TopBarProps) {
+export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onFetch, onInitGit }: TopBarProps) {
   const [pushing, setPushing] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [fetching, setFetching] = useState(false);
+
+  // Dropdown data for status labels
+  const [dirtyFiles, setDirtyFiles] = useState<{ path: string; status: string }[] | null>(null);
+  const [aheadCommits, setAheadCommits] = useState<{ hash: string; message: string; author: string; date: string }[] | null>(null);
+  const [behindCommits, setBehindCommits] = useState<{ hash: string; message: string; author: string; date: string }[] | null>(null);
+
+  // Detail modal state
+  const [detailModal, setDetailModal] = useState<{ type: 'diff' | 'log'; title: string; content: string } | null>(null);
+
+  const fetchDirtyFiles = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/git`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'status' }),
+      });
+      if (res.ok) { const data = await res.json(); setDirtyFiles(data.files); }
+    } catch { /* best effort */ }
+  }, [projectId]);
+
+  const fetchCommits = useCallback(async (direction: 'ahead' | 'behind') => {
+    if (!projectId) return;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/git`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'log', direction }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (direction === 'ahead') setAheadCommits(data.commits);
+        else setBehindCommits(data.commits);
+      }
+    } catch { /* best effort */ }
+  }, [projectId]);
+
+  const openDiffModal = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/git`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'diff' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDetailModal({ type: 'diff', title: 'Working Changes', content: data.diff || 'No changes.' });
+      }
+    } catch { /* best effort */ }
+  }, [projectId]);
+
+  const openLogModal = useCallback(async (direction: 'ahead' | 'behind') => {
+    if (!projectId) return;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/git`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'log-full', direction }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const title = direction === 'ahead' ? 'Commits Ahead' : 'Commits Behind';
+        setDetailModal({ type: 'log', title, content: data.log || 'No commits.' });
+      }
+    } catch { /* best effort */ }
+  }, [projectId]);
 
   const tabs: { id: TabOption; label: string }[] = [
     { id: 'project', label: 'Project' },
@@ -115,24 +180,116 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
           </button>
         ) : (
           <>
-            {/* Status indicators */}
+            {/* Status indicators (clickable dropdowns) */}
             <div className="flex items-center gap-3 text-xs whitespace-nowrap">
               {gitStatus && gitStatus.dirty > 0 && (
-                <span className="text-red-400">
-                  {gitStatus.dirty} uncommitted {gitStatus.dirty === 1 ? 'file' : 'files'}
-                </span>
+                <DropdownMenu onOpenChange={(open) => { if (open) fetchDirtyFiles(); else setDirtyFiles(null); }}>
+                  <DropdownMenuTrigger asChild>
+                    <button className="text-red-400 hover:text-red-300 hover:underline underline-offset-2 transition-colors">
+                      {gitStatus.dirty} uncommitted {gitStatus.dirty === 1 ? 'file' : 'files'}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80 max-h-72">
+                    <DropdownMenuLabel>Uncommitted Changes</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {dirtyFiles === null ? (
+                      <DropdownMenuItem disabled className="text-xs text-zinc-500 justify-center">
+                        <Loader2Icon className="w-3 h-3 animate-spin mr-2" /> Loading...
+                      </DropdownMenuItem>
+                    ) : dirtyFiles.length === 0 ? (
+                      <DropdownMenuItem disabled className="text-xs text-zinc-500">No changes found</DropdownMenuItem>
+                    ) : (
+                      dirtyFiles.map((file, i) => (
+                        <DropdownMenuItem key={i} disabled className="text-xs gap-2 font-mono">
+                          <StatusBadge status={file.status} />
+                          <span className="truncate">{file.path}</span>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-xs gap-2 text-blue-400" onSelect={openDiffModal}>
+                      <EyeIcon className="w-3 h-3" />
+                      See Details
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               {gitStatus && gitStatus.behind > 0 && (
-                <span className="text-blue-400">
-                  {gitStatus.behind} {gitStatus.behind === 1 ? 'commit' : 'commits'} behind
-                </span>
+                <DropdownMenu onOpenChange={(open) => { if (open) fetchCommits('behind'); else setBehindCommits(null); }}>
+                  <DropdownMenuTrigger asChild>
+                    <button className="text-blue-400 hover:text-blue-300 hover:underline underline-offset-2 transition-colors">
+                      {gitStatus.behind} {gitStatus.behind === 1 ? 'commit' : 'commits'} behind
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80 max-h-72">
+                    <DropdownMenuLabel>Commits Behind</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {behindCommits === null ? (
+                      <DropdownMenuItem disabled className="text-xs text-zinc-500 justify-center">
+                        <Loader2Icon className="w-3 h-3 animate-spin mr-2" /> Loading...
+                      </DropdownMenuItem>
+                    ) : behindCommits.length === 0 ? (
+                      <DropdownMenuItem disabled className="text-xs text-zinc-500">No commits found</DropdownMenuItem>
+                    ) : (
+                      behindCommits.map((c, i) => (
+                        <DropdownMenuItem key={i} disabled className="text-xs gap-2">
+                          <span className="font-mono text-bronze-500 shrink-0">{c.hash}</span>
+                          <span className="truncate">{c.message}</span>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-xs gap-2 text-blue-400" onSelect={() => openLogModal('behind')}>
+                      <EyeIcon className="w-3 h-3" />
+                      See Details
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               {gitStatus && gitStatus.ahead > 0 && (
-                <span className="text-zinc-400">
-                  {gitStatus.ahead} {gitStatus.ahead === 1 ? 'commit' : 'commits'} ahead
-                </span>
+                <DropdownMenu onOpenChange={(open) => { if (open) fetchCommits('ahead'); else setAheadCommits(null); }}>
+                  <DropdownMenuTrigger asChild>
+                    <button className="text-zinc-400 hover:text-zinc-300 hover:underline underline-offset-2 transition-colors">
+                      {gitStatus.ahead} {gitStatus.ahead === 1 ? 'commit' : 'commits'} ahead
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80 max-h-72">
+                    <DropdownMenuLabel>Commits Ahead</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {aheadCommits === null ? (
+                      <DropdownMenuItem disabled className="text-xs text-zinc-500 justify-center">
+                        <Loader2Icon className="w-3 h-3 animate-spin mr-2" /> Loading...
+                      </DropdownMenuItem>
+                    ) : aheadCommits.length === 0 ? (
+                      <DropdownMenuItem disabled className="text-xs text-zinc-500">No commits found</DropdownMenuItem>
+                    ) : (
+                      aheadCommits.map((c, i) => (
+                        <DropdownMenuItem key={i} disabled className="text-xs gap-2">
+                          <span className="font-mono text-bronze-500 shrink-0">{c.hash}</span>
+                          <span className="truncate">{c.message}</span>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-xs gap-2 text-blue-400" onSelect={() => openLogModal('ahead')}>
+                      <EyeIcon className="w-3 h-3" />
+                      See Details
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
+
+            {/* Detail modal */}
+            {detailModal && (
+              <GitDetailModal
+                isOpen={true}
+                onClose={() => setDetailModal(null)}
+                title={detailModal.title}
+                content={detailModal.content}
+                type={detailModal.type}
+              />
+            )}
 
             {/* Pull / Push / Synced buttons */}
             {gitStatus?.hasRemote && (
@@ -281,5 +438,21 @@ function BranchItem({ branch, isCurrent, taskTitle, onSelect }: {
         <span className="font-mono truncate">{branch}</span>
       )}
     </DropdownMenuItem>
+  );
+}
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  M: { label: 'M', color: 'text-yellow-400' },
+  A: { label: 'A', color: 'text-green-400' },
+  D: { label: 'D', color: 'text-red-400' },
+  R: { label: 'R', color: 'text-blue-400' },
+  '?': { label: '?', color: 'text-zinc-500' },
+  '??': { label: '?', color: 'text-zinc-500' },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const info = STATUS_LABELS[status] || { label: status, color: 'text-zinc-400' };
+  return (
+    <span className={`${info.color} font-mono w-4 text-center shrink-0`}>{info.label}</span>
   );
 }

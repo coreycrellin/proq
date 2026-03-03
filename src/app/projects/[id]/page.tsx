@@ -613,6 +613,7 @@ export default function ProjectPage() {
     <>
       <TopBar
         project={project}
+        projectId={projectId}
         activeTab={activeTab}
         onTabChange={handleTabChange}
         currentBranch={currentBranch}

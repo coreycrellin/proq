@@ -526,6 +526,81 @@ export function getGitSyncStatus(
   return result;
 }
 
+/** List uncommitted files with their status codes */
+export function gitStatusFiles(projectPath: string): { path: string; status: string }[] {
+  try {
+    const output = execSync(
+      `git -C '${projectPath}' status --porcelain`,
+      { timeout: 10_000, encoding: "utf-8" },
+    ).trim();
+    if (!output) return [];
+    return output.split("\n").filter(Boolean).map((line) => {
+      const status = line.slice(0, 2).trim();
+      const path = line.slice(3);
+      return { path, status };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** Get short commit log for ahead or behind commits */
+export function gitLogShort(
+  projectPath: string,
+  direction: "ahead" | "behind",
+  count = 20,
+): { hash: string; message: string; author: string; date: string }[] {
+  try {
+    const range = direction === "ahead" ? "@{upstream}..HEAD" : "HEAD..@{upstream}";
+    const output = execSync(
+      `git -C '${projectPath}' log ${range} --format='%h|%s|%an|%ar' -n ${count}`,
+      { timeout: 10_000, encoding: "utf-8" },
+    ).trim();
+    if (!output) return [];
+    return output.split("\n").filter(Boolean).map((line) => {
+      const [hash, message, author, date] = line.split("|");
+      return { hash, message, author, date };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** Get full diff of uncommitted changes */
+export function gitDiffFull(projectPath: string): string {
+  try {
+    // Include both staged and unstaged changes
+    const unstaged = execSync(
+      `git -C '${projectPath}' diff`,
+      { timeout: 15_000, encoding: "utf-8", maxBuffer: 1024 * 1024 },
+    );
+    const staged = execSync(
+      `git -C '${projectPath}' diff --cached`,
+      { timeout: 15_000, encoding: "utf-8", maxBuffer: 1024 * 1024 },
+    );
+    return [staged, unstaged].filter(Boolean).join("\n");
+  } catch {
+    return "";
+  }
+}
+
+/** Get full git log for ahead or behind commits */
+export function gitLogFull(
+  projectPath: string,
+  direction: "ahead" | "behind",
+  count = 50,
+): string {
+  try {
+    const range = direction === "ahead" ? "@{upstream}..HEAD" : "HEAD..@{upstream}";
+    return execSync(
+      `git -C '${projectPath}' log ${range} --stat --format='commit %H%nAuthor: %an <%ae>%nDate:   %ar%n%n    %s%n' -n ${count}`,
+      { timeout: 15_000, encoding: "utf-8", maxBuffer: 1024 * 1024 },
+    );
+  } catch {
+    return "";
+  }
+}
+
 /** Fetch from all remotes (best-effort, short timeout) */
 export function gitFetch(projectPath: string): void {
   try {
