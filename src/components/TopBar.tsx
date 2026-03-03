@@ -27,6 +27,7 @@ interface TopBarProps {
 export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch }: TopBarProps) {
   const tabs: { id: TabOption; label: string }[] = [
     { id: 'project', label: 'Project' },
+    { id: 'list', label: 'List' },
     { id: 'live', label: 'Live' },
     { id: 'code', label: 'Code' },
   ];

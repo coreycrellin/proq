@@ -35,7 +35,7 @@ export function StatusBlock({ subtype, model, costUsd, durationMs, turns, error 
   if (subtype === 'complete') {
     const parts: string[] = [];
     if (durationMs != null) parts.push(formatDuration(durationMs));
-    if (costUsd != null) parts.push(`$${costUsd.toFixed(4)}`);
+    // costUsd omitted — misleading when using a subscription plan
     if (turns != null) parts.push(`${turns} turn${turns !== 1 ? 's' : ''}`);
     return (
       <div className="flex items-center gap-2 py-1.5 text-[11px] text-bronze-400 dark:text-zinc-600 font-mono">

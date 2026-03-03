@@ -60,9 +60,12 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
   const canEditTitle = (task.status === 'verify' || task.status === 'done') && !!onUpdateTitle;
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [topPanelPercent, setTopPanelPercent] = useState(30);
+  const [rightPanelPercent, setRightPanelPercent] = useState(33);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const bottomPanelRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
+  const isDraggingVerticalRef = useRef(false);
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -85,6 +88,30 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
       document.body.style.userSelect = '';
     };
     document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, []);
+
+  const handleVerticalResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingVerticalRef.current = true;
+    const modal = modalRef.current;
+    if (!modal) return;
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingVerticalRef.current || !modal) return;
+      const rect = modal.getBoundingClientRect();
+      const pct = ((rect.right - ev.clientX) / rect.width) * 100;
+      setRightPanelPercent(Math.min(Math.max(pct, 20), 70));
+    };
+    const onMouseUp = () => {
+      isDraggingVerticalRef.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
@@ -152,11 +179,12 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
 
       {/* Modal */}
       <div
+        ref={modalRef}
         className="relative w-full max-w-7xl h-[90vh] flex flex-row rounded-lg border border-bronze-300 dark:border-[#222] bg-bronze-50 dark:bg-[#141414] shadow-2xl shadow-black/60 mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Left panel: terminal or queued state (70%) ── */}
-        <div className={`flex-1 min-h-0 flex flex-col${showStructuredPane ? ' bg-bronze-50 dark:bg-[#0C0C0C]' : ''}`}>
+        {/* ── Left panel: terminal or queued state ── */}
+        <div className={`min-h-0 min-w-0 flex flex-col${showStructuredPane ? ' bg-bronze-50 dark:bg-[#0C0C0C]' : ''}`} style={(showTerminal || showStructuredPane || isQueued) ? { flex: `1 1 0%` } : { flex: '1 1 0%' }}>
           {/* Worktree status — only in parallel mode */}
           {parallelMode && (
             <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-bronze-300 dark:border-zinc-800 bg-bronze-100/50 dark:bg-zinc-900/50">
@@ -264,8 +292,18 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
           ) : null}
         </div>
 
-        {/* ── Right panel: task details (30% with terminal, full width without) ── */}
-        <div ref={rightPanelRef} className={`${showTerminal || showStructuredPane || isQueued ? 'w-[33%] border-l border-bronze-300 dark:border-zinc-800' : 'w-full'} shrink-0 flex flex-col overflow-hidden bg-bronze-50 dark:bg-[#141414]`}>
+        {/* ── Vertical resize handle ── */}
+        {(showTerminal || showStructuredPane || isQueued) && (
+          <div
+            onMouseDown={handleVerticalResizeMouseDown}
+            className="shrink-0 w-1 cursor-col-resize border-l border-bronze-300 dark:border-zinc-800 hover:bg-steel/20 active:bg-steel/30 transition-colors relative"
+          >
+            <div className="absolute inset-y-0 -left-2 -right-2" />
+          </div>
+        )}
+
+        {/* ── Right panel: task details ── */}
+        <div ref={rightPanelRef} className={`${showTerminal || showStructuredPane || isQueued ? '' : 'w-full'} shrink-0 flex flex-col overflow-hidden bg-bronze-50 dark:bg-[#141414]`} style={(showTerminal || showStructuredPane || isQueued) ? { width: `${rightPanelPercent}%` } : undefined}>
           {/* Close button */}
           <button
             onClick={onClose}

@@ -7,6 +7,7 @@ import { KanbanBoard } from '@/components/KanbanBoard';
 import WorkbenchPanel from '@/components/WorkbenchPanel';
 import { LiveTab } from '@/components/LiveTab';
 import { CodeTab } from '@/components/CodeTab';
+import { ProjectTaskList } from '@/components/ProjectTaskList';
 import { TaskModal } from '@/components/TaskModal';
 import { TaskAgentModal } from '@/components/TaskAgentModal';
 import { UndoModal } from '@/components/UndoModal';
@@ -41,6 +42,11 @@ export default function ProjectPage() {
   const [boardDragOver, setBoardDragOver] = useState(false);
   const boardDragCounter = useRef(0);
   const kanbanDraggingRef = useRef(false);
+
+  // Quick capture — type on the board to create a new task
+  const quickCaptureRef = useRef<{ active: boolean; buffer: string }>({ active: false, buffer: '' });
+  const [quickCaptureText, setQuickCaptureText] = useState('');
+  const hasModalRef = useRef(false);
 
   const project = projects.find((p) => p.id === projectId);
   const columns: TaskColumns = tasksByProject[projectId] || emptyColumns();
@@ -190,6 +196,118 @@ export default function ProjectPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [projectId, undoEntry]);
+
+  // Keep hasModalRef in sync for quick capture
+  useEffect(() => {
+    hasModalRef.current = !!modalTask || !!agentModalTask || !!undoEntry || showParallelModal || showModeBlockedModal;
+  }, [modalTask, agentModalTask, undoEntry, showParallelModal, showModeBlockedModal]);
+
+  // Cancel quick capture if another modal opens (e.g. Cmd+Z undo)
+  useEffect(() => {
+    if ((undoEntry || agentModalTask || showParallelModal || showModeBlockedModal) && quickCaptureRef.current.active) {
+      quickCaptureRef.current = { active: false, buffer: '' };
+      setQuickCaptureText('');
+    }
+  }, [undoEntry, agentModalTask, showParallelModal, showModeBlockedModal]);
+
+  // Clear quick capture state when task modal opens from capture
+  useEffect(() => {
+    if (modalTask && quickCaptureRef.current.active) {
+      quickCaptureRef.current = { active: false, buffer: '' };
+      setQuickCaptureText('');
+    }
+  }, [modalTask]);
+
+  // Global keydown for quick capture — type on the board to create a task
+  useEffect(() => {
+    if (activeTab !== 'project') return;
+
+    const handler = (e: KeyboardEvent) => {
+      const qc = quickCaptureRef.current;
+
+      // Continue buffering if capture is active
+      if (qc.active) {
+        if (hasModalRef.current) return;
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          qc.active = false;
+          qc.buffer = '';
+          setQuickCaptureText('');
+          return;
+        }
+        if (e.key.length === 1) {
+          e.preventDefault();
+          qc.buffer += e.key;
+          setQuickCaptureText(qc.buffer);
+        } else if (e.key === 'Backspace') {
+          e.preventDefault();
+          qc.buffer = qc.buffer.slice(0, -1);
+          setQuickCaptureText(qc.buffer);
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          qc.buffer += '\n';
+          setQuickCaptureText(qc.buffer);
+        }
+        return;
+      }
+
+      // Don't start capture if modal is open
+      if (hasModalRef.current) return;
+
+      // Don't start if typing in an input element
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'CANVAS') return;
+      if ((e.target as HTMLElement)?.isContentEditable) return;
+
+      // Don't start on modifier combos
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      // Only start on printable characters
+      if (e.key.length !== 1) return;
+
+      // Start capture
+      e.preventDefault();
+      qc.active = true;
+      qc.buffer = e.key;
+      setQuickCaptureText(e.key);
+
+      // Create task in background
+      (async () => {
+        try {
+          const res = await fetch(`/api/projects/${projectId}/tasks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: '', description: '' }),
+          });
+          const newTask: Task = await res.json();
+
+          if (!quickCaptureRef.current.active) {
+            // Capture was cancelled — clean up the empty task
+            await fetch(`/api/projects/${projectId}/tasks/${newTask.id}`, { method: 'DELETE' });
+            refreshTasks(projectId);
+            return;
+          }
+
+          setModalTask(newTask);
+          refreshTasks(projectId);
+        } catch {
+          quickCaptureRef.current = { active: false, buffer: '' };
+          setQuickCaptureText('');
+        }
+      })();
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      if (quickCaptureRef.current.active) {
+        quickCaptureRef.current = { active: false, buffer: '' };
+        setQuickCaptureText('');
+      }
+    };
+  }, [activeTab, projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep agent modal in sync with polled task data
   useEffect(() => {
@@ -590,6 +708,31 @@ export default function ProjectPage() {
           </>
         )}
 
+        {activeTab === 'list' && project && (
+          <ProjectTaskList
+            projectId={projectId}
+            projectName={project.name || project.path.replace(/\/+$/, '').split('/').pop() || projectId}
+            columns={columns}
+            onClickTask={(task) => {
+              if (task.status === 'todo') {
+                setModalTask(task);
+              } else {
+                setAgentModalTask(task);
+              }
+            }}
+            onStatusChange={async (taskId, newStatus) => {
+              if (newStatus === 'in-progress') {
+                moveTask(taskId, 'in-progress', 0);
+              } else if (newStatus === 'done') {
+                await updateTask(taskId, { status: 'done' });
+              } else if (newStatus === 'todo') {
+                moveTask(taskId, 'todo', 0);
+              }
+            }}
+            onRefresh={refresh}
+          />
+        )}
+
         {activeTab === 'live' && project && <LiveTab project={project} />}
         {activeTab === 'code' && project && <CodeTab project={project} />}
       </main>
@@ -640,10 +783,29 @@ export default function ProjectPage() {
         />
       )}
 
+      {/* Quick capture floating indicator */}
+      {quickCaptureText && !modalTask && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none">
+          <div
+            className="bg-zinc-900/95 border border-zinc-700/50 rounded-xl px-5 py-3.5 shadow-2xl backdrop-blur-sm opacity-0"
+            style={{ animation: 'quick-capture-in 100ms ease-out 150ms forwards' }}
+          >
+            <div className="text-sm text-zinc-200 whitespace-pre-wrap">
+              {quickCaptureText}
+              <span
+                className="inline-block w-[2px] h-[1.1em] bg-zinc-400 ml-[1px] align-text-bottom"
+                style={{ animation: 'cursor-blink 1s step-end infinite' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalTask && (
         <TaskModal
           task={modalTask}
           isOpen={true}
+          initialDescription={quickCaptureRef.current.active ? quickCaptureRef.current.buffer : undefined}
           onClose={async (isEmpty: boolean) => {
             if (isEmpty) {
               await deleteTask(modalTask.id);

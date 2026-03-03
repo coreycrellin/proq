@@ -237,7 +237,8 @@ function wireProcess(session: SupervisorSession, proc: ChildProcess, startTime: 
     }
 
     // When killed with SIGTERM (e.g. ExitPlanMode, AskUserQuestion), code is null — not an error
-    const intentionalKill = code === null && signal === "SIGTERM";
+    const intentionalKill =
+      (code === null && signal === "SIGTERM") || code === 143;
 
     if (code !== 0 && !intentionalKill && session.status === "running") {
       session.status = "error";

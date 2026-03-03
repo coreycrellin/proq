@@ -9,7 +9,8 @@ import { uploadFiles, attachmentUrl } from '@/lib/upload';
 interface TaskModalProps {
   task: Task;
   isOpen: boolean;
-  onClose: (isEmpty: boolean) => void;
+  initialDescription?: string;
+  onClose: (isEmpty: boolean, data?: { title: string; description: string }) => void;
   onSave: (taskId: string, updates: Partial<Task>) => void;
   onMoveToInProgress?: (taskId: string, currentData: Partial<Task>) => Promise<void>;
 }
@@ -23,9 +24,9 @@ function formatSize(bytes: number): string {
 const MIN_MODAL_HEIGHT = 420;
 const MAX_MODAL_VH = 0.8;
 
-export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }: TaskModalProps) {
+export function TaskModal({ task, isOpen, initialDescription, onClose, onSave, onMoveToInProgress }: TaskModalProps) {
   const [title, setTitle] = useState(task.title || '');
-  const [description, setDescription] = useState(task.description);
+  const [description, setDescription] = useState(initialDescription ?? task.description);
   const [mode, setMode] = useState<TaskMode>(task.mode || 'build');
   const [attachments, setAttachments] = useState<TaskAttachment[]>(
     task.attachments || [],
@@ -40,21 +41,37 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
   const headerRef = useRef<HTMLDivElement>(null);
   const attachmentsRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const pendingCursor = useRef<number | null>(null);
 
   useEffect(() => {
     setTitle(task.title || '');
-    setDescription(task.description);
+    setDescription(initialDescription ?? task.description);
     setMode(task.mode || 'build');
     setAttachments(task.attachments || []);
-  }, [task.id]);
+  }, [task.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const wasOpen = useRef(false);
   useEffect(() => {
     if (isOpen && !wasOpen.current) {
-      setTimeout(() => descriptionRef.current?.focus(), 50);
+      setTimeout(() => {
+        const el = descriptionRef.current;
+        if (el) {
+          el.focus();
+          const len = el.value.length;
+          if (len > 0) el.setSelectionRange(len, len);
+        }
+      }, 50);
     }
     wasOpen.current = isOpen;
   }, [isOpen, task.id]);
+
+  // Restore cursor position after description state updates (for slash commands)
+  useEffect(() => {
+    if (pendingCursor.current !== null && descriptionRef.current) {
+      descriptionRef.current.setSelectionRange(pendingCursor.current, pendingCursor.current);
+      pendingCursor.current = null;
+    }
+  }, [description]);
 
   const autosave = useCallback(
     (newTitle: string, newDesc: string, newAttachments: TaskAttachment[], newMode?: TaskMode) => {
@@ -82,7 +99,7 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
         mode,
       });
     }
-    onClose(isEmpty);
+    onClose(isEmpty, { title, description });
   }, [task.id, title, description, attachments, mode, onSave, onClose]);
 
   useEscapeKey(handleClose, isOpen);
@@ -259,7 +276,45 @@ export function TaskModal({ task, isOpen, onClose, onSave, onMoveToInProgress }:
           <textarea
             ref={descriptionRef}
             value={description}
-            onChange={(e) => handleDescriptionChange(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              const cursor = e.target.selectionStart ?? val.length;
+
+              // Detect /att slash command right before cursor to trigger file picker
+              const before = cursor - 4;
+              if (before >= 0 && val.substring(before, cursor) === '/att' && (before === 0 || /\s/.test(val[before - 1]))) {
+                const cleaned = val.substring(0, before) + val.substring(cursor);
+                pendingCursor.current = before;
+                handleDescriptionChange(cleaned);
+                setTimeout(() => fileInputRef.current?.click(), 0);
+                return;
+              }
+
+              // Detect /atr slash command to attach most recent desktop image
+              if (before >= 0 && val.substring(before, cursor) === '/atr' && (before === 0 || /\s/.test(val[before - 1]))) {
+                const cleaned = val.substring(0, before) + val.substring(cursor);
+                pendingCursor.current = before;
+                handleDescriptionChange(cleaned);
+                fetch('/api/recent-desktop-image')
+                  .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+                  .then(async (img: { name: string; size: number; type: string; dataUrl: string }) => {
+                    // Convert data URL to File and upload through the standard pipeline
+                    const res = await fetch(img.dataUrl);
+                    const blob = await res.blob();
+                    const file = new File([blob], img.name, { type: img.type });
+                    const uploaded = await uploadFiles([file]);
+                    setAttachments(prev => {
+                      const updated = [...prev, ...uploaded];
+                      autosave(title, cleaned, updated, mode);
+                      return updated;
+                    });
+                  })
+                  .catch(err => console.error('[/atr] failed to fetch recent desktop image:', err));
+                return;
+              }
+
+              handleDescriptionChange(val);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Backspace' && description === '') {
                 e.preventDefault();

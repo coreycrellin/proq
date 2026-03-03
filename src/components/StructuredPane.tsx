@@ -142,7 +142,6 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (isRunning) return;
       handleSend();
     }
   };
@@ -543,7 +542,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
             >
               <PaperclipIcon className="w-4 h-4" />
             </button>
-            {isRunning ? (
+            {isRunning && (
               <button
                 onClick={stop}
                 className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors"
@@ -551,16 +550,15 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
               >
                 <SquareIcon className="w-3.5 h-3.5 text-red-400 fill-red-400" />
               </button>
-            ) : (
-              <button
-                onClick={handleSend}
-                disabled={!inputValue.trim() && attachments.length === 0}
-                className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${inputValue.trim() || attachments.length > 0 ? 'text-bronze-600 dark:text-bronze-500 bg-bronze-200/60 dark:bg-zinc-800' : 'text-bronze-500 dark:text-zinc-500 disabled:opacity-30'}`}
-                title="Send message"
-              >
-                <SendIcon className="w-4 h-4" />
-              </button>
             )}
+            <button
+              onClick={handleSend}
+              disabled={!inputValue.trim() && attachments.length === 0}
+              className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${inputValue.trim() || attachments.length > 0 ? 'text-bronze-600 dark:text-bronze-500 bg-bronze-200/60 dark:bg-zinc-800' : 'text-bronze-500 dark:text-zinc-500 disabled:opacity-30'}`}
+              title="Send message"
+            >
+              <SendIcon className="w-4 h-4" />
+            </button>
           </div>
         </div>
         <input
