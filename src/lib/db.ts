@@ -667,49 +667,53 @@ export async function clearSupervisorSession(): Promise<void> {
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 
 const DEFAULT_SETTINGS: ProqSettings = {
-  // System
-  port: 1337,
-
   // Agent
   claudeBin: "claude",
   defaultModel: "",
   systemPromptAdditions: "",
   executionMode: "sequential",
   agentRenderMode: "structured",
+  codingAgent: "claude-code",
 
   // Git
-  autoCommit: true,
-  commitStyle: "",
-  autoPush: false,
-  showGitBranches: false,
+  defaultBranch: "main",
 
   // Appearance
   theme: "dark",
 
   // Notifications
-  notificationMethod: "none",
-  openclawBin: "",
-  slackChannel: "",
-  webhooks: "",
-
-  // Process
-  cleanupDelay: 60,
-  taskPollInterval: 5,
-  deletedTaskRetention: 24,
-  terminalScrollback: 50,
+  soundNotifications: false,
+  localNotifications: false,
+  webhooks: [],
 };
 
 export async function getSettings(): Promise<ProqSettings> {
   const stored = readJSON<Partial<ProqSettings> & Record<string, unknown>>(SETTINGS_FILE, {});
 
+  let dirty = false;
+
   // Migrate old render mode values
   if (stored.agentRenderMode === 'pretty' as string) {
     stored.agentRenderMode = 'structured';
-    writeJSON(SETTINGS_FILE, stored);
+    dirty = true;
   } else if (stored.agentRenderMode === 'terminal' as string) {
     stored.agentRenderMode = 'cli';
-    writeJSON(SETTINGS_FILE, stored);
+    dirty = true;
   }
+
+  // Migrate webhooks from string to string[]
+  if (typeof stored.webhooks === 'string') {
+    const raw = stored.webhooks as string;
+    try {
+      const parsed = raw ? JSON.parse(raw) : [];
+      stored.webhooks = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      stored.webhooks = [];
+    }
+    dirty = true;
+  }
+
+  if (dirty) writeJSON(SETTINGS_FILE, stored);
 
   return { ...DEFAULT_SETTINGS, ...stored };
 }
