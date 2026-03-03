@@ -272,7 +272,7 @@ export default function SettingsPage() {
                       update("agentRenderMode", v as "cli" | "structured")
                     }
                     options={[
-                      { value: "structured", label: "Structured" },
+                      { value: "structured", label: "Chat" },
                       { value: "cli", label: "CLI" },
                     ]}
                   />
