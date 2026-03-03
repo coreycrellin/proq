@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import os from "os";
 import { getAllProjects } from "@/lib/db";
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
@@ -56,9 +57,12 @@ export async function GET(req: NextRequest) {
 
   const resolved = path.resolve(filePath);
 
-  // Validate path belongs to a registered project
+  // Validate path belongs to a registered project or ~/.claude/ (plan files)
   const projects = await getAllProjects();
-  const isAllowed = projects.some((p) => resolved.startsWith(p.path));
+  const claudeDir = path.join(os.homedir(), ".claude");
+  const isAllowed =
+    projects.some((p) => resolved.startsWith(p.path)) ||
+    resolved.startsWith(claudeDir);
   if (!isAllowed) {
     return NextResponse.json({ error: "path not allowed" }, { status: 403 });
   }

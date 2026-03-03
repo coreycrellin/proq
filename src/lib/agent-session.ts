@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from "child_process";
 import { join } from "path";
+import { readFile } from "fs/promises";
 import type { AgentBlock, TaskAttachment } from "./types";
 import { updateTask, getTask, getProject, getSettings } from "./db";
 import {
@@ -360,11 +361,39 @@ function processStreamEvent(
             input: b.input as Record<string, unknown>,
           });
 
-          // Plan mode: when the agent calls ExitPlanMode, kill the process.
+          // Plan mode: when the agent calls ExitPlanMode, read the plan file
+          // from disk and enrich the block, then kill the process.
           // The close handler will detect endedOnPlanExit and move to verify
           // for human approval. The human can then continue with full permissions.
-          if (b.name === "ExitPlanMode" && session.queryHandle) {
-            session.queryHandle.kill("SIGTERM");
+          if (b.name === "ExitPlanMode") {
+            // Find the plan file path by scanning backwards through blocks
+            let planPath: string | undefined;
+            for (let j = session.blocks.length - 1; j >= 0; j--) {
+              const prev = session.blocks[j];
+              if (prev.type === "tool_use" && (prev.name === "Write" || prev.name === "Edit")) {
+                const fp = prev.input.file_path as string;
+                if (fp && fp.endsWith(".md")) {
+                  planPath = fp;
+                  break;
+                }
+              }
+            }
+            // Read the plan file and enrich the block before killing
+            const enrichAndKill = planPath
+              ? readFile(planPath, "utf-8").then((content) => {
+                  const exitBlock = session.blocks[session.blocks.length - 1];
+                  if (exitBlock.type === "tool_use" && exitBlock.name === "ExitPlanMode") {
+                    exitBlock.input._planContent = content;
+                    exitBlock.input._planFilePath = planPath;
+                    broadcast(session, { type: "block", block: exitBlock });
+                  }
+                }).catch(() => { /* plan file may not exist */ })
+              : Promise.resolve();
+            enrichAndKill.finally(() => {
+              if (session.queryHandle) {
+                session.queryHandle.kill("SIGTERM");
+              }
+            });
           }
         }
       }

@@ -222,29 +222,32 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
 
       // Render ExitPlanMode as plan approval card
       if (block.name === 'ExitPlanMode') {
-        // Scan backwards to find the preceding Write tool call containing the plan file
-        let planContent: string | undefined;
-        let planFilePath: string | undefined;
-        for (let j = i - 1; j >= 0; j--) {
-          if (i - j > 20) break; // reasonable scan limit
-          const prev = blocks[j];
-          if (prev.type === 'tool_use' && prev.name === 'Write') {
-            const fp = prev.input.file_path as string;
-            if (fp && fp.endsWith('.md')) {
-              planContent = prev.input.content as string;
-              planFilePath = fp;
-              break;
+        // Plan content and path are enriched server-side (agent-session.ts reads the
+        // plan file from disk when ExitPlanMode is detected). Fall back to backward
+        // scan for older sessions where the enrichment wasn't available.
+        let planContent = block.input._planContent as string | undefined;
+        let planFilePath = block.input._planFilePath as string | undefined;
+        if (!planContent) {
+          for (let j = i - 1; j >= 0; j--) {
+            if (i - j > 50) break;
+            const prev = blocks[j];
+            if (prev.type === 'tool_use' && prev.name === 'Write') {
+              const fp = prev.input.file_path as string;
+              if (fp && fp.endsWith('.md')) {
+                planContent = prev.input.content as string;
+                planFilePath = fp;
+                break;
+              }
+            }
+            if (prev.type === 'tool_use' && prev.name === 'Edit') {
+              const fp = prev.input.file_path as string;
+              if (fp && fp.endsWith('.md') && prev.input.new_string) {
+                planContent = prev.input.new_string as string;
+                planFilePath = fp;
+                break;
+              }
             }
           }
-          if (prev.type === 'tool_use' && prev.name === 'Edit') {
-            const fp = prev.input.file_path as string;
-            if (fp && fp.endsWith('.md') && prev.input.new_string) {
-              planContent = prev.input.new_string as string;
-              planFilePath = fp;
-              break;
-            }
-          }
-          // Skip over text, thinking, and tool_result blocks
         }
         // Check if the user already responded (a user block exists after this one)
         let alreadyResponded = false;

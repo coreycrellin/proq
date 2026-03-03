@@ -7,7 +7,7 @@ import { Modal } from '@/components/Modal';
 
 interface PlanApprovalBlockProps {
   input: Record<string, unknown>;
-  /** Markdown content of the plan file, if found */
+  /** Markdown content of the plan file (read from disk server-side) */
   planContent?: string;
   /** Path to the plan file */
   planFilePath?: string;
@@ -53,7 +53,7 @@ export function PlanApprovalBlock({ input, planContent, planFilePath, alreadyRes
         </div>
 
         {/* Expandable plan content */}
-        {planContent && (
+        {planContent ? (
           <>
             <button
               onClick={() => setExpanded(!expanded)}
@@ -73,7 +73,11 @@ export function PlanApprovalBlock({ input, planContent, planFilePath, alreadyRes
               </div>
             )}
           </>
-        )}
+        ) : planFilePath ? (
+          <div className="px-3 py-1.5 border-t border-zinc-800/60">
+            <span className="text-[11px] text-zinc-600 font-mono">{planFileName}</span>
+          </div>
+        ) : null}
 
         {/* Permissions */}
         {allowedPrompts.length > 0 && (
