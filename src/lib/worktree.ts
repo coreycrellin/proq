@@ -637,6 +637,19 @@ export function gitFetch(projectPath: string): void {
 export function gitPush(
   projectPath: string,
 ): { success: boolean; error?: string } {
+  // Block if working tree is dirty
+  try {
+    const status = execSync(
+      `git -C '${projectPath}' status --porcelain`,
+      { timeout: 10_000, encoding: "utf-8" },
+    ).trim();
+    if (status) {
+      return { success: false, error: "Commit or stash your working changes first." };
+    }
+  } catch {
+    return { success: false, error: "Failed to check working tree status." };
+  }
+
   try {
     execSync(`git -C '${projectPath}' push`, {
       timeout: 30_000,
@@ -645,27 +658,68 @@ export function gitPush(
     console.log(`[git] pushed to upstream from ${projectPath}`);
     return { success: true };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Push failed";
-    console.error(`[git] push failed:`, message);
-    return { success: false, error: message };
+    const raw = err instanceof Error ? err.message : "Push failed";
+    // Extract the meaningful line from git's stderr (embedded in the Error message)
+    const stderrMatch = raw.match(/stderr:\s*'([^']+)'/);
+    const error = stderrMatch ? stderrMatch[1].trim() : raw;
+    console.error(`[git] push failed:`, error);
+    return { success: false, error };
   }
 }
 
-/** Pull from upstream (fast-forward only). Returns success/error. */
+/** Pull from upstream with rebase. Returns success/error. */
 export function gitPull(
   projectPath: string,
 ): { success: boolean; error?: string } {
+  // Block if working tree is dirty
   try {
-    execSync(`git -C '${projectPath}' pull --ff-only`, {
+    const status = execSync(
+      `git -C '${projectPath}' status --porcelain`,
+      { timeout: 10_000, encoding: "utf-8" },
+    ).trim();
+    if (status) {
+      return { success: false, error: "Commit or stash your working changes first." };
+    }
+  } catch {
+    return { success: false, error: "Failed to check working tree status." };
+  }
+
+  try {
+    execSync(`git -C '${projectPath}' pull --rebase`, {
       timeout: 30_000,
       encoding: "utf-8",
     });
     console.log(`[git] pulled from upstream into ${projectPath}`);
     return { success: true };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Pull failed";
-    console.error(`[git] pull failed:`, message);
-    return { success: false, error: message };
+    // Check if we're mid-rebase (conflict) and abort to restore pre-pull state
+    try {
+      const gitDir = execSync(
+        `git -C '${projectPath}' rev-parse --git-dir`,
+        { timeout: 5_000, encoding: "utf-8" },
+      ).trim();
+      const rebaseMergeDir = join(
+        projectPath.endsWith(".git") ? projectPath : join(projectPath, gitDir),
+        "rebase-merge",
+      );
+      if (existsSync(rebaseMergeDir)) {
+        execSync(`git -C '${projectPath}' rebase --abort`, {
+          timeout: 10_000,
+        });
+        console.log(`[git] aborted rebase due to conflict in ${projectPath}`);
+        return {
+          success: false,
+          error: "Pull conflicts with your local commits — pull manually to resolve.",
+        };
+      }
+    } catch {
+      // best effort — if abort fails, fall through to generic error
+    }
+    const raw = err instanceof Error ? err.message : "Pull failed";
+    const stderrMatch = raw.match(/stderr:\s*'([^']+)'/);
+    const error = stderrMatch ? stderrMatch[1].trim() : raw;
+    console.error(`[git] pull failed:`, error);
+    return { success: false, error };
   }
 }
 
