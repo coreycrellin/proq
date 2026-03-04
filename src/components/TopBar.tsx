@@ -221,7 +221,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                     <span className="flex items-center gap-1.5 px-2.5 py-1.5">
                       {gitStatus.dirty} uncommitted {gitStatus.dirty === 1 ? 'file' : 'files'}
                     </span>
-                    <span className="px-1.5 py-1.5 border-l border-border-default">
+                    <span className="px-1.5 py-1.5 border-l border-border-default text-bronze-500">
                       <ChevronDownIcon className="w-3 h-3" />
                     </span>
                   </button>
@@ -269,7 +269,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                       {historyLabel}
                       {isUpToDate && <CheckIcon className="w-3 h-3" />}
                     </span>
-                    <span className="px-1.5 py-1.5 border-l border-border-default">
+                    <span className="px-1.5 py-1.5 border-l border-border-default text-bronze-500">
                       <ChevronDownIcon className="w-3 h-3" />
                     </span>
                   </button>
