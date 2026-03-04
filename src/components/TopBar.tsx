@@ -287,8 +287,19 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
               </DropdownMenu>
             )}
 
-            {/* Unified history dropdown */}
-            {gitStatus?.hasRemote && (
+            {/* Unified history dropdown (or direct modal when up to date) */}
+            {gitStatus?.hasRemote && isUpToDate && (
+              <button
+                onClick={() => { fetchHistoryCommits(); openHistoryModal(); }}
+                className={`flex items-center text-xs font-medium rounded-md border border-border-default bg-surface-secondary ${historyTextColor} hover:bg-surface-hover transition-colors overflow-hidden`}
+              >
+                <span className="flex items-center gap-1.5 px-2.5 py-1.5">
+                  {historyLabel}
+                  <CheckIcon className="w-3 h-3" />
+                </span>
+              </button>
+            )}
+            {gitStatus?.hasRemote && !isUpToDate && (
               <DropdownMenu onOpenChange={(open) => { if (open) { setAheadCommits(null); setBehindCommits(null); fetchHistoryCommits(); setSyncError(null); } }}>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -296,7 +307,6 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                   >
                     <span className="flex items-center gap-1.5 px-2.5 py-1.5">
                       {historyLabel}
-                      {isUpToDate && <CheckIcon className="w-3 h-3" />}
                     </span>
                     <span className="px-1.5 py-1.5 border-l border-border-default text-bronze-500">
                       <ChevronDownIcon className="w-3 h-3" />
@@ -368,12 +378,6 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                           ))
                         )}
                       </>
-                    )}
-                    {/* Up to date — just show header */}
-                    {isUpToDate && (
-                      <div className="py-1">
-                        <DropdownMenuLabel>Commits</DropdownMenuLabel>
-                      </div>
                     )}
                   </div>
                   {syncError && (

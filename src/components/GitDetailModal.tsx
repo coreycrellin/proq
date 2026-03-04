@@ -52,13 +52,13 @@ export function GitDetailModal(props: GitDetailModalProps) {
         const res = await fetch(`/api/projects/${props.projectId}/git`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'log-paginated', skip: props.commits.length, limit: 10 }),
+          body: JSON.stringify({ action: 'log-paginated', skip: props.commits.length, limit: 100 }),
         });
         if (res.ok) {
           const data = await res.json();
           const commits = data.commits || [];
           setHistoryCommits(commits);
-          setHasMore(commits.length >= 10);
+          setHasMore(commits.length >= 100);
         }
       } catch { /* best effort */ }
       setHistoryLoading(false);
@@ -72,13 +72,13 @@ export function GitDetailModal(props: GitDetailModalProps) {
       const res = await fetch(`/api/projects/${props.projectId}/git`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'log-paginated', skip: props.commits.length + historyCommits.length, limit: 50 }),
+        body: JSON.stringify({ action: 'log-paginated', skip: props.commits.length + historyCommits.length, limit: 100 }),
       });
       if (res.ok) {
         const data = await res.json();
         const newCommits = data.commits || [];
         setHistoryCommits((prev) => [...prev, ...newCommits]);
-        setHasMore(newCommits.length >= 50);
+        setHasMore(newCommits.length >= 100);
       }
     } catch { /* best effort */ }
     setHistoryLoading(false);
@@ -159,12 +159,12 @@ export function GitDetailModal(props: GitDetailModalProps) {
   const behindCount = type === 'log' ? (props.behindCommits?.length ?? 0) : 0;
   const aheadCount = type === 'log' ? props.commits.length : 0;
   const headerSummary = (() => {
-    if (type !== 'log') return '';
+    if (type !== 'log') return null;
     const parts: string[] = [];
     if (aheadCount > 0) parts.push(`${aheadCount} ${aheadCount === 1 ? 'commit' : 'commits'} ahead`);
     if (behindCount > 0) parts.push(`${behindCount} ${behindCount === 1 ? 'commit' : 'commits'} behind`);
-    if (parts.length > 0) return parts.join(', ');
-    return `up to date with ${branchLabel}`;
+    if (parts.length > 0) return <>{parts.join(', ')}</>;
+    return <>up to date with <span className="text-bronze-500">{branchLabel}</span></>;
   })();
 
   return (
@@ -327,14 +327,12 @@ export function GitDetailModal(props: GitDetailModalProps) {
               </div>
             )}
 
-            {/* Origin separator */}
-            {(aheadCount > 0 || behindCount > 0) && (
-              <div className="flex items-center gap-3 px-4 py-2 text-[10px] text-bronze-500 font-mono">
-                <div className="flex-1 border-t border-bronze-500/30" />
-                <span>{branchLabel}</span>
-                <div className="flex-1 border-t border-bronze-500/30" />
-              </div>
-            )}
+            {/* Origin separator — always shown */}
+            <div className="flex items-center gap-3 px-4 py-2 text-[10px] text-bronze-500 font-mono">
+              <div className="flex-1 border-t border-bronze-500/30" />
+              <span>{branchLabel}</span>
+              <div className="flex-1 border-t border-bronze-500/30" />
+            </div>
 
             {/* Paginated history */}
             {historyCommits.length > 0 && (
