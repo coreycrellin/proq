@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { ArrowLeftIcon, Loader2Icon } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ArrowLeftIcon, Loader2Icon, XIcon, FileIcon } from 'lucide-react';
 import { Modal } from '@/components/Modal';
+import { FileDiffAccordion } from '@/components/FileDiffAccordion';
+import { parseDiffIntoFiles, parseCommitShow, colorDiffLine } from '@/lib/diff-parser';
+import type { FileDiff } from '@/lib/diff-parser';
 
 interface CommitInfo {
   hash: string;
@@ -16,62 +19,69 @@ type GitDetailModalProps = {
   onClose: () => void;
   title: string;
 } & (
-  | { type: 'diff'; content: string; commits?: never; projectId?: never }
-  | { type: 'log'; commits: CommitInfo[]; projectId: string; content?: never }
+  | { type: 'diff'; content: string; commits?: never; projectId?: never; currentBranch?: never }
+  | { type: 'log'; commits: CommitInfo[]; projectId: string; currentBranch?: string; content?: never }
 );
-
-function colorDiffLine(line: string): string | null {
-  if (line.startsWith('+') && !line.startsWith('+++')) return 'text-green-400';
-  if (line.startsWith('-') && !line.startsWith('---')) return 'text-red-400';
-  if (line.startsWith('@@')) return 'text-blue-400';
-  if (line.startsWith('diff ') || line.startsWith('index ') || line.startsWith('---') || line.startsWith('+++')) return 'text-zinc-500';
-  return null;
-}
-
-function DiffView({ content }: { content: string }) {
-  const lines = content.split('\n');
-  return (
-    <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-words">
-      {lines.map((line, i) => {
-        const color = colorDiffLine(line);
-        return (
-          <div key={i} className={color || 'text-zinc-400'}>
-            {line || '\u00A0'}
-          </div>
-        );
-      })}
-    </pre>
-  );
-}
-
-function CommitListView({ commits, onSelectCommit }: { commits: CommitInfo[]; onSelectCommit: (hash: string) => void }) {
-  return (
-    <div className="divide-y divide-zinc-800/50">
-      {commits.map((c) => (
-        <button
-          key={c.hash}
-          onClick={() => onSelectCommit(c.hash)}
-          className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-zinc-800/40 transition-colors group"
-        >
-          <span className="font-mono text-xs text-bronze-500 shrink-0">{c.hash}</span>
-          <span className="text-xs text-zinc-200 truncate flex-1">{c.message}</span>
-          <span className="text-[10px] text-zinc-500 shrink-0 hidden sm:block">{c.author}</span>
-          <span className="text-[10px] text-zinc-600 shrink-0">{c.date}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export function GitDetailModal(props: GitDetailModalProps) {
   const { isOpen, onClose, title, type } = props;
 
-  const [selectedCommit, setSelectedCommit] = useState<{ hash: string; diff: string } | null>(null);
+  const [selectedCommit, setSelectedCommit] = useState<{ hash: string; message: string; files: FileDiff[] } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [openFiles, setOpenFiles] = useState<Set<string>>(new Set());
+
+  // Paginated history (commits below origin)
+  const [historyCommits, setHistoryCommits] = useState<CommitInfo[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
+
+  // Load initial paginated history when the log modal opens
+  useEffect(() => {
+    if (type !== 'log' || !isOpen || !props.projectId || initialLoaded) return;
+    setInitialLoaded(true);
+    (async () => {
+      setHistoryLoading(true);
+      try {
+        const res = await fetch(`/api/projects/${props.projectId}/git`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'log-paginated', skip: 0, limit: 10 }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const commits = data.commits || [];
+          setHistoryCommits(commits);
+          setHasMore(commits.length >= 10);
+        }
+      } catch { /* best effort */ }
+      setHistoryLoading(false);
+    })();
+  }, [type, isOpen, props.projectId, initialLoaded]);
+
+  const loadMore = useCallback(async () => {
+    if (type !== 'log' || !props.projectId) return;
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${props.projectId}/git`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'log-paginated', skip: historyCommits.length, limit: 50 }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const newCommits = data.commits || [];
+        setHistoryCommits((prev) => [...prev, ...newCommits]);
+        setHasMore(newCommits.length >= 50);
+      }
+    } catch { /* best effort */ }
+    setHistoryLoading(false);
+  }, [type, props.projectId, historyCommits.length]);
 
   const handleSelectCommit = useCallback(async (hash: string) => {
     if (type !== 'log' || !props.projectId) return;
     setLoading(true);
+    setOpenFiles(new Set());
     try {
       const res = await fetch(`/api/projects/${props.projectId}/git`, {
         method: 'POST',
@@ -80,7 +90,10 @@ export function GitDetailModal(props: GitDetailModalProps) {
       });
       if (res.ok) {
         const data = await res.json();
-        setSelectedCommit({ hash, diff: data.diff || 'No diff available.' });
+        const parsed = parseCommitShow(data.diff || '');
+        const files = parsed.files;
+        setSelectedCommit({ hash: parsed.hash || hash.slice(0, 7), message: parsed.message, files });
+        setOpenFiles(new Set(files.map((f, i) => `${i}:${f.fileName}`)));
       }
     } catch { /* best effort */ }
     setLoading(false);
@@ -89,41 +102,182 @@ export function GitDetailModal(props: GitDetailModalProps) {
   const handleClose = useCallback(() => {
     setSelectedCommit(null);
     setLoading(false);
+    setOpenFiles(new Set());
+    setHistoryCommits([]);
+    setInitialLoaded(false);
+    setHasMore(true);
     onClose();
   }, [onClose]);
 
   const handleBack = useCallback(() => {
     setSelectedCommit(null);
+    setOpenFiles(new Set());
   }, []);
+
+  const toggleFile = useCallback((key: string) => {
+    setOpenFiles((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  // Parse diff content into files for the diff view
+  const diffFiles = type === 'diff' ? parseDiffIntoFiles(props.content) : [];
+
+  // Default all diff files to expanded when modal opens
+  useEffect(() => {
+    if (type === 'diff' && isOpen && diffFiles.length > 0 && openFiles.size === 0) {
+      setOpenFiles(new Set(diffFiles.map((f, i) => `${i}:${f.fileName}`)));
+    }
+  }, [type, isOpen, diffFiles.length]);
+  const currentFiles = type === 'diff' ? diffFiles : (selectedCommit?.files || []);
+  const allExpanded = currentFiles.length > 0 && openFiles.size >= currentFiles.length;
+
+  const handleExpandCollapseAll = useCallback(() => {
+    if (allExpanded) {
+      setOpenFiles(new Set());
+    } else {
+      setOpenFiles(new Set(currentFiles.map((f, i) => `${i}:${f.fileName}`)));
+    }
+  }, [allExpanded, currentFiles]);
+
+  const branchLabel = type === 'log' && props.currentBranch
+    ? `origin/${props.currentBranch}`
+    : 'origin';
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      className="w-[60vw] min-w-[50vw] max-w-[80vw] min-h-[50vh] max-h-[80vh] flex flex-col resize overflow-auto"
+      showClose={false}
+      className="w-[60vw] min-w-[50vw] max-w-[80vw] h-[80vh] flex flex-col resize overflow-auto"
     >
-      <div className="px-5 pt-4 pb-3 border-b border-zinc-800 flex items-center gap-3 shrink-0">
+      <div className="px-3 py-2.5 border-b border-zinc-800 flex items-center gap-2 shrink-0">
         {type === 'log' && selectedCommit && (
           <button
             onClick={handleBack}
-            className="text-zinc-400 hover:text-zinc-200 transition-colors p-0.5 -ml-1"
+            className="text-bronze-500 hover:text-bronze-400 transition-colors p-1 rounded hover:bg-zinc-800/50"
           >
             <ArrowLeftIcon className="w-4 h-4" />
           </button>
         )}
-        <h3 className="text-sm font-semibold text-zinc-100">
+        <h3 className="text-sm font-semibold text-zinc-100 flex-1 min-w-0 truncate">
           {type === 'log' && selectedCommit
-            ? <><span className="font-mono text-bronze-500">{selectedCommit.hash}</span></>
+            ? <><span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide mr-1.5">commit</span><span className="font-mono text-bronze-500">{selectedCommit.hash}</span></>
             : title
           }
         </h3>
-      </div>
-      <div className="flex-1 overflow-auto p-4 min-h-0">
-        {type === 'diff' && (
-          <DiffView content={props.content} />
+        {currentFiles.length > 0 && (
+          <button
+            onClick={handleExpandCollapseAll}
+            className="text-xs text-bronze-500 hover:text-bronze-400 transition-colors px-2 py-1 rounded border border-zinc-700/50 shrink-0"
+          >
+            {allExpanded ? 'Collapse All' : 'Expand All'}
+          </button>
         )}
+        <button
+          onClick={handleClose}
+          className="text-bronze-500 hover:text-bronze-400 transition-colors p-1 rounded hover:bg-zinc-800/50"
+        >
+          <XIcon className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-auto min-h-0">
+        {type === 'diff' && diffFiles.length > 0 && (
+          <div className="px-5 py-3 border-b border-zinc-800">
+            <FileStatSummary files={diffFiles} />
+          </div>
+        )}
+        {type === 'diff' && (
+          diffFiles.length > 0 ? (
+            diffFiles.map((file, i) => {
+              const key = `${i}:${file.fileName}`;
+              return (
+                <FileDiffAccordion key={key} file={file} isOpen={openFiles.has(key)} onToggle={() => toggleFile(key)} />
+              );
+            })
+          ) : (
+            <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-words p-4">
+              {props.content.split('\n').map((line, i) => {
+                const color = colorDiffLine(line);
+                return (
+                  <div key={i} className={color || 'text-zinc-400'}>
+                    {line || '\u00A0'}
+                  </div>
+                );
+              })}
+            </pre>
+          )
+        )}
+        {type === 'log' && selectedCommit && !loading && (() => {
+          const lines = selectedCommit.message.split('\n');
+          const commitTitle = lines[0];
+          const body = lines.slice(1).join('\n').replace(/^\n+/, '');
+          return (
+            <div className="px-5 py-3 border-b border-zinc-800 space-y-3">
+              <p className="text-sm text-zinc-100 font-medium">{commitTitle}</p>
+              {body && (
+                <p className="text-xs text-zinc-400 whitespace-pre-wrap leading-relaxed">{body}</p>
+              )}
+              <FileStatSummary files={selectedCommit.files} />
+            </div>
+          );
+        })()}
         {type === 'log' && !selectedCommit && !loading && (
-          <CommitListView commits={props.commits} onSelectCommit={handleSelectCommit} />
+          <>
+            {/* Ahead commits */}
+            {props.commits.length > 0 && (
+              <div className="divide-y divide-zinc-800/50">
+                {props.commits.map((c) => (
+                  <CommitRow key={c.hash} commit={c} onSelect={handleSelectCommit} />
+                ))}
+              </div>
+            )}
+
+            {/* Origin separator */}
+            {props.commits.length > 0 && (
+              <div className="flex items-center gap-3 px-4 py-2 text-[10px] text-zinc-500 font-mono">
+                <div className="flex-1 border-t border-zinc-700/50" />
+                <span>{branchLabel}</span>
+                <div className="flex-1 border-t border-zinc-700/50" />
+              </div>
+            )}
+
+            {/* Paginated history */}
+            {historyCommits.length > 0 && (
+              <div className="divide-y divide-zinc-800/50">
+                {historyCommits.map((c) => (
+                  <CommitRow key={c.hash} commit={c} onSelect={handleSelectCommit} />
+                ))}
+              </div>
+            )}
+
+            {/* Show more / loading */}
+            {historyLoading && (
+              <div className="flex items-center justify-center py-4 text-zinc-500">
+                <Loader2Icon className="w-4 h-4 animate-spin mr-2" />
+                <span className="text-xs">Loading...</span>
+              </div>
+            )}
+            {!historyLoading && hasMore && historyCommits.length > 0 && (
+              <div className="flex justify-center py-4">
+                <button
+                  onClick={loadMore}
+                  className="text-xs text-bronze-500 hover:text-bronze-400 transition-colors px-3 py-1.5 rounded border border-zinc-700/50 hover:border-zinc-600"
+                >
+                  Show more
+                </button>
+              </div>
+            )}
+
+            {props.commits.length === 0 && historyCommits.length === 0 && !historyLoading && (
+              <div className="flex items-center justify-center py-12 text-zinc-500 text-xs">
+                No commits found
+              </div>
+            )}
+          </>
         )}
         {type === 'log' && loading && (
           <div className="flex items-center justify-center py-12 text-zinc-500">
@@ -132,9 +286,55 @@ export function GitDetailModal(props: GitDetailModalProps) {
           </div>
         )}
         {type === 'log' && selectedCommit && !loading && (
-          <DiffView content={selectedCommit.diff} />
+          selectedCommit.files.length > 0 ? (
+            selectedCommit.files.map((file, i) => {
+              const key = `${i}:${file.fileName}`;
+              return (
+                <FileDiffAccordion key={key} file={file} isOpen={openFiles.has(key)} onToggle={() => toggleFile(key)} />
+              );
+            })
+          ) : (
+            <div className="flex items-center justify-center py-12 text-zinc-500 text-xs">
+              No file changes
+            </div>
+          )
         )}
       </div>
     </Modal>
+  );
+}
+
+function FileStatSummary({ files }: { files: FileDiff[] }) {
+  if (files.length === 0) return null;
+  const counts = { added: 0, modified: 0, deleted: 0, renamed: 0 };
+  for (const f of files) counts[f.status]++;
+  const parts: { label: string; count: number; color: string }[] = [];
+  if (counts.added) parts.push({ label: counts.added === 1 ? 'new file' : 'new files', count: counts.added, color: 'text-green-400' });
+  if (counts.modified) parts.push({ label: 'modified', count: counts.modified, color: 'text-zinc-400' });
+  if (counts.deleted) parts.push({ label: 'deleted', count: counts.deleted, color: 'text-red-400' });
+  if (counts.renamed) parts.push({ label: 'renamed', count: counts.renamed, color: 'text-blue-400' });
+  return (
+    <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+      <FileIcon className="w-3 h-3 text-zinc-500 shrink-0" />
+      {parts.map((p, i) => (
+        <span key={i} className={p.color}>
+          {p.count} {p.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function CommitRow({ commit, onSelect }: { commit: CommitInfo; onSelect: (hash: string) => void }) {
+  return (
+    <button
+      onClick={() => onSelect(commit.hash)}
+      className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-zinc-800/40 transition-colors group"
+    >
+      <span className="font-mono text-xs text-bronze-500 shrink-0">{commit.hash}</span>
+      <span className="text-xs text-zinc-200 truncate flex-1">{commit.message}</span>
+      <span className="text-[10px] text-zinc-500 shrink-0 hidden sm:block">{commit.author}</span>
+      <span className="text-[10px] text-zinc-600 shrink-0">{commit.date}</span>
+    </button>
   );
 }

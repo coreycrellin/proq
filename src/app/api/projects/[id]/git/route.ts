@@ -18,6 +18,7 @@ import {
   gitDiffFull,
   gitLogFull,
   gitShowCommit,
+  gitLogPaginated,
 } from "@/lib/worktree";
 
 type Params = { params: Promise<{ id: string }> };
@@ -122,6 +123,13 @@ export async function POST(request: Request, { params }: Params) {
       const direction = body.direction === "behind" ? "behind" : "ahead";
       const log = gitLogFull(projectPath, direction);
       return NextResponse.json({ log });
+    }
+
+    if (body.action === "log-paginated") {
+      const skip = Math.max(0, Number(body.skip) || 0);
+      const limit = Math.min(100, Math.max(1, Number(body.limit) || 10));
+      const commits = gitLogPaginated(projectPath, skip, limit);
+      return NextResponse.json({ commits });
     }
 
     if (body.action === "show-commit") {

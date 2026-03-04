@@ -649,6 +649,30 @@ export function gitPull(
   }
 }
 
+/** Get paginated commit log from HEAD (not upstream-relative) */
+export function gitLogPaginated(
+  projectPath: string,
+  skip = 0,
+  limit = 10,
+): { hash: string; message: string; author: string; date: string }[] {
+  try {
+    const output = execSync(
+      `git -C '${projectPath}' log --format='%h|%s|%an|%ar' --skip=${skip} -n ${limit}`,
+      { timeout: 10_000, encoding: "utf-8" },
+    ).trim();
+    if (!output) return [];
+    return output
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [hash, message, author, date] = line.split("|");
+        return { hash, message, author, date };
+      });
+  } catch {
+    return [];
+  }
+}
+
 /** Get the full diff for a single commit */
 export function gitShowCommit(projectPath: string, hash: string): string {
   // Sanitize: allow only hex characters (short or full SHA)

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, RefreshCwIcon, FileIcon, EyeIcon } from 'lucide-react';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, RefreshCwIcon, EyeIcon } from 'lucide-react';
 import type { Project, ProjectTab } from '@/lib/types';
 import {
   DropdownMenu,
@@ -98,10 +98,10 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
 
   const openLogModal = useCallback(async (direction: 'ahead' | 'behind') => {
     if (!projectId) return;
-    // Use already-fetched structured commits if available, otherwise fetch them
+    const n = direction === 'ahead' ? (gitStatus?.ahead ?? 0) : (gitStatus?.behind ?? 0);
+    const title = `${n} ${n === 1 ? 'commit' : 'commits'} ${direction === 'ahead' ? 'ahead' : 'behind'}`;
     const existing = direction === 'ahead' ? aheadCommits : behindCommits;
     if (existing && existing.length > 0) {
-      const title = direction === 'ahead' ? 'Commits Ahead' : 'Commits Behind';
       setDetailModal({ type: 'log', title, commits: existing });
       return;
     }
@@ -112,11 +112,10 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
       });
       if (res.ok) {
         const data = await res.json();
-        const title = direction === 'ahead' ? 'Commits Ahead' : 'Commits Behind';
         setDetailModal({ type: 'log', title, commits: data.commits || [] });
       }
     } catch { /* best effort */ }
-  }, [projectId, aheadCommits, behindCommits]);
+  }, [projectId, aheadCommits, behindCommits, gitStatus]);
 
   const tabs: { id: TabOption; label: string }[] = [
     { id: 'project', label: 'Project' },
@@ -343,6 +342,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                 title={detailModal.title}
                 commits={detailModal.commits}
                 projectId={projectId}
+                currentBranch={currentBranch}
                 type="log"
               />
             )}
