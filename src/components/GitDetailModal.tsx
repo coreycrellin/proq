@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeftIcon, Loader2Icon, XIcon, FileIcon } from 'lucide-react';
+import { ArrowLeftIcon, Loader2Icon, XIcon, FileIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { FileDiffAccordion } from '@/components/FileDiffAccordion';
 import { parseDiffIntoFiles, parseCommitShow, colorDiffLine } from '@/lib/diff-parser';
@@ -12,6 +12,8 @@ interface CommitInfo {
   message: string;
   author: string;
   date: string;
+  insertions?: number;
+  deletions?: number;
 }
 
 type GitDetailModalProps = {
@@ -19,8 +21,8 @@ type GitDetailModalProps = {
   onClose: () => void;
   title: string;
 } & (
-  | { type: 'diff'; content: string; commits?: never; projectId?: never; currentBranch?: never }
-  | { type: 'log'; commits: CommitInfo[]; projectId: string; currentBranch?: string; content?: never }
+  | { type: 'diff'; content: string; commits?: never; behindCommits?: never; projectId?: never; currentBranch?: never; onPush?: never; onPull?: never }
+  | { type: 'log'; commits: CommitInfo[]; behindCommits?: CommitInfo[]; projectId: string; currentBranch?: string; onPush?: () => Promise<void>; onPull?: () => Promise<void>; content?: never }
 );
 
 export function GitDetailModal(props: GitDetailModalProps) {
@@ -29,6 +31,10 @@ export function GitDetailModal(props: GitDetailModalProps) {
   const [selectedCommit, setSelectedCommit] = useState<{ hash: string; message: string; files: FileDiff[] } | null>(null);
   const [loading, setLoading] = useState(false);
   const [openFiles, setOpenFiles] = useState<Set<string>>(new Set());
+  const [pushingInline, setPushingInline] = useState(false);
+  const [pullingInline, setPullingInline] = useState(false);
+  const [pullError, setPullError] = useState<string | null>(null);
+  const [pushError, setPushError] = useState<string | null>(null);
 
   // Paginated history (commits below origin)
   const [historyCommits, setHistoryCommits] = useState<CommitInfo[]>([]);
@@ -46,7 +52,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
         const res = await fetch(`/api/projects/${props.projectId}/git`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'log-paginated', skip: 0, limit: 10 }),
+          body: JSON.stringify({ action: 'log-paginated', skip: props.commits.length, limit: 10 }),
         });
         if (res.ok) {
           const data = await res.json();
@@ -66,7 +72,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
       const res = await fetch(`/api/projects/${props.projectId}/git`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'log-paginated', skip: historyCommits.length, limit: 50 }),
+        body: JSON.stringify({ action: 'log-paginated', skip: props.commits.length + historyCommits.length, limit: 50 }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -106,6 +112,8 @@ export function GitDetailModal(props: GitDetailModalProps) {
     setHistoryCommits([]);
     setInitialLoaded(false);
     setHasMore(true);
+    setPullError(null);
+    setPushError(null);
     onClose();
   }, [onClose]);
 
@@ -147,6 +155,18 @@ export function GitDetailModal(props: GitDetailModalProps) {
     ? `origin/${props.currentBranch}`
     : 'origin';
 
+  // Build header summary for log mode
+  const behindCount = type === 'log' ? (props.behindCommits?.length ?? 0) : 0;
+  const aheadCount = type === 'log' ? props.commits.length : 0;
+  const headerSummary = (() => {
+    if (type !== 'log') return '';
+    const parts: string[] = [];
+    if (aheadCount > 0) parts.push(`${aheadCount} ${aheadCount === 1 ? 'commit' : 'commits'} ahead`);
+    if (behindCount > 0) parts.push(`${behindCount} ${behindCount === 1 ? 'commit' : 'commits'} behind`);
+    if (parts.length > 0) return parts.join(', ');
+    return `up to date with ${branchLabel}`;
+  })();
+
   return (
     <Modal
       isOpen={isOpen}
@@ -154,7 +174,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
       showClose={false}
       className="w-[60vw] min-w-[50vw] max-w-[80vw] h-[80vh] flex flex-col resize overflow-auto"
     >
-      <div className="px-3 py-2.5 border-b border-zinc-800 flex items-center gap-2 shrink-0">
+      <div className="px-3 border-b border-zinc-800 flex items-center gap-2 shrink-0 h-[48px]">
         {type === 'log' && selectedCommit && (
           <button
             onClick={handleBack}
@@ -163,10 +183,12 @@ export function GitDetailModal(props: GitDetailModalProps) {
             <ArrowLeftIcon className="w-4 h-4" />
           </button>
         )}
-        <h3 className="text-sm font-semibold text-zinc-100 flex-1 min-w-0 truncate">
+        <h3 className="flex-1 min-w-0 truncate flex items-center">
           {type === 'log' && selectedCommit
-            ? <><span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide mr-1.5">commit</span><span className="font-mono text-bronze-500">{selectedCommit.hash}</span></>
-            : title
+            ? <span className="text-sm font-semibold"><span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide leading-none mr-1.5">commit</span><span className="font-mono text-bronze-500 leading-none">{selectedCommit.hash}</span></span>
+            : type === 'log'
+              ? <span className="text-[10px] text-zinc-500 font-semibold leading-none flex items-center gap-1.5"><span className="uppercase tracking-wide">Git Log</span> <span className="text-zinc-600">·</span> on branch <span className="text-bronze-500">{props.currentBranch || 'main'}</span> <span className="text-zinc-600">·</span> {headerSummary}</span>
+              : <span className="text-[10px] text-zinc-500 font-semibold leading-none uppercase tracking-wide">{title}</span>
           }
         </h3>
         {currentFiles.length > 0 && (
@@ -227,21 +249,90 @@ export function GitDetailModal(props: GitDetailModalProps) {
         })()}
         {type === 'log' && !selectedCommit && !loading && (
           <>
-            {/* Ahead commits */}
-            {props.commits.length > 0 && (
-              <div className="divide-y divide-zinc-800/50">
-                {props.commits.map((c) => (
-                  <CommitRow key={c.hash} commit={c} onSelect={handleSelectCommit} />
-                ))}
+            {/* Behind commits section */}
+            {behindCount > 0 && props.behindCommits && (
+              <div>
+                <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2 bg-surface-secondary border-b border-zinc-800/50">
+                  <span className="text-[10px] text-red-400 font-semibold uppercase tracking-wide">
+                    {behindCount} {behindCount === 1 ? 'commit' : 'commits'} behind
+                  </span>
+                  {props.onPull && (
+                    <button
+                      onClick={async () => {
+                        if (pullingInline || !props.onPull) return;
+                        setPullingInline(true);
+                        setPullError(null);
+                        try { await props.onPull(); } catch (err) { setPullError(err instanceof Error ? err.message : 'Pull failed'); } finally { setPullingInline(false); }
+                      }}
+                      disabled={pullingInline}
+                      className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      Pull
+                      {pullingInline
+                        ? <Loader2Icon className="w-3 h-3 animate-spin" />
+                        : <ArrowDownIcon className="w-3 h-3" />
+                      }
+                    </button>
+                  )}
+                </div>
+                {pullError && (
+                  <div className="px-4 py-1.5 text-xs text-red-400 whitespace-pre-wrap break-words bg-surface-secondary border-b border-zinc-800/50">
+                    {pullError}
+                  </div>
+                )}
+                <div className="divide-y divide-zinc-800/50">
+                  {props.behindCommits.map((c) => (
+                    <CommitRow key={c.hash} commit={c} onSelect={handleSelectCommit} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Ahead commits section */}
+            {aheadCount > 0 && (
+              <div>
+                <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2 bg-surface-secondary border-b border-zinc-800/50">
+                  <span className="text-[10px] text-green-400 font-semibold uppercase tracking-wide">
+                    {aheadCount} {aheadCount === 1 ? 'commit' : 'commits'} ahead
+                  </span>
+                  {props.onPush && (
+                    <button
+                      onClick={async () => {
+                        if (pushingInline || !props.onPush) return;
+                        setPushingInline(true);
+                        setPushError(null);
+                        try { await props.onPush(); } catch (err) { setPushError(err instanceof Error ? err.message : 'Push failed'); } finally { setPushingInline(false); }
+                      }}
+                      disabled={pushingInline}
+                      className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-colors"
+                    >
+                      Push
+                      {pushingInline
+                        ? <Loader2Icon className="w-3 h-3 animate-spin" />
+                        : <ArrowUpIcon className="w-3 h-3" />
+                      }
+                    </button>
+                  )}
+                </div>
+                {pushError && (
+                  <div className="px-4 py-1.5 text-xs text-red-400 whitespace-pre-wrap break-words bg-surface-secondary border-b border-zinc-800/50">
+                    {pushError}
+                  </div>
+                )}
+                <div className="divide-y divide-zinc-800/50">
+                  {props.commits.map((c) => (
+                    <CommitRow key={c.hash} commit={c} onSelect={handleSelectCommit} />
+                  ))}
+                </div>
               </div>
             )}
 
             {/* Origin separator */}
-            {props.commits.length > 0 && (
-              <div className="flex items-center gap-3 px-4 py-2 text-[10px] text-zinc-500 font-mono">
-                <div className="flex-1 border-t border-zinc-700/50" />
+            {(aheadCount > 0 || behindCount > 0) && (
+              <div className="flex items-center gap-3 px-4 py-2 text-[10px] text-bronze-500 font-mono">
+                <div className="flex-1 border-t border-bronze-500/30" />
                 <span>{branchLabel}</span>
-                <div className="flex-1 border-t border-zinc-700/50" />
+                <div className="flex-1 border-t border-bronze-500/30" />
               </div>
             )}
 
@@ -272,7 +363,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
               </div>
             )}
 
-            {props.commits.length === 0 && historyCommits.length === 0 && !historyLoading && (
+            {aheadCount === 0 && behindCount === 0 && historyCommits.length === 0 && !historyLoading && (
               <div className="flex items-center justify-center py-12 text-zinc-500 text-xs">
                 No commits found
               </div>
@@ -325,6 +416,7 @@ function FileStatSummary({ files }: { files: FileDiff[] }) {
   );
 }
 
+
 function CommitRow({ commit, onSelect }: { commit: CommitInfo; onSelect: (hash: string) => void }) {
   return (
     <button
@@ -332,9 +424,17 @@ function CommitRow({ commit, onSelect }: { commit: CommitInfo; onSelect: (hash: 
       className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-zinc-800/40 transition-colors group"
     >
       <span className="font-mono text-xs text-bronze-500 shrink-0">{commit.hash}</span>
-      <span className="text-xs text-zinc-200 truncate flex-1">{commit.message}</span>
-      <span className="text-[10px] text-zinc-500 shrink-0 hidden sm:block">{commit.author}</span>
-      <span className="text-[10px] text-zinc-600 shrink-0">{commit.date}</span>
+      <span className="text-xs text-zinc-200 truncate flex-1 flex items-center gap-2">
+        <span className="truncate">{commit.message}</span>
+        {(commit.insertions != null || commit.deletions != null) && (
+          <span className="flex items-center gap-1 font-mono text-[10px] shrink-0">
+            {commit.insertions != null && commit.insertions > 0 && <span className="text-green-400">+{commit.insertions}</span>}
+            {commit.deletions != null && commit.deletions > 0 && <span className="text-red-400">-{commit.deletions}</span>}
+          </span>
+        )}
+      </span>
+      <span className="text-[10px] text-zinc-500 w-20 text-right truncate hidden sm:block">{commit.author}</span>
+      <span className="text-[10px] text-zinc-600 w-20 text-right truncate">{commit.date}</span>
     </button>
   );
 }

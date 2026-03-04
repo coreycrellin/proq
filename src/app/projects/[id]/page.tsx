@@ -198,43 +198,26 @@ export default function ProjectPage() {
   }, [projectId, fetchBranchState]);
 
   const handlePush = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/projects/${projectId}/git`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'push' }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setGitStatus(prev => ({ ...prev, ahead: data.ahead || 0, behind: data.behind || 0 }));
-      }
-    } catch { /* best effort */ }
+    const res = await fetch(`/api/projects/${projectId}/git`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'push' }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Push failed');
+    setGitStatus(prev => ({ ...prev, ahead: data.ahead || 0, behind: data.behind || 0 }));
   }, [projectId]);
 
   const handlePull = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/projects/${projectId}/git`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'pull' }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setGitStatus(prev => ({ ...prev, ahead: data.ahead || 0, behind: data.behind || 0 }));
-      }
-    } catch { /* best effort */ }
+    const res = await fetch(`/api/projects/${projectId}/git`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'pull' }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Pull failed');
+    setGitStatus(prev => ({ ...prev, ahead: data.ahead || 0, behind: data.behind || 0 }));
   }, [projectId]);
-
-  const handleFetch = useCallback(async () => {
-    try {
-      await fetch(`/api/projects/${projectId}/git`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'fetch' }),
-      });
-      await fetchBranchState();
-    } catch { /* best effort */ }
-  }, [projectId, fetchBranchState]);
 
   const handleInitGit = useCallback(async () => {
     try {
@@ -623,7 +606,6 @@ export default function ProjectPage() {
         gitStatus={gitStatus}
         onPush={handlePush}
         onPull={handlePull}
-        onFetch={handleFetch}
         onInitGit={handleInitGit}
       />
 

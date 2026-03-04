@@ -78,7 +78,7 @@
     /* Design system — semantic tokens (dark) */
     --surface-base: #09090b;           /* zinc-950 */
     --surface-primary: #18181b;        /* zinc-900 */
-    --surface-secondary: rgba(39,39,42,0.3); /* zinc-800/30 */
+    --surface-secondary: #0F0F11;            /* flat zinc-800/30 over zinc-950 */
     --surface-hover: #18181b;          /* zinc-900 */
     --border-default: #27272a;         /* zinc-800 */
     --border-hover: #3a342e;           /* bronze-800 — the warm accent */
@@ -134,12 +134,12 @@
 /* Custom scrollbar — dark mode */
 .dark ::-webkit-scrollbar-track,
 .dark::-webkit-scrollbar-track {
-  background: #18181b;
+  background: #0F0F11;
 }
 .dark ::-webkit-scrollbar-thumb,
 .dark::-webkit-scrollbar-thumb {
   background: #27272a;
-  border-color: #18181b;
+  border-color: #0F0F11;
 }
 .dark ::-webkit-scrollbar-thumb:hover,
 .dark::-webkit-scrollbar-thumb:hover {

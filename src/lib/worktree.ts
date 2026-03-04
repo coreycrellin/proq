@@ -544,23 +544,43 @@ export function gitStatusFiles(projectPath: string): { path: string; status: str
   }
 }
 
+/** Parse git log output that uses %x1e as record separator with --shortstat */
+function parseLogWithStats(
+  output: string,
+): { hash: string; message: string; author: string; date: string; insertions?: number; deletions?: number }[] {
+  // Split on record separator (\x1e) to get per-commit blocks
+  const blocks = output.split("\x1e").filter(Boolean);
+  return blocks.map((block) => {
+    const lines = block.trim().split("\n");
+    const [hash, message, author, date] = lines[0].split("\x1f");
+    let insertions: number | undefined;
+    let deletions: number | undefined;
+    // The shortstat line (if present) is the last non-empty line
+    const statLine = lines.find((l) => l.includes("changed"));
+    if (statLine) {
+      const insMatch = statLine.match(/(\d+) insertion/);
+      const delMatch = statLine.match(/(\d+) deletion/);
+      if (insMatch) insertions = parseInt(insMatch[1], 10);
+      if (delMatch) deletions = parseInt(delMatch[1], 10);
+    }
+    return { hash, message, author, date, insertions, deletions };
+  });
+}
+
 /** Get short commit log for ahead or behind commits */
 export function gitLogShort(
   projectPath: string,
   direction: "ahead" | "behind",
   count = 20,
-): { hash: string; message: string; author: string; date: string }[] {
+): { hash: string; message: string; author: string; date: string; insertions?: number; deletions?: number }[] {
   try {
     const range = direction === "ahead" ? "@{upstream}..HEAD" : "HEAD..@{upstream}";
     const output = execSync(
-      `git -C '${projectPath}' log ${range} --format='%h|%s|%an|%ar' -n ${count}`,
-      { timeout: 10_000, encoding: "utf-8" },
+      `git -C '${projectPath}' log ${range} --format='%x1e%h%x1f%s%x1f%an%x1f%ar' --shortstat -n ${count}`,
+      { timeout: 15_000, encoding: "utf-8" },
     ).trim();
     if (!output) return [];
-    return output.split("\n").filter(Boolean).map((line) => {
-      const [hash, message, author, date] = line.split("|");
-      return { hash, message, author, date };
-    });
+    return parseLogWithStats(output);
   } catch {
     return [];
   }
@@ -654,20 +674,14 @@ export function gitLogPaginated(
   projectPath: string,
   skip = 0,
   limit = 10,
-): { hash: string; message: string; author: string; date: string }[] {
+): { hash: string; message: string; author: string; date: string; insertions?: number; deletions?: number }[] {
   try {
     const output = execSync(
-      `git -C '${projectPath}' log --format='%h|%s|%an|%ar' --skip=${skip} -n ${limit}`,
-      { timeout: 10_000, encoding: "utf-8" },
+      `git -C '${projectPath}' log --format='%x1e%h%x1f%s%x1f%an%x1f%ar' --shortstat --skip=${skip} -n ${limit}`,
+      { timeout: 15_000, encoding: "utf-8" },
     ).trim();
     if (!output) return [];
-    return output
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        const [hash, message, author, date] = line.split("|");
-        return { hash, message, author, date };
-      });
+    return parseLogWithStats(output);
   } catch {
     return [];
   }

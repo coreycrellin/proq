@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, RefreshCwIcon, EyeIcon } from 'lucide-react';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon } from 'lucide-react';
 import type { Project, ProjectTab } from '@/lib/types';
 import {
   DropdownMenu,
@@ -35,24 +35,24 @@ interface TopBarProps {
   gitStatus?: GitStatus;
   onPush?: () => Promise<void>;
   onPull?: () => Promise<void>;
-  onFetch?: () => Promise<void>;
   onInitGit?: () => void;
 }
 
-export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onFetch, onInitGit }: TopBarProps) {
-  const [pushing, setPushing] = useState(false);
-  const [pulling, setPulling] = useState(false);
-  const [fetching, setFetching] = useState(false);
-
+export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onInitGit }: TopBarProps) {
   // Dropdown data for status labels
   const [dirtyFiles, setDirtyFiles] = useState<{ path: string; status: string }[] | null>(null);
+
+  // Dropdown commit lists (fetched on open)
   const [aheadCommits, setAheadCommits] = useState<{ hash: string; message: string; author: string; date: string }[] | null>(null);
   const [behindCommits, setBehindCommits] = useState<{ hash: string; message: string; author: string; date: string }[] | null>(null);
+  const [pushing, setPushing] = useState(false);
+  const [pulling, setPulling] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Detail modal state
   const [detailModal, setDetailModal] = useState<
     | { type: 'diff'; title: string; content: string }
-    | { type: 'log'; title: string; commits: { hash: string; message: string; author: string; date: string }[] }
+    | { type: 'log'; title: string; commits: { hash: string; message: string; author: string; date: string; insertions?: number; deletions?: number }[]; behindCommits: { hash: string; message: string; author: string; date: string; insertions?: number; deletions?: number }[] }
     | null
   >(null);
 
@@ -64,21 +64,6 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
         body: JSON.stringify({ action: 'status' }),
       });
       if (res.ok) { const data = await res.json(); setDirtyFiles(data.files); }
-    } catch { /* best effort */ }
-  }, [projectId]);
-
-  const fetchCommits = useCallback(async (direction: 'ahead' | 'behind') => {
-    if (!projectId) return;
-    try {
-      const res = await fetch(`/api/projects/${projectId}/git`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'log', direction }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (direction === 'ahead') setAheadCommits(data.commits);
-        else setBehindCommits(data.commits);
-      }
     } catch { /* best effort */ }
   }, [projectId]);
 
@@ -96,26 +81,44 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
     } catch { /* best effort */ }
   }, [projectId]);
 
-  const openLogModal = useCallback(async (direction: 'ahead' | 'behind') => {
+  const fetchHistoryCommits = useCallback(async () => {
     if (!projectId) return;
-    const n = direction === 'ahead' ? (gitStatus?.ahead ?? 0) : (gitStatus?.behind ?? 0);
-    const title = `${n} ${n === 1 ? 'commit' : 'commits'} ${direction === 'ahead' ? 'ahead' : 'behind'}`;
-    const existing = direction === 'ahead' ? aheadCommits : behindCommits;
-    if (existing && existing.length > 0) {
-      setDetailModal({ type: 'log', title, commits: existing });
-      return;
-    }
-    try {
-      const res = await fetch(`/api/projects/${projectId}/git`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'log', direction }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDetailModal({ type: 'log', title, commits: data.commits || [] });
-      }
-    } catch { /* best effort */ }
-  }, [projectId, aheadCommits, behindCommits, gitStatus]);
+    const ahead = gitStatus?.ahead ?? 0;
+    const behind = gitStatus?.behind ?? 0;
+    // Fetch ahead and behind commits in parallel, silently in background
+    const [aheadRes, behindRes] = await Promise.all([
+      ahead > 0
+        ? fetch(`/api/projects/${projectId}/git`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'log', direction: 'ahead' }),
+          }).then(r => r.ok ? r.json() : { commits: [] }).catch(() => ({ commits: [] }))
+        : Promise.resolve({ commits: [] }),
+      behind > 0
+        ? fetch(`/api/projects/${projectId}/git`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'log', direction: 'behind' }),
+          }).then(r => r.ok ? r.json() : { commits: [] }).catch(() => ({ commits: [] }))
+        : Promise.resolve({ commits: [] }),
+    ]);
+    setAheadCommits(aheadRes.commits || []);
+    setBehindCommits(behindRes.commits || []);
+  }, [projectId, gitStatus]);
+
+  const openHistoryModal = useCallback(() => {
+    const branchName = currentBranch ? `origin/${currentBranch}` : 'origin';
+    const a = gitStatus?.ahead ?? 0;
+    const b = gitStatus?.behind ?? 0;
+    const parts: string[] = [];
+    if (a > 0) parts.push(`${a} ahead`);
+    if (b > 0) parts.push(`${b} behind`);
+    const title = parts.length > 0 ? parts.join(', ') + ` · ${branchName}` : `Up to date · ${branchName}`;
+    setDetailModal({
+      type: 'log',
+      title,
+      commits: aheadCommits || [],
+      behindCommits: behindCommits || [],
+    });
+  }, [gitStatus, currentBranch, aheadCommits, behindCommits]);
 
   const tabs: { id: TabOption; label: string }[] = [
     { id: 'project', label: 'Project' },
@@ -141,6 +144,26 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
   const mainBranches = sortedBranches.filter(b => b === 'main' || b === 'master');
   const proqBranches = sortedBranches.filter(b => b.startsWith('proq/'));
   const otherBranches = sortedBranches.filter(b => b !== 'main' && b !== 'master' && !b.startsWith('proq/'));
+
+  // History button label + color
+  const ahead = gitStatus?.ahead ?? 0;
+  const behind = gitStatus?.behind ?? 0;
+  const isUpToDate = ahead === 0 && behind === 0;
+  const historyLabel = (() => {
+    const parts: string[] = [];
+    if (ahead > 0) parts.push(`${ahead} ahead`);
+    if (behind > 0) parts.push(`${behind} behind`);
+    if (parts.length > 0) return parts.join(', ');
+    return 'Up to date';
+  })();
+  // Text color: red if behind only, green if ahead only, chrome if both, bronze if up to date
+  const historyTextColor = isUpToDate
+    ? 'text-bronze-500'
+    : behind > 0 && ahead === 0
+      ? 'text-red-400'
+      : ahead > 0 && behind === 0
+        ? 'text-green-400'
+        : 'text-text-chrome';
 
   return (
     <header className="h-16 bg-surface-base flex items-center px-6 flex-shrink-0">
@@ -204,11 +227,11 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80 max-h-72 overflow-hidden flex flex-col p-0">
-                  <div className="flex-shrink-0 p-1.5 pb-0">
-                    <DropdownMenuLabel>Uncommitted Changes</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
+                  <div className="flex-shrink-0 py-1">
+                    <DropdownMenuLabel>{dirtyFiles?.length || 0} Uncommitted Changes</DropdownMenuLabel>
                   </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto px-1.5">
+                  <DropdownMenuSeparator />
+                  <div className="flex-1 min-h-0 overflow-y-auto">
                     {dirtyFiles === null ? (
                       <DropdownMenuItem disabled className="text-xs text-zinc-500 justify-center">
                         <Loader2Icon className="w-3 h-3 animate-spin mr-2" /> Loading...
@@ -217,31 +240,34 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                       <DropdownMenuItem disabled className="text-xs text-zinc-500">No changes found</DropdownMenuItem>
                     ) : (
                       dirtyFiles.map((file, i) => (
-                        <DropdownMenuItem key={i} disabled className="text-xs gap-2 font-mono">
+                        <DropdownMenuItem key={i} className="text-xs gap-2 font-mono pointer-events-none">
                           <StatusBadge status={file.status} />
                           <span className="truncate">{file.path}</span>
                         </DropdownMenuItem>
                       ))
                     )}
                   </div>
-                  <div className="flex-shrink-0 p-1.5 pt-0">
-                    <DropdownMenuSeparator />
+                  <DropdownMenuSeparator />
+                  <div className="flex-shrink-0 p-1">
                     <DropdownMenuItem className="text-xs justify-center text-bronze-500" onSelect={openDiffModal}>
-                      <EyeIcon className="w-3 h-3" />
-                      See Details
+                      <DiffIcon className="!size-3" />
+                      Diff
                     </DropdownMenuItem>
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
 
-            {/* Commits behind dropdown */}
-            {gitStatus && gitStatus.behind > 0 && (
-              <DropdownMenu onOpenChange={(open) => { if (open) fetchCommits('behind'); else setBehindCommits(null); }}>
+            {/* Unified history dropdown */}
+            {gitStatus?.hasRemote && (
+              <DropdownMenu onOpenChange={(open) => { if (open) { setAheadCommits(null); setBehindCommits(null); fetchHistoryCommits(); setSyncError(null); } }}>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center text-xs font-medium rounded-md border border-border-default bg-surface-secondary text-blue-400 hover:bg-surface-hover transition-colors overflow-hidden">
+                  <button
+                    className={`flex items-center text-xs font-medium rounded-md border border-border-default bg-surface-secondary ${historyTextColor} hover:bg-surface-hover transition-colors overflow-hidden`}
+                  >
                     <span className="flex items-center gap-1.5 px-2.5 py-1.5">
-                      {gitStatus.behind} {gitStatus.behind === 1 ? 'commit' : 'commits'} behind
+                      {historyLabel}
+                      {isUpToDate && <CheckIcon className="w-3 h-3" />}
                     </span>
                     <span className="px-1.5 py-1.5 border-l border-border-default">
                       <ChevronDownIcon className="w-3 h-3" />
@@ -249,76 +275,88 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80 max-h-72 overflow-hidden flex flex-col p-0">
-                  <div className="flex-shrink-0 p-1.5 pb-0">
-                    <DropdownMenuLabel className="text-bronze-500">Commits Behind</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                  </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto px-1.5">
-                    {behindCommits === null ? (
-                      <DropdownMenuItem disabled className="text-xs text-zinc-500 justify-center">
-                        <Loader2Icon className="w-3 h-3 animate-spin mr-2" /> Loading...
-                      </DropdownMenuItem>
-                    ) : behindCommits.length === 0 ? (
-                      <DropdownMenuItem disabled className="text-xs text-zinc-500">No commits found</DropdownMenuItem>
-                    ) : (
-                      behindCommits.map((c, i) => (
-                        <DropdownMenuItem key={i} className="text-xs gap-2 pointer-events-none">
-                          <span className="font-mono text-bronze-500 shrink-0">{c.hash}</span>
-                          <span className="truncate text-zinc-400">{c.message}</span>
-                        </DropdownMenuItem>
-                      ))
+                  <div className="flex-1 min-h-0 overflow-y-auto">
+                    {/* Behind commits */}
+                    {behind > 0 && (
+                      <>
+                        <div className="sticky top-0 z-10 bg-surface-secondary border-b border-zinc-800/50 px-2 py-1.5 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-red-400">{behind} Commits Behind</span>
+                          {onPull && (
+                            <button
+                              onClick={async (e) => { e.stopPropagation(); if (pulling) return; setPulling(true); setSyncError(null); try { await onPull(); } catch (err) { setSyncError(err instanceof Error ? err.message : 'Pull failed'); } finally { setPulling(false); } }}
+                              disabled={pulling}
+                              className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded text-red-400 hover:bg-red-500/10 transition-colors"
+                            >
+                              Pull
+                              {pulling ? <Loader2Icon className="w-3 h-3 animate-spin" /> : <ArrowDownIcon className="w-3 h-3" />}
+                            </button>
+                          )}
+                        </div>
+                        {behindCommits === null ? (
+                          <DropdownMenuItem disabled className="text-xs text-zinc-500 justify-center">
+                            <Loader2Icon className="w-3 h-3 animate-spin mr-2" /> Loading...
+                          </DropdownMenuItem>
+                        ) : behindCommits.length === 0 ? (
+                          <DropdownMenuItem disabled className="text-xs text-zinc-500">No commits found</DropdownMenuItem>
+                        ) : (
+                          behindCommits.map((c, i) => (
+                            <DropdownMenuItem key={i} className="text-xs gap-2 pointer-events-none">
+                              <span className="font-mono text-bronze-500 shrink-0">{c.hash}</span>
+                              <span className="truncate text-zinc-400">{c.message}</span>
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </>
+                    )}
+                    {/* Ahead commits */}
+                    {ahead > 0 && (
+                      <>
+                        <div className="sticky top-0 z-10 bg-surface-secondary border-b border-zinc-800/50 px-2 py-1.5 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-green-400">{ahead} Commits Ahead</span>
+                          {onPush && (
+                            <button
+                              onClick={async (e) => { e.stopPropagation(); if (pushing) return; setPushing(true); setSyncError(null); try { await onPush(); } catch (err) { setSyncError(err instanceof Error ? err.message : 'Push failed'); } finally { setPushing(false); } }}
+                              disabled={pushing}
+                              className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded text-green-400 hover:bg-green-500/10 transition-colors"
+                            >
+                              Push
+                              {pushing ? <Loader2Icon className="w-3 h-3 animate-spin" /> : <ArrowUpIcon className="w-3 h-3" />}
+                            </button>
+                          )}
+                        </div>
+                        {aheadCommits === null ? (
+                          <DropdownMenuItem disabled className="text-xs text-zinc-500 justify-center">
+                            <Loader2Icon className="w-3 h-3 animate-spin mr-2" /> Loading...
+                          </DropdownMenuItem>
+                        ) : aheadCommits.length === 0 ? (
+                          <DropdownMenuItem disabled className="text-xs text-zinc-500">No commits found</DropdownMenuItem>
+                        ) : (
+                          aheadCommits.map((c, i) => (
+                            <DropdownMenuItem key={i} className="text-xs gap-2 pointer-events-none">
+                              <span className="font-mono text-bronze-500 shrink-0">{c.hash}</span>
+                              <span className="truncate text-zinc-400">{c.message}</span>
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </>
+                    )}
+                    {/* Up to date — just show header */}
+                    {isUpToDate && (
+                      <div className="py-1">
+                        <DropdownMenuLabel>Commits</DropdownMenuLabel>
+                      </div>
                     )}
                   </div>
-                  <div className="flex-shrink-0 p-1.5 pt-0">
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-xs justify-center text-bronze-500" onSelect={() => openLogModal('behind')}>
-                      <EyeIcon className="w-3 h-3" />
-                      See Details
-                    </DropdownMenuItem>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            {/* Commits ahead dropdown */}
-            {gitStatus && gitStatus.ahead > 0 && (
-              <DropdownMenu onOpenChange={(open) => { if (open) fetchCommits('ahead'); else setAheadCommits(null); }}>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center text-xs font-medium rounded-md border border-border-default bg-surface-secondary text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors overflow-hidden">
-                    <span className="flex items-center gap-1.5 px-2.5 py-1.5">
-                      {gitStatus.ahead} {gitStatus.ahead === 1 ? 'commit' : 'commits'} ahead
-                    </span>
-                    <span className="px-1.5 py-1.5 border-l border-border-default">
-                      <ChevronDownIcon className="w-3 h-3" />
-                    </span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 max-h-72 overflow-hidden flex flex-col p-0">
-                  <div className="flex-shrink-0 p-1.5 pb-0">
-                    <DropdownMenuLabel className="text-bronze-500">Commits Ahead</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                  </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto px-1.5">
-                    {aheadCommits === null ? (
-                      <DropdownMenuItem disabled className="text-xs text-zinc-500 justify-center">
-                        <Loader2Icon className="w-3 h-3 animate-spin mr-2" /> Loading...
-                      </DropdownMenuItem>
-                    ) : aheadCommits.length === 0 ? (
-                      <DropdownMenuItem disabled className="text-xs text-zinc-500">No commits found</DropdownMenuItem>
-                    ) : (
-                      aheadCommits.map((c, i) => (
-                        <DropdownMenuItem key={i} className="text-xs gap-2 pointer-events-none">
-                          <span className="font-mono text-bronze-500 shrink-0">{c.hash}</span>
-                          <span className="truncate text-zinc-400">{c.message}</span>
-                        </DropdownMenuItem>
-                      ))
-                    )}
-                  </div>
-                  <div className="flex-shrink-0 p-1.5 pt-0">
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-xs justify-center text-bronze-500" onSelect={() => openLogModal('ahead')}>
-                      <EyeIcon className="w-3 h-3" />
-                      See Details
+                  {syncError && (
+                    <div className="flex-shrink-0 px-2 py-1.5 border-t border-zinc-800/50 text-[11px] text-red-400 whitespace-pre-wrap break-words max-h-24 overflow-y-auto">
+                      {syncError}
+                    </div>
+                  )}
+                  <DropdownMenuSeparator />
+                  <div className="flex-shrink-0 p-1">
+                    <DropdownMenuItem className="text-xs justify-center text-bronze-500" onSelect={openHistoryModal}>
+                      <HistoryIcon className="!size-3" />
+                      Commit History
                     </DropdownMenuItem>
                   </div>
                 </DropdownMenuContent>
@@ -341,60 +379,13 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                 onClose={() => setDetailModal(null)}
                 title={detailModal.title}
                 commits={detailModal.commits}
+                behindCommits={detailModal.behindCommits}
                 projectId={projectId}
                 currentBranch={currentBranch}
+                onPush={onPush}
+                onPull={onPull}
                 type="log"
               />
-            )}
-
-            {/* Pull / Push / Synced buttons */}
-            {gitStatus?.hasRemote && (
-              <div className="flex items-center gap-1.5">
-                {gitStatus.behind > 0 && (
-                  <button
-                    onClick={async () => { if (pulling || !onPull) return; setPulling(true); try { await onPull(); } finally { setPulling(false); } }}
-                    disabled={pulling}
-                    title="Pull from upstream"
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border border-border-default bg-surface-secondary text-blue-400 hover:bg-surface-hover transition-colors"
-                  >
-                    Pull
-                    {pulling
-                      ? <Loader2Icon className="w-3.5 h-3.5 text-bronze-500 animate-spin" />
-                      : <ArrowDownIcon className="w-3.5 h-3.5" />
-                    }
-                  </button>
-                )}
-                {gitStatus.ahead > 0 && (
-                  <button
-                    onClick={async () => { if (pushing || !onPush) return; setPushing(true); try { await onPush(); } finally { setPushing(false); } }}
-                    disabled={pushing}
-                    title="Push to upstream"
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border border-border-default bg-surface-secondary text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
-                  >
-                    Push
-                    {pushing
-                      ? <Loader2Icon className="w-3.5 h-3.5 text-bronze-500 animate-spin" />
-                      : <ArrowUpIcon className="w-3.5 h-3.5" />
-                    }
-                  </button>
-                )}
-                {gitStatus.ahead === 0 && gitStatus.behind === 0 && !pushing && !pulling && (
-                  <button
-                    onClick={async () => { if (fetching || !onFetch) return; setFetching(true); try { await onFetch(); } finally { setFetching(false); } }}
-                    disabled={fetching}
-                    title="Up to date with upstream. Click to check."
-                    className="group flex items-center p-1.5 rounded-md border border-border-default bg-surface-secondary text-bronze-500 hover:bg-surface-hover transition-colors"
-                  >
-                    {fetching
-                      ? <Loader2Icon className="w-3.5 h-3.5 text-bronze-500 animate-spin" />
-                      : <>
-                          <CheckIcon className="w-3.5 h-3.5 group-hover:hidden" />
-                          <RefreshCwIcon className="w-3.5 h-3.5 hidden group-hover:block" />
-                        </>
-                    }
-                  </button>
-                )}
-              </div>
             )}
 
             {/* Branch selector */}
@@ -418,11 +409,11 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-72 max-h-64 overflow-hidden flex flex-col p-0">
-                  <div className="flex-shrink-0 p-1.5 pb-0">
+                  <div className="flex-shrink-0 py-1">
                     <DropdownMenuLabel>Branches</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
                   </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto px-1.5 pb-1.5">
+                  <DropdownMenuSeparator />
+                  <div className="flex-1 min-h-0 overflow-y-auto">
                     {mainBranches.map((branch) => (
                       <BranchItem
                         key={branch}
