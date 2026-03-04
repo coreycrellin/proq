@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>A task board that runs your coding agents.</strong>
+  <strong>A task board for agents.</strong>
 </p>
 
 <p align="center">
