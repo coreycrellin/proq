@@ -2,6 +2,7 @@
 export type ProjectStatus = 'active' | 'review' | 'idle' | 'error';
 
 export type ProjectTab = 'project' | 'live' | 'code';
+export type ViewType = 'kanban' | 'list';
 
 export interface Project {
   id: string;
@@ -12,7 +13,9 @@ export interface Project {
   order?: number;
   pathValid?: boolean;
   activeTab?: ProjectTab;
+  viewType?: ViewType;
   liveViewport?: 'desktop' | 'tablet' | 'mobile';
+  defaultBranch?: string;
   createdAt: string;
 }
 

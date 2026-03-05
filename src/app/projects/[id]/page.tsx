@@ -12,16 +12,17 @@ import { TaskAgentModal } from '@/components/TaskAgentModal';
 import { UndoModal } from '@/components/UndoModal';
 import { ParallelModeModal } from '@/components/ParallelModeModal';
 import { AlertModal } from '@/components/Modal';
+import { ProjectSettingsModal } from '@/components/ProjectSettingsModal';
 import { useProjects } from '@/components/ProjectsProvider';
 import { emptyColumns } from '@/components/ProjectsProvider';
-import type { Task, TaskStatus, TaskColumns, ExecutionMode, FollowUpDraft, TaskAttachment } from '@/lib/types';
+import type { Task, TaskStatus, TaskColumns, ExecutionMode, FollowUpDraft, TaskAttachment, ViewType } from '@/lib/types';
 import { uploadFiles } from '@/lib/upload';
 import { useTaskEvents, type TaskUpdateEvent } from '@/hooks/useTaskEvents';
 
 export default function ProjectPage() {
   const params = useParams();
   const projectId = params.id as string;
-  const { projects, tasksByProject, refreshTasks, setTasksByProject } = useProjects();
+  const { projects, tasksByProject, refreshTasks, setTasksByProject, setProjects } = useProjects();
 
   const [activeTab, setActiveTab] = useState<TabOption>('project');
   const [chatPercent, setChatPercent] = useState(60);
@@ -34,6 +35,7 @@ export default function ProjectPage() {
   const [undoEntry, setUndoEntry] = useState<{ task: Task; column: TaskStatus } | null>(null);
   const [showParallelModal, setShowParallelModal] = useState(false);
   const [showModeBlockedModal, setShowModeBlockedModal] = useState(false);
+  const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [currentBranch, setCurrentBranch] = useState<string>('main');
   const [branches, setBranches] = useState<string[]>([]);
   const [gitStatus, setGitStatus] = useState<GitStatus>({ hasGit: true, hasRemote: false, ahead: 0, behind: 0, dirty: 0 });
@@ -514,6 +516,24 @@ export default function ProjectPage() {
     }).catch(() => {});
   }, [projectId]);
 
+  const handleViewTypeChange = useCallback((vt: ViewType) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, viewType: vt } : p));
+    fetch(`/api/projects/${projectId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ viewType: vt }),
+    }).catch(() => {});
+  }, [projectId, setProjects]);
+
+  const handleProjectSettingsSave = useCallback((data: Partial<import('@/lib/types').Project>) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...data } : p));
+    fetch(`/api/projects/${projectId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).catch(() => {});
+  }, [projectId, setProjects]);
+
   const patchWorkbenchState = useCallback((data: { open?: boolean; height?: number }) => {
     fetch(`/api/projects/${projectId}/workbench-state`, {
       method: 'PATCH',
@@ -607,6 +627,9 @@ export default function ProjectPage() {
         onPush={handlePush}
         onPull={handlePull}
         onInitGit={handleInitGit}
+        viewType={project.viewType || 'kanban'}
+        onViewTypeChange={handleViewTypeChange}
+        onOpenSettings={() => setShowProjectSettings(true)}
       />
 
       <main ref={containerRef} className="flex-1 flex flex-col overflow-hidden relative">
@@ -760,6 +783,15 @@ export default function ProjectPage() {
         onConfirm={applyParallelMode}
         onCancel={() => setShowParallelModal(false)}
       />
+
+      {showProjectSettings && project && (
+        <ProjectSettingsModal
+          isOpen={showProjectSettings}
+          project={project}
+          onClose={() => setShowProjectSettings(false)}
+          onSave={handleProjectSettingsSave}
+        />
+      )}
 
       <AlertModal
         isOpen={showModeBlockedModal}
