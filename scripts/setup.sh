@@ -76,7 +76,7 @@ if [ -n "$CLAUDE_BIN" ]; then
   ok "Claude Code CLI ($CLAUDE_BIN)"
 else
   fail "Claude Code CLI not found — install with: npm install -g @anthropic-ai/claude-code"
-  info "If already installed via nvm or homebrew, proq will auto-detect it at runtime."
+  info "If already installed and loaded in your shell, proq will auto-detect it at runtime."
 fi
 
 # ── Persist Claude binary path to settings ──────────────────────────
