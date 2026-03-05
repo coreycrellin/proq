@@ -187,7 +187,7 @@ export function ListView({
             allTasks.map((task, idx) => {
               const isSelected = task.id === selectedTaskId;
               const prevTask = idx > 0 ? allTasks[idx - 1] : null;
-              const showStatusDivider = prevTask && prevTask.status !== task.status;
+              const showStatusDivider = !prevTask || prevTask.status !== task.status;
               const isRunning = task.agentStatus === 'running';
               const isStarting = task.agentStatus === 'starting';
               const isQueued = task.agentStatus === 'queued';
