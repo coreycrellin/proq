@@ -41,14 +41,6 @@ interface ListViewProps {
 
 const STATUS_ORDER: TaskStatus[] = ['todo', 'in-progress', 'verify', 'done'];
 
-function flattenTasks(columns: TaskColumns): Task[] {
-  const result: Task[] = [];
-  for (const status of STATUS_ORDER) {
-    result.push(...columns[status]);
-  }
-  return result;
-}
-
 const MASTER_WIDTH_KEY = 'proq-list-master-width';
 const DEFAULT_MASTER_WIDTH = 320;
 const MIN_MASTER_WIDTH = 200;
@@ -79,7 +71,7 @@ export function ListView({
     return stored ? Math.min(Math.max(parseInt(stored, 10), MIN_MASTER_WIDTH), MAX_MASTER_WIDTH) : DEFAULT_MASTER_WIDTH;
   });
 
-  const allTasks = flattenTasks(tasks);
+  const allTasks = STATUS_ORDER.flatMap((s) => tasks[s]);
   const selectedTask = selectedTaskId ? allTasks.find((t) => t.id === selectedTaskId) : null;
 
   // Keep selection in sync when tasks update via SSE
@@ -110,11 +102,6 @@ export function ListView({
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   }, [masterWidth]);
-
-  const getStatusIcon = (status: TaskStatus) => {
-    const col = COLUMNS.find((c) => c.id === status);
-    return col?.icon ?? null;
-  };
 
   const handleRowClick = (task: Task) => {
     // For todo tasks, open the modal via onClickTask (same as kanban)
@@ -179,88 +166,86 @@ export function ListView({
 
         {/* Task list */}
         <div className="flex-1 overflow-y-auto">
-          {allTasks.length === 0 ? (
-            <div className="flex items-center justify-center h-32">
-              <span className="text-xs text-bronze-500 dark:text-zinc-700">No tasks</span>
-            </div>
-          ) : (
-            allTasks.map((task, idx) => {
-              const isSelected = task.id === selectedTaskId;
-              const prevTask = idx > 0 ? allTasks[idx - 1] : null;
-              const showStatusDivider = !prevTask || prevTask.status !== task.status;
-              const isRunning = task.agentStatus === 'running';
-              const isStarting = task.agentStatus === 'starting';
-              const isQueued = task.agentStatus === 'queued';
+          {STATUS_ORDER.map((status) => {
+            const col = COLUMNS.find((c) => c.id === status);
+            const statusTasks = tasks[status];
 
-              return (
-                <React.Fragment key={task.id}>
-                  {showStatusDivider && (
-                    <div className="flex items-center gap-2 mx-3 my-1 py-1">
-                      <div className="flex-1 h-px bg-bronze-300/40 dark:bg-zinc-800/60" />
-                      <div className="flex items-center gap-1.5">
-                        {getStatusIcon(task.status)}
-                        <span className="text-[10px] text-bronze-500 dark:text-zinc-600 font-medium uppercase tracking-wide">
-                          {COLUMNS.find((c) => c.id === task.status)?.label}
-                        </span>
+            return (
+              <React.Fragment key={status}>
+                {/* Section header — always shown */}
+                <div className="flex items-center gap-2 mx-3 my-1 py-1">
+                  <div className="flex-1 h-px bg-bronze-300/40 dark:bg-zinc-800/60" />
+                  <div className="flex items-center gap-1.5">
+                    {col?.icon}
+                    <span className="text-[10px] text-bronze-500 dark:text-zinc-600 font-medium uppercase tracking-wide">
+                      {col?.label}
+                    </span>
+                    <span className="text-[10px] text-bronze-400 dark:text-zinc-700 font-mono">
+                      {statusTasks.length}
+                    </span>
+                  </div>
+                  <div className="flex-1 h-px bg-bronze-300/40 dark:bg-zinc-800/60" />
+                </div>
+
+                {statusTasks.map((task) => {
+                  const isSelected = task.id === selectedTaskId;
+                  const isRunning = task.agentStatus === 'running';
+                  const isStarting = task.agentStatus === 'starting';
+                  const isQueued = task.agentStatus === 'queued';
+
+                  return (
+                    <button
+                      key={task.id}
+                      onClick={() => handleRowClick(task)}
+                      className={`w-full text-left px-3 py-2.5 transition-colors ${
+                        isSelected
+                          ? 'bg-bronze-200/60 dark:bg-zinc-800'
+                          : 'hover:bg-bronze-100/60 dark:hover:bg-zinc-900/60'
+                      }`}
+                    >
+                      {/* Title */}
+                      <div className={`text-sm leading-snug truncate ${
+                        task.title
+                          ? 'text-bronze-800 dark:text-zinc-200'
+                          : 'text-bronze-500 dark:text-zinc-500 italic'
+                      }`}>
+                        {task.title || task.description.slice(0, 60) || 'Untitled'}
                       </div>
-                      <div className="flex-1 h-px bg-bronze-300/40 dark:bg-zinc-800/60" />
-                    </div>
-                  )}
-                  <button
-                    onClick={() => handleRowClick(task)}
-                    className={`w-full text-left px-3 py-2.5 transition-colors ${
-                      isSelected
-                        ? 'bg-bronze-200/60 dark:bg-zinc-800'
-                        : 'hover:bg-bronze-100/60 dark:hover:bg-zinc-900/60'
-                    }`}
-                  >
-                    {/* Title */}
-                    <div className={`text-sm leading-snug truncate ${
-                      task.title
-                        ? 'text-bronze-800 dark:text-zinc-200'
-                        : 'text-bronze-500 dark:text-zinc-500 italic'
-                    }`}>
-                      {task.title || task.description.slice(0, 60) || 'Untitled'}
-                    </div>
 
-                    {/* Description snippet */}
-                    {task.description && (
-                      <p className="text-xs text-bronze-600 dark:text-zinc-500 leading-relaxed mt-1 line-clamp-2">
-                        {task.title ? task.description : ''}
-                      </p>
-                    )}
-
-                    {/* Footer: status + agent indicator */}
-                    <div className="flex items-center gap-1.5 mt-2">
-                      {isQueued ? (
-                        <>
-                          <ClockIcon className="w-3 h-3 text-zinc-400" />
-                          <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">Queued</span>
-                        </>
-                      ) : isRunning ? (
-                        <>
-                          <Loader2Icon className="w-3 h-3 text-steel animate-spin" />
-                          <span className="text-[10px] text-steel font-medium uppercase tracking-wide">Agent working</span>
-                        </>
-                      ) : isStarting ? (
-                        <>
-                          <Loader2Icon className="w-3 h-3 text-zinc-400 animate-spin" />
-                          <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">Starting...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="shrink-0">{getStatusIcon(task.status)}</span>
-                          <span className="text-[10px] text-bronze-500 dark:text-zinc-500 font-medium uppercase tracking-wide">
-                            {COLUMNS.find((c) => c.id === task.status)?.label}
-                          </span>
-                        </>
+                      {/* Description snippet */}
+                      {task.title && task.description && (
+                        <p className="text-xs text-bronze-600 dark:text-zinc-500 leading-relaxed mt-1 line-clamp-2">
+                          {task.description}
+                        </p>
                       )}
-                    </div>
-                  </button>
-                </React.Fragment>
-              );
-            })
-          )}
+
+                      {/* Footer: agent indicator if active */}
+                      {(isQueued || isRunning || isStarting) && (
+                        <div className="flex items-center gap-1.5 mt-2">
+                          {isQueued ? (
+                            <>
+                              <ClockIcon className="w-3 h-3 text-zinc-400" />
+                              <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">Queued</span>
+                            </>
+                          ) : isRunning ? (
+                            <>
+                              <Loader2Icon className="w-3 h-3 text-steel animate-spin" />
+                              <span className="text-[10px] text-steel font-medium uppercase tracking-wide">Agent working</span>
+                            </>
+                          ) : (
+                            <>
+                              <Loader2Icon className="w-3 h-3 text-zinc-400 animate-spin" />
+                              <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">Starting...</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
 
