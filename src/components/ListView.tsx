@@ -225,27 +225,35 @@ export function ListView({
                         </p>
                       )}
 
-                      {/* Footer: agent indicator if active */}
-                      {(isQueued || isRunning || isStarting) && (
-                        <div className="flex items-center gap-1.5 mt-2">
-                          {isQueued ? (
-                            <>
-                              <ClockIcon className="w-3 h-3 text-zinc-400" />
-                              <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">Queued</span>
-                            </>
-                          ) : isRunning ? (
-                            <>
-                              <Loader2Icon className="w-3 h-3 text-steel animate-spin" />
-                              <span className="text-[10px] text-steel font-medium uppercase tracking-wide">Agent working</span>
-                            </>
-                          ) : (
-                            <>
-                              <Loader2Icon className="w-3 h-3 text-zinc-400 animate-spin" />
-                              <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">Starting...</span>
-                            </>
-                          )}
-                        </div>
-                      )}
+                      {/* Footer: status + agent indicator + task ID */}
+                      <div className="flex items-center mt-2">
+                        {isQueued ? (
+                          <div className="flex items-center gap-1.5">
+                            <ClockIcon className="w-3 h-3 text-zinc-400" />
+                            <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">Queued</span>
+                          </div>
+                        ) : isRunning ? (
+                          <div className="flex items-center gap-1.5">
+                            <Loader2Icon className="w-3 h-3 text-steel animate-spin" />
+                            <span className="text-[10px] text-steel font-medium uppercase tracking-wide">Agent working</span>
+                          </div>
+                        ) : isStarting ? (
+                          <div className="flex items-center gap-1.5">
+                            <Loader2Icon className="w-3 h-3 text-zinc-400 animate-spin" />
+                            <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">Starting...</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            {col?.icon}
+                            <span className="text-[10px] text-bronze-500 dark:text-zinc-500 font-medium uppercase tracking-wide">
+                              {col?.label}
+                            </span>
+                          </div>
+                        )}
+                        <span className="ml-auto text-[10px] text-bronze-400 dark:text-zinc-600 font-mono">
+                          {task.id.slice(0, 8)}
+                        </span>
+                      </div>
                     </button>
                   );
                 })}
