@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon } from 'lucide-react';
-import type { Project, ProjectTab } from '@/lib/types';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, SettingsIcon } from 'lucide-react';
+import type { Project, ProjectTab, ViewType } from '@/lib/types';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -36,9 +36,12 @@ interface TopBarProps {
   onPush?: () => Promise<void>;
   onPull?: () => Promise<void>;
   onInitGit?: () => void;
+  viewType?: ViewType;
+  onViewTypeChange?: (viewType: ViewType) => void;
+  onOpenSettings?: () => void;
 }
 
-export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onInitGit }: TopBarProps) {
+export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onInitGit, viewType = 'kanban', onViewTypeChange, onOpenSettings }: TopBarProps) {
   // Dropdown data for status labels
   const [dirtyFiles, setDirtyFiles] = useState<{ path: string; status: string }[] | null>(null);
 
@@ -196,16 +199,48 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
 
   return (
     <header className="h-16 bg-surface-base flex items-center px-6 flex-shrink-0">
-      <div className="flex-1 flex flex-col justify-center min-w-0">
-        <h1 className="text-lg font-semibold text-bronze-900 dark:text-zinc-100 leading-tight">
-          {project.path.replace(/\/+$/, "").split("/").pop() || project.name}
-        </h1>
-        <button
-          onClick={() => { if (projectId) fetch(`/api/projects/${projectId}/reveal`, { method: 'POST' }); }}
-          className="text-xs font-mono text-bronze-600 dark:text-bronze-500 hover:text-bronze-500 dark:hover:text-bronze-400 mt-0.5 text-left transition-colors"
-        >
-          {project.path}
-        </button>
+      <div className="flex-1 flex items-center min-w-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-1.5 px-2.5 py-1.5 -ml-2.5 rounded-md hover:bg-surface-hover transition-colors">
+              <h1 className="text-lg font-semibold text-bronze-900 dark:text-zinc-100 leading-tight truncate">
+                {project.name}
+              </h1>
+              <ChevronDownIcon className="w-4 h-4 text-zinc-500 shrink-0" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52 p-0">
+            <div className="p-1.5">
+              <DropdownMenuLabel>View</DropdownMenuLabel>
+              <DropdownMenuItem
+                onSelect={() => onViewTypeChange?.('kanban')}
+                className="text-xs gap-2"
+              >
+                <LayoutGridIcon className="w-3.5 h-3.5" />
+                <span>Board</span>
+                {viewType === 'kanban' && <CheckIcon className="w-3 h-3 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => onViewTypeChange?.('list')}
+                className="text-xs gap-2"
+              >
+                <ListIcon className="w-3.5 h-3.5" />
+                <span>List</span>
+                {viewType === 'list' && <CheckIcon className="w-3 h-3 ml-auto" />}
+              </DropdownMenuItem>
+            </div>
+            <DropdownMenuSeparator />
+            <div className="p-1.5">
+              <DropdownMenuItem
+                onSelect={() => onOpenSettings?.()}
+                className="text-xs gap-2"
+              >
+                <SettingsIcon className="w-3.5 h-3.5" />
+                <span>Project Settings</span>
+              </DropdownMenuItem>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="flex-1 flex justify-center min-w-0">
