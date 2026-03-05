@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import type { Task, TaskStatus, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { COLUMNS } from './KanbanBoard';
-import { TaskDraft } from './TaskDraft';
 import { TaskAgentDetail } from './TaskAgentDetail';
 import {
   DropdownMenu,
@@ -25,17 +24,16 @@ interface ListViewProps {
   projectId: string;
   onAddTask?: () => void;
   onDeleteTask?: (taskId: string) => void;
-  onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
-  onMoveToInProgress?: (taskId: string, currentData: Partial<Task>) => Promise<void>;
-  onComplete?: (taskId: string) => void;
-  onResumeEditing?: (taskId: string) => void;
-  onUpdateTitle?: (taskId: string, title: string) => void;
+  onClickTask?: (task: Task) => void;
   executionMode?: ExecutionMode;
   onExecutionModeChange?: (mode: ExecutionMode) => void;
   // Agent detail props
   cleanupTimes?: Record<string, number>;
   followUpDraftsRef?: React.MutableRefObject<Map<string, FollowUpDraft>>;
   onFollowUpDraftChange?: (taskId: string, draft: FollowUpDraft | null) => void;
+  onComplete?: (taskId: string) => void;
+  onResumeEditing?: (taskId: string) => void;
+  onUpdateTitle?: (taskId: string, title: string) => void;
   parallelMode?: boolean;
   currentBranch?: string;
   onSwitchBranch?: (branch: string) => void;
@@ -61,16 +59,15 @@ export function ListView({
   projectId,
   onAddTask,
   onDeleteTask,
-  onUpdateTask,
-  onMoveToInProgress,
-  onComplete,
-  onResumeEditing,
-  onUpdateTitle,
+  onClickTask,
   executionMode = 'sequential',
   onExecutionModeChange,
   cleanupTimes = {},
   followUpDraftsRef,
   onFollowUpDraftChange,
+  onComplete,
+  onResumeEditing,
+  onUpdateTitle,
   parallelMode,
   currentBranch,
   onSwitchBranch,
@@ -81,7 +78,6 @@ export function ListView({
     const stored = localStorage.getItem(MASTER_WIDTH_KEY);
     return stored ? Math.min(Math.max(parseInt(stored, 10), MIN_MASTER_WIDTH), MAX_MASTER_WIDTH) : DEFAULT_MASTER_WIDTH;
   });
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const allTasks = flattenTasks(tasks);
   const selectedTask = selectedTaskId ? allTasks.find((t) => t.id === selectedTaskId) : null;
@@ -107,11 +103,7 @@ export function ListView({
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
-      // Persist
-      const el = document.querySelector('[data-master-panel]');
-      if (el) {
-        localStorage.setItem(MASTER_WIDTH_KEY, String((el as HTMLElement).offsetWidth));
-      }
+      localStorage.setItem(MASTER_WIDTH_KEY, String(masterWidth));
     };
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
@@ -134,8 +126,18 @@ export function ListView({
     return null;
   };
 
+  const handleRowClick = (task: Task) => {
+    // For todo tasks, open the modal via onClickTask (same as kanban)
+    if (task.status === 'todo') {
+      onClickTask?.(task);
+      return;
+    }
+    // For non-todo tasks, select inline
+    setSelectedTaskId(selectedTaskId === task.id ? null : task.id);
+  };
+
   return (
-    <div ref={containerRef} className="flex-1 h-full flex overflow-hidden bg-surface-base">
+    <div className="flex-1 h-full flex overflow-hidden bg-surface-base">
       {/* Master panel */}
       <div data-master-panel className="shrink-0 flex flex-col border-r border-bronze-300 dark:border-zinc-800 bg-surface-base" style={{ width: masterWidth }}>
         {/* Master header */}
@@ -203,7 +205,7 @@ export function ListView({
                     <div className="h-px bg-bronze-300/60 dark:bg-zinc-800/60 mx-3" />
                   )}
                   <button
-                    onClick={() => setSelectedTaskId(isSelected ? null : task.id)}
+                    onClick={() => handleRowClick(task)}
                     className={`w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors ${
                       isSelected
                         ? 'bg-bronze-200/60 dark:bg-zinc-800'
@@ -240,21 +242,6 @@ export function ListView({
         {!selectedTask ? (
           <div className="flex-1 flex items-center justify-center">
             <span className="text-sm text-bronze-500 dark:text-zinc-600">Select a task</span>
-          </div>
-        ) : selectedTask.status === 'todo' ? (
-          <div className="flex-1 relative bg-bronze-50 dark:bg-zinc-900">
-            <TaskDraft
-              task={selectedTask}
-              onClose={(isEmpty) => {
-                if (isEmpty && onDeleteTask) {
-                  onDeleteTask(selectedTask.id);
-                }
-                setSelectedTaskId(null);
-              }}
-              onSave={onUpdateTask}
-              onMoveToInProgress={onMoveToInProgress}
-              autoFocus={false}
-            />
           </div>
         ) : (
           <div className="flex-1 relative bg-bronze-50 dark:bg-[#141414]">

@@ -8,7 +8,7 @@ import { ListView } from '@/components/ListView';
 import WorkbenchPanel from '@/components/WorkbenchPanel';
 import { LiveTab } from '@/components/LiveTab';
 import { CodeTab } from '@/components/CodeTab';
-import { TaskModal } from '@/components/TaskModal';
+import { TaskDraft } from '@/components/TaskDraft';
 import { TaskAgentModal } from '@/components/TaskAgentModal';
 import { UndoModal } from '@/components/UndoModal';
 import { ParallelModeModal } from '@/components/ParallelModeModal';
@@ -676,34 +676,20 @@ export default function ProjectPage() {
                   projectId={projectId}
                   onAddTask={handleAddTask}
                   onDeleteTask={deleteTask}
-                  onUpdateTask={updateTask}
-                  onMoveToInProgress={async (taskId, currentData) => {
-                    setTasksByProject((prev) => {
-                      const cols = prev[projectId] || emptyColumns();
-                      const todoCol = cols.todo.filter((t) => t.id !== taskId);
-                      const task = cols.todo.find((t) => t.id === taskId);
-                      if (!task) return prev;
-                      const updatedTask = { ...task, ...currentData, status: 'in-progress' as const, agentStatus: 'starting' as const };
-                      return {
-                        ...prev,
-                        [projectId]: {
-                          ...cols,
-                          todo: todoCol,
-                          "in-progress": [updatedTask, ...cols["in-progress"]],
-                        },
-                      };
-                    });
-                    fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(currentData),
-                    }).then(() =>
-                      fetch(`/api/projects/${projectId}/tasks/reorder`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ taskId, toColumn: 'in-progress', toIndex: 0 }),
-                      })
-                    );
+                  onClickTask={(task) => {
+                    if (task.status === 'todo') {
+                      setModalTask(task);
+                    } else {
+                      setAgentModalTask(task);
+                    }
+                  }}
+                  executionMode={executionMode}
+                  onExecutionModeChange={handleExecutionModeChange}
+                  cleanupTimes={cleanupTimes}
+                  followUpDraftsRef={followUpDraftsRef}
+                  onFollowUpDraftChange={(taskId, draft) => {
+                    if (draft) followUpDraftsRef.current.set(taskId, draft);
+                    else followUpDraftsRef.current.delete(taskId);
                   }}
                   onComplete={async (taskId) => {
                     followUpDraftsRef.current.delete(taskId);
@@ -714,14 +700,6 @@ export default function ProjectPage() {
                     await updateTask(taskId, { status: 'verify' });
                   }}
                   onUpdateTitle={(taskId, title) => updateTask(taskId, { title })}
-                  executionMode={executionMode}
-                  onExecutionModeChange={handleExecutionModeChange}
-                  cleanupTimes={cleanupTimes}
-                  followUpDraftsRef={followUpDraftsRef}
-                  onFollowUpDraftChange={(taskId, draft) => {
-                    if (draft) followUpDraftsRef.current.set(taskId, draft);
-                    else followUpDraftsRef.current.delete(taskId);
-                  }}
                   parallelMode={executionMode === 'parallel'}
                   currentBranch={currentBranch}
                   onSwitchBranch={handleSwitchBranch}
@@ -793,7 +771,7 @@ export default function ProjectPage() {
       )}
 
       {modalTask && (
-        <TaskModal
+        <TaskDraft
           task={modalTask}
           isOpen={true}
           onClose={async (isEmpty: boolean) => {
