@@ -252,7 +252,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 className={`relative px-4 py-1.5 text-sm font-medium rounded-md z-10 ${
-                  isActive ? 'text-text-chrome-active' : 'text-text-chrome hover:text-text-chrome-hover'
+                  isActive ? 'text-text-chrome-active' : 'text-bronze-600 dark:text-bronze-600 hover:text-bronze-700 dark:hover:text-bronze-500'
                 }`}
               >
                 {isActive && (
