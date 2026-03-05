@@ -202,11 +202,11 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
       <div className="flex-1 flex items-center min-w-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1.5 ml-1 text-bronze-900 dark:text-zinc-100 hover:text-bronze-700 dark:hover:text-bronze-600 transition-colors group">
+            <button className="flex items-center gap-1.5 ml-1 text-bronze-600 dark:text-bronze-600 hover:text-bronze-700 dark:hover:text-bronze-500 transition-colors">
               <h1 className="text-lg font-semibold leading-none truncate">
                 {project.name}
               </h1>
-              <ChevronDownIcon className="w-4 h-4 text-zinc-500 group-hover:text-bronze-600 dark:group-hover:text-bronze-600 shrink-0 transition-colors" />
+              <ChevronDownIcon className="w-4 h-4 shrink-0" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-52 p-0">
