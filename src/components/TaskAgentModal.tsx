@@ -60,9 +60,18 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
   const canEditTitle = (task.status === 'verify' || task.status === 'done') && !!onUpdateTitle;
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [topPanelPercent, setTopPanelPercent] = useState(30);
+  const [rightPanelPercent, setRightPanelPercent] = useState(33);
+  const [modalSize, setModalSize] = useState<{ width: number; height: number } | null>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const bottomPanelRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
+  const justDraggedRef = useRef(false);
+  const finishDrag = useCallback(() => {
+    isDraggingRef.current = false;
+    justDraggedRef.current = true;
+    requestAnimationFrame(() => { justDraggedRef.current = false; });
+  }, []);
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -78,13 +87,99 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
       setTopPanelPercent(Math.min(Math.max(pct, 15), 85));
     };
     const onMouseUp = () => {
-      isDraggingRef.current = false;
+      finishDrag();
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
     document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, []);
+
+  const handleHorizontalResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingRef.current || !modal) return;
+      const rect = modal.getBoundingClientRect();
+      const pct = ((rect.right - ev.clientX) / rect.width) * 100;
+      setRightPanelPercent(Math.min(Math.max(pct, 20), 60));
+    };
+    const onMouseUp = () => {
+      finishDrag();
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, []);
+
+  const handleCrossResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    const modal = modalRef.current;
+    const panel = rightPanelRef.current;
+    if (!modal || !panel) return;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      const modalRect = modal.getBoundingClientRect();
+      const panelRect = panel.getBoundingClientRect();
+      const rightPct = ((modalRect.right - ev.clientX) / modalRect.width) * 100;
+      setRightPanelPercent(Math.min(Math.max(rightPct, 20), 60));
+      const topPct = ((ev.clientY - panelRect.top) / panelRect.height) * 100;
+      setTopPanelPercent(Math.min(Math.max(topPct, 15), 85));
+    };
+    const onMouseUp = () => {
+      finishDrag();
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'move';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, []);
+
+  const handleModalResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const modal = modalRef.current;
+    if (!modal) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = modal.offsetWidth;
+    const startH = modal.offsetHeight;
+    const minW = 600;
+    const minH = 400;
+    const maxW = window.innerWidth - 32;
+    const maxH = window.innerHeight - 32;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const newW = Math.min(Math.max(startW + (ev.clientX - startX), minW), maxW);
+      const newH = Math.min(Math.max(startH + (ev.clientY - startY), minH), maxH);
+      setModalSize({ width: newW, height: newH });
+    };
+    const onMouseUp = () => {
+      finishDrag();
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'nwse-resize';
     document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
@@ -145,14 +240,16 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={onClose}
+      onClick={() => { if (!justDraggedRef.current) onClose(); }}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-none" />
 
       {/* Modal */}
       <div
-        className="relative w-full max-w-7xl h-[90vh] flex flex-row rounded-lg border border-bronze-300 dark:border-[#222] bg-bronze-50 dark:bg-[#141414] shadow-2xl shadow-black/60 mx-4 overflow-hidden"
+        ref={modalRef}
+        className="relative flex flex-row rounded-lg border border-bronze-300 dark:border-[#222] bg-bronze-50 dark:bg-[#141414] shadow-2xl shadow-black/60 mx-4 overflow-hidden"
+        style={modalSize ? { width: modalSize.width, height: modalSize.height } : { width: '100%', maxWidth: '80rem', height: '90vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Left panel: terminal or queued state (70%) ── */}
@@ -264,8 +361,18 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
           ) : null}
         </div>
 
-        {/* ── Right panel: task details (30% with terminal, full width without) ── */}
-        <div ref={rightPanelRef} className={`${showTerminal || showStructuredPane || isQueued ? 'w-[33%] border-l border-bronze-300 dark:border-zinc-800' : 'w-full'} shrink-0 flex flex-col overflow-hidden bg-bronze-50 dark:bg-[#141414]`}>
+        {/* ── Horizontal resize handle ── */}
+        {(showTerminal || showStructuredPane || isQueued) && (
+          <div
+            onMouseDown={handleHorizontalResizeMouseDown}
+            className="shrink-0 w-px cursor-col-resize bg-bronze-300 dark:bg-zinc-800 hover:bg-bronze-400 dark:hover:bg-bronze-600 transition-colors relative"
+          >
+            <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
+          </div>
+        )}
+
+        {/* ── Right panel: task details ── */}
+        <div ref={rightPanelRef} className={`${showTerminal || showStructuredPane || isQueued ? '' : 'w-full'} shrink-0 flex flex-col overflow-hidden bg-bronze-50 dark:bg-[#141414]`} style={(showTerminal || showStructuredPane || isQueued) ? { width: `${rightPanelPercent}%` } : undefined}>
           {/* Close button */}
           <button
             onClick={onClose}
@@ -394,9 +501,16 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
           {/* Resize handle */}
           <div
             onMouseDown={handleResizeMouseDown}
-            className="shrink-0 h-1 cursor-row-resize border-t border-bronze-300 dark:border-zinc-800 hover:bg-steel/20 active:bg-steel/30 transition-colors group relative"
+            className="shrink-0 h-px cursor-row-resize bg-bronze-300 dark:bg-zinc-800 hover:bg-bronze-400 dark:hover:bg-bronze-600 transition-colors relative"
           >
-            <div className="absolute inset-x-0 -top-1 -bottom-1" />
+            <div className="absolute inset-x-0 -top-1.5 -bottom-1.5" />
+            {/* Cross-resize at intersection with vertical divider */}
+            {(showTerminal || showStructuredPane || isQueued) && (
+              <div
+                onMouseDown={(e) => { e.stopPropagation(); handleCrossResizeMouseDown(e); }}
+                className="absolute -left-3 -top-3 w-6 h-6 cursor-move z-10"
+              />
+            )}
           </div>
 
           {/* Bottom half: agent findings & summary */}
@@ -554,6 +668,21 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
               </button>
             </div>
           )}
+        </div>
+
+        {/* Bottom-right corner resize handle */}
+        <div
+          onMouseDown={handleModalResizeMouseDown}
+          className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-10 group"
+        >
+          <svg className="w-3 h-3 absolute bottom-0.5 right-0.5 text-zinc-600 group-hover:text-zinc-400 transition-colors" viewBox="0 0 12 12" fill="currentColor">
+            <circle cx="10" cy="10" r="1.2" />
+            <circle cx="6" cy="10" r="1.2" />
+            <circle cx="10" cy="6" r="1.2" />
+            <circle cx="2" cy="10" r="1.2" />
+            <circle cx="6" cy="6" r="1.2" />
+            <circle cx="10" cy="2" r="1.2" />
+          </svg>
         </div>
       </div>
 
