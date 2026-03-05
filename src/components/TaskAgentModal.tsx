@@ -66,6 +66,12 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
   const bottomPanelRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
+  const justDraggedRef = useRef(false);
+  const finishDrag = useCallback(() => {
+    isDraggingRef.current = false;
+    justDraggedRef.current = true;
+    requestAnimationFrame(() => { justDraggedRef.current = false; });
+  }, []);
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -81,7 +87,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
       setTopPanelPercent(Math.min(Math.max(pct, 15), 85));
     };
     const onMouseUp = () => {
-      isDraggingRef.current = false;
+      finishDrag();
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
@@ -106,7 +112,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
       setRightPanelPercent(Math.min(Math.max(pct, 20), 60));
     };
     const onMouseUp = () => {
-      isDraggingRef.current = false;
+      finishDrag();
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
@@ -138,6 +144,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
       setModalSize({ width: newW, height: newH });
     };
     const onMouseUp = () => {
+      finishDrag();
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
@@ -204,7 +211,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={onClose}
+      onClick={() => { if (!justDraggedRef.current) onClose(); }}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-none" />
