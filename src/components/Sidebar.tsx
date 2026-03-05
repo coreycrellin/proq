@@ -124,9 +124,8 @@ function ProjectMenu({ project, onDelete, onRename }: ProjectMenuProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault();
-            onRename(project);
+          onSelect={() => {
+            setTimeout(() => onRename(project), 0);
           }}
           className="gap-2"
         >
@@ -268,7 +267,7 @@ function SortableProject({
                   e.stopPropagation();
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="w-full text-sm font-medium leading-tight bg-bronze-100 dark:bg-zinc-900 border border-steel/50 rounded px-1.5 py-0.5 text-bronze-900 dark:text-zinc-100 outline-none focus:border-steel"
+                className="w-full text-sm font-medium leading-tight bg-bronze-100 dark:bg-zinc-900 border border-bronze-400/50 rounded px-1.5 py-0.5 text-bronze-900 dark:text-zinc-100 outline-none focus:border-bronze-500 dark:focus:border-bronze-400"
               />
             ) : (
               <div
