@@ -198,7 +198,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
         : 'text-bronze-500';
 
   return (
-    <header className="h-16 bg-surface-base flex items-center px-6 flex-shrink-0">
+    <header className="h-16 bg-bronze-300/20 dark:bg-zinc-900/20 flex items-center px-6 flex-shrink-0 border-b border-bronze-300 dark:border-zinc-800">
       <div className="flex-1 flex items-center min-w-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
