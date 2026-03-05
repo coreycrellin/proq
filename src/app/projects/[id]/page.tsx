@@ -450,8 +450,12 @@ export default function ProjectPage() {
       body: JSON.stringify({ title: '', description: '' }),
     });
     const newTask: Task = await res.json();
+    // Add to local state immediately so deleteTask can find it on discard
+    setTasksByProject((prev) => {
+      const cols = prev[projectId] || emptyColumns();
+      return { ...prev, [projectId]: { ...cols, todo: [newTask, ...cols.todo] } };
+    });
     setModalTask(newTask);
-    // SSE will pick up the new task
   };
 
   const handleBoardDragEnter = useCallback((e: DragEvent) => {
@@ -774,11 +778,12 @@ export default function ProjectPage() {
         <TaskDraft
           task={modalTask}
           isOpen={true}
-          onClose={async (isEmpty: boolean) => {
-            if (isEmpty) {
-              await deleteTask(modalTask.id);
-            }
+          onClose={(isEmpty: boolean) => {
+            const id = modalTask.id;
             setModalTask(null);
+            if (isEmpty) {
+              deleteTask(id);
+            }
           }}
           onSave={updateTask}
           onMoveToInProgress={async (taskId, currentData) => {
