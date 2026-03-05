@@ -29,6 +29,7 @@ import {
   PencilIcon,
   PanelLeftCloseIcon,
   SettingsIcon,
+  FolderOpenIcon,
 } from "lucide-react";
 import type { Project, Task, TaskStatus, TaskColumns } from "@/lib/types";
 import { useProjects } from "./ProjectsProvider";
@@ -121,16 +122,25 @@ function ProjectMenu({ project, onDelete, onRename }: ProjectMenuProps) {
           <MoreHorizontalIcon className="w-4 h-4" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-36">
+      <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault();
-            onRename(project);
+          onSelect={() => {
+            setTimeout(() => onRename(project), 0);
           }}
           className="gap-2"
         >
           <PencilIcon className="w-3.5 h-3.5" />
           Rename
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            fetch(`/api/projects/${project.id}/reveal`, { method: 'POST' });
+          }}
+          className="gap-2"
+        >
+          <FolderOpenIcon className="w-3.5 h-3.5" />
+          Show in Finder
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={(e) => {
@@ -198,11 +208,16 @@ function SortableProject({
   };
 
   // Focus the rename input when entering rename mode
+  // Use a timeout so the dropdown fully unmounts before we focus
+  const focusTimer = useRef<ReturnType<typeof setTimeout>>();
   React.useEffect(() => {
-    if (isRenaming && renameInputRef.current) {
-      renameInputRef.current.focus();
-      renameInputRef.current.select();
+    if (isRenaming) {
+      focusTimer.current = setTimeout(() => {
+        renameInputRef.current?.focus();
+        renameInputRef.current?.select();
+      }, 150);
     }
+    return () => clearTimeout(focusTimer.current);
   }, [isRenaming]);
 
   const router = useRouter();
@@ -257,7 +272,7 @@ function SortableProject({
                   e.stopPropagation();
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="w-full text-sm font-medium leading-tight bg-bronze-100 dark:bg-zinc-900 border border-steel/50 rounded px-1.5 py-0.5 text-bronze-900 dark:text-zinc-100 outline-none focus:border-steel"
+                className="w-full text-sm font-medium leading-tight bg-bronze-100 dark:bg-zinc-900 border border-bronze-400/50 rounded px-1.5 py-0.5 text-bronze-900 dark:text-zinc-100 outline-none focus:border-bronze-500 dark:focus:border-bronze-400"
               />
             ) : (
               <div
