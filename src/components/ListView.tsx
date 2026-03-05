@@ -26,6 +26,7 @@ import {
   ChevronDownIcon,
   Loader2Icon,
   ClockIcon,
+  Trash2Icon,
 } from 'lucide-react';
 import type { Task, TaskStatus, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { COLUMNS, AddTaskButton } from './KanbanBoard';
@@ -115,11 +116,13 @@ function SortableListRow({
   isSelected,
   col,
   onClick,
+  onDelete,
 }: {
   task: Task;
   isSelected: boolean;
   col: typeof COLUMNS[number] | undefined;
   onClick: (task: Task) => void;
+  onDelete?: (taskId: string) => void;
 }) {
   const {
     attributes,
@@ -145,16 +148,28 @@ function SortableListRow({
       style={style}
       {...listeners}
       {...attributes}
-      className={`cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
+      className={`group cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
     >
       <button
         onClick={() => onClick(task)}
-        className={`w-full text-left px-6 py-2.5 transition-colors ${
+        className={`relative w-full text-left px-6 py-2.5 transition-colors ${
           isSelected
             ? 'bg-bronze-200/60 dark:bg-zinc-800'
             : 'hover:bg-bronze-100/60 dark:hover:bg-zinc-900/60'
         }`}
       >
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(task.id);
+            }}
+            className="absolute top-2 right-2 p-1 rounded text-text-chrome hover:text-crimson hover:bg-surface-hover opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          >
+            <Trash2Icon className="w-3.5 h-3.5" />
+          </button>
+        )}
+
         {/* Title */}
         <div className={`text-sm leading-snug truncate ${
           task.title
@@ -514,7 +529,7 @@ export function ListView({
 
                   <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
                     {statusTasks.length === 0 && (
-                      <div className="mx-6 my-2 h-10 border border-dashed border-bronze-300/50 dark:border-zinc-800 rounded-md flex items-center justify-center">
+                      <div className="mx-6 my-2 h-14 border border-dashed border-bronze-300/50 dark:border-zinc-800 rounded-md flex items-center justify-center">
                         <span className="text-[10px] text-bronze-400 dark:text-zinc-700">Empty</span>
                       </div>
                     )}
@@ -526,6 +541,7 @@ export function ListView({
                         isSelected={task.id === selectedTaskId}
                         col={col}
                         onClick={handleRowClick}
+                        onDelete={onDeleteTask}
                       />
                     ))}
                   </SortableContext>
