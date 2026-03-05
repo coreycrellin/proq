@@ -358,14 +358,14 @@ export function KanbanBoard({
                         <DropdownMenuContent align="start" className="min-w-[140px]">
                           <DropdownMenuItem
                             onSelect={() => onExecutionModeChange('sequential')}
-                            className={`gap-2 text-xs ${executionMode === 'sequential' ? 'text-steel' : ''}`}
+                            className={`gap-2 text-xs ${executionMode === 'sequential' ? 'bg-zinc-700/50 text-zinc-200' : ''}`}
                           >
                             <ListOrderedIcon className="w-3.5 h-3.5" />
                             Sequential
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onSelect={() => onExecutionModeChange('parallel')}
-                            className={`gap-2 text-xs ${executionMode === 'parallel' ? 'text-steel' : ''}`}
+                            className={`gap-2 text-xs ${executionMode === 'parallel' ? 'bg-zinc-700/50 text-zinc-200' : ''}`}
                           >
                             <LayersIcon className="w-3.5 h-3.5" />
                             Parallel
