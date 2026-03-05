@@ -42,7 +42,7 @@ interface ListViewProps {
 const STATUS_ORDER: TaskStatus[] = ['todo', 'in-progress', 'verify', 'done'];
 
 const MASTER_WIDTH_KEY = 'proq-list-master-width';
-const DEFAULT_MASTER_WIDTH = 320;
+const DEFAULT_MASTER_WIDTH = 400;
 const MIN_MASTER_WIDTH = 200;
 const MAX_MASTER_WIDTH = 600;
 
