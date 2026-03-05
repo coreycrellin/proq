@@ -116,16 +116,6 @@ export function ListView({
     return col?.icon ?? null;
   };
 
-  const getAgentIndicator = (task: Task) => {
-    if (task.agentStatus === 'running' || task.agentStatus === 'starting') {
-      return <Loader2Icon className="w-3 h-3 text-steel animate-spin shrink-0" />;
-    }
-    if (task.agentStatus === 'queued') {
-      return <ClockIcon className="w-3 h-3 text-zinc-500 shrink-0" />;
-    }
-    return null;
-  };
-
   const handleRowClick = (task: Task) => {
     // For todo tasks, open the modal via onClickTask (same as kanban)
     if (task.status === 'todo') {
@@ -198,6 +188,9 @@ export function ListView({
               const isSelected = task.id === selectedTaskId;
               const prevTask = idx > 0 ? allTasks[idx - 1] : null;
               const showStatusDivider = prevTask && prevTask.status !== task.status;
+              const isRunning = task.agentStatus === 'running';
+              const isStarting = task.agentStatus === 'starting';
+              const isQueued = task.agentStatus === 'queued';
 
               return (
                 <React.Fragment key={task.id}>
@@ -206,21 +199,54 @@ export function ListView({
                   )}
                   <button
                     onClick={() => handleRowClick(task)}
-                    className={`w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors ${
+                    className={`w-full text-left px-3 py-2.5 transition-colors ${
                       isSelected
                         ? 'bg-bronze-200/60 dark:bg-zinc-800'
                         : 'hover:bg-bronze-100/60 dark:hover:bg-zinc-900/60'
                     }`}
                   >
-                    <span className="shrink-0">{getStatusIcon(task.status)}</span>
-                    <span className={`flex-1 text-xs truncate ${
+                    {/* Title */}
+                    <div className={`text-sm leading-snug truncate ${
                       task.title
-                        ? 'text-bronze-800 dark:text-zinc-300'
-                        : 'text-bronze-500 dark:text-zinc-600 italic'
+                        ? 'text-bronze-800 dark:text-zinc-200'
+                        : 'text-bronze-500 dark:text-zinc-500 italic'
                     }`}>
                       {task.title || task.description.slice(0, 60) || 'Untitled'}
-                    </span>
-                    {getAgentIndicator(task)}
+                    </div>
+
+                    {/* Description snippet */}
+                    {task.description && (
+                      <p className="text-xs text-bronze-600 dark:text-zinc-500 leading-relaxed mt-1 line-clamp-2">
+                        {task.title ? task.description : ''}
+                      </p>
+                    )}
+
+                    {/* Footer: status + agent indicator */}
+                    <div className="flex items-center gap-1.5 mt-2">
+                      {isQueued ? (
+                        <>
+                          <ClockIcon className="w-3 h-3 text-zinc-400" />
+                          <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">Queued</span>
+                        </>
+                      ) : isRunning ? (
+                        <>
+                          <Loader2Icon className="w-3 h-3 text-steel animate-spin" />
+                          <span className="text-[10px] text-steel font-medium uppercase tracking-wide">Agent working</span>
+                        </>
+                      ) : isStarting ? (
+                        <>
+                          <Loader2Icon className="w-3 h-3 text-zinc-400 animate-spin" />
+                          <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">Starting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="shrink-0">{getStatusIcon(task.status)}</span>
+                          <span className="text-[10px] text-bronze-500 dark:text-zinc-500 font-medium uppercase tracking-wide">
+                            {COLUMNS.find((c) => c.id === task.status)?.label}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </button>
                 </React.Fragment>
               );
