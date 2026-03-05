@@ -202,7 +202,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
       <div className="flex-1 flex items-center min-w-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1.5 ml-1 text-bronze-600 dark:text-bronze-600 hover:text-bronze-700 dark:hover:text-bronze-500 transition-colors">
+            <button className="flex items-center gap-1.5 ml-1 text-bronze-500 dark:text-bronze-500 hover:text-bronze-600 dark:hover:text-bronze-400 transition-colors">
               <h1 className="text-lg font-semibold leading-none truncate">
                 {project.name}
               </h1>
@@ -252,7 +252,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 className={`relative px-4 py-1.5 text-sm font-medium rounded-md z-10 ${
-                  isActive ? 'text-text-chrome-active' : 'text-bronze-600 dark:text-bronze-600 hover:text-bronze-700 dark:hover:text-bronze-500'
+                  isActive ? 'text-text-chrome-active' : 'text-bronze-500 dark:text-bronze-500 hover:text-bronze-600 dark:hover:text-bronze-400'
                 }`}
               >
                 {isActive && (
