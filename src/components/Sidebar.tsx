@@ -207,11 +207,20 @@ function SortableProject({
     opacity: isDragging ? 0.5 : undefined,
   };
 
+  // Track when we just entered rename mode to ignore the initial blur
+  const renamingJustStarted = useRef(false);
+
   // Focus the rename input when entering rename mode
   React.useEffect(() => {
     if (isRenaming && renameInputRef.current) {
-      renameInputRef.current.focus();
-      renameInputRef.current.select();
+      renamingJustStarted.current = true;
+      // Delay focus slightly so dropdown fully unmounts first
+      requestAnimationFrame(() => {
+        renameInputRef.current?.focus();
+        renameInputRef.current?.select();
+        // Clear the guard after a tick so subsequent blurs work normally
+        setTimeout(() => { renamingJustStarted.current = false; }, 100);
+      });
     }
   }, [isRenaming]);
 
@@ -261,7 +270,7 @@ function SortableProject({
                     onRenameCancel();
                   }
                 }}
-                onBlur={onRenameCancel}
+                onBlur={() => { if (!renamingJustStarted.current) onRenameCancel(); }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
