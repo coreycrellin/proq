@@ -21,11 +21,13 @@ interface AskQuestionBlockProps {
   hasResult: boolean;
   /** The auto-resolved result text, if any */
   resultText?: string;
+  /** Whether there are subsequent blocks after this question (meaning it's been addressed) */
+  isOld?: boolean;
   onAnswer: (answer: string) => void;
 }
 
-export function AskQuestionBlock({ questions, hasResult, resultText, onAnswer }: AskQuestionBlockProps) {
-  const answered = hasResult && resultText && !resultText.startsWith('{"answers"');
+export function AskQuestionBlock({ questions, hasResult, resultText, isOld, onAnswer }: AskQuestionBlockProps) {
+  const answered = isOld && hasResult;
 
   // Answered questions render as muted/gray; unanswered ones are gold/active
   if (answered) {

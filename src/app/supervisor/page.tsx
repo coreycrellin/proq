@@ -258,6 +258,7 @@ export default function SupervisorPage() {
                     questions={questions}
                     hasResult={!!item.result}
                     resultText={item.result?.output}
+                    isOld={blocks.slice(item.idx + 1).some(b => b.type === 'user')}
                     onAnswer={(answer) => {
                       sendMessage(answer);
                     }}
