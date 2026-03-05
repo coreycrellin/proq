@@ -25,7 +25,40 @@ interface AskQuestionBlockProps {
 }
 
 export function AskQuestionBlock({ questions, hasResult, resultText, onAnswer }: AskQuestionBlockProps) {
-  const autoResolved = hasResult && resultText && !resultText.startsWith('{"answers"');
+  const answered = hasResult && resultText && !resultText.startsWith('{"answers"');
+
+  // Answered questions render as muted/gray; unanswered ones are gold/active
+  if (answered) {
+    return (
+      <div className="my-2">
+        <div className="rounded-lg border border-zinc-700/50 bg-zinc-800/30 overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-700/30">
+            <MessageCircleQuestionIcon className="w-3.5 h-3.5 text-zinc-500" />
+            <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
+              Agent Question
+            </span>
+            <span className="ml-auto text-[10px] text-zinc-600 italic">
+              Answered below
+            </span>
+          </div>
+          <div className="p-3 space-y-2">
+            {questions.map((q, qi) => (
+              <div key={qi}>
+                {q.header && (
+                  <span className="text-[10px] font-medium text-zinc-600 uppercase tracking-wide">
+                    {q.header}
+                  </span>
+                )}
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  {q.question}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="my-2">
@@ -36,11 +69,9 @@ export function AskQuestionBlock({ questions, hasResult, resultText, onAnswer }:
           <span className="text-xs font-medium text-gold uppercase tracking-wide">
             Agent Question
           </span>
-          {autoResolved && (
-            <span className="ml-auto text-[10px] text-bronze-500 dark:text-zinc-500 italic">
-              Select an option or provide your own answer
-            </span>
-          )}
+          <span className="ml-auto text-[10px] text-bronze-500 dark:text-zinc-500 italic">
+            Select an option or provide your own answer
+          </span>
         </div>
 
         {/* Questions */}
