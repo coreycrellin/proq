@@ -57,7 +57,6 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
   const [dispatching, setDispatching] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showConflictModal, setShowConflictModal] = useState(false);
-  const [crossHovered, setCrossHovered] = useState(false);
   const canEditTitle = (task.status === 'verify' || task.status === 'done') && !!onUpdateTitle;
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [topPanelPercent, setTopPanelPercent] = useState(30);
@@ -366,7 +365,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
         {(showTerminal || showStructuredPane || isQueued) && (
           <div
             onMouseDown={handleHorizontalResizeMouseDown}
-            className={`shrink-0 w-px cursor-col-resize bg-bronze-300 dark:bg-zinc-800 hover:bg-bronze-400 dark:hover:bg-bronze-600 transition-colors relative ${crossHovered ? 'bg-bronze-400 dark:bg-bronze-600' : ''}`}
+            className="shrink-0 w-px cursor-col-resize bg-bronze-300 dark:bg-zinc-800 hover:bg-bronze-400 dark:hover:bg-bronze-600 transition-colors relative"
           >
             <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
           </div>
@@ -509,8 +508,6 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
             {(showTerminal || showStructuredPane || isQueued) && (
               <div
                 onMouseDown={(e) => { e.stopPropagation(); handleCrossResizeMouseDown(e); }}
-                onMouseEnter={() => setCrossHovered(true)}
-                onMouseLeave={() => setCrossHovered(false)}
                 className="absolute -left-3 -top-3 w-6 h-6 cursor-move z-10"
               />
             )}
