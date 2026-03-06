@@ -387,9 +387,9 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                           <DropdownMenuItem disabled className="text-xs text-text-tertiary">No commits found</DropdownMenuItem>
                         ) : (
                           behindCommits.map((c, i) => (
-                            <DropdownMenuItem key={i} className="text-xs gap-2 pointer-events-none">
+                            <DropdownMenuItem key={i} className="text-xs gap-2 cursor-default" title={c.message} onSelect={(e) => e.preventDefault()}>
                               <span className="font-mono text-text-chrome shrink-0">{c.hash}</span>
-                              <span className="truncate text-text-secondary" title={c.message}>{c.message}</span>
+                              <span className="truncate text-text-secondary">{c.message}</span>
                             </DropdownMenuItem>
                           ))
                         )}
@@ -419,9 +419,9 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                           <DropdownMenuItem disabled className="text-xs text-text-tertiary">No commits found</DropdownMenuItem>
                         ) : (
                           aheadCommits.map((c, i) => (
-                            <DropdownMenuItem key={i} className="text-xs gap-2 pointer-events-none">
+                            <DropdownMenuItem key={i} className="text-xs gap-2 cursor-default" title={c.message} onSelect={(e) => e.preventDefault()}>
                               <span className="font-mono text-text-chrome shrink-0">{c.hash}</span>
-                              <span className="truncate text-text-secondary" title={c.message}>{c.message}</span>
+                              <span className="truncate text-text-secondary">{c.message}</span>
                             </DropdownMenuItem>
                           ))
                         )}
