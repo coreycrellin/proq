@@ -295,11 +295,19 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80 max-h-72 overflow-hidden flex flex-col p-0">
-                  <div className="flex-shrink-0 py-1">
-                    <DropdownMenuLabel>{dirtyFiles?.length || 0} Uncommitted Changes</DropdownMenuLabel>
-                  </div>
-                  <DropdownMenuSeparator />
                   <div className="flex-1 min-h-0 overflow-y-auto">
+                    <div className="sticky top-0 z-10 bg-surface-modal border-b border-border-subtle/60 px-2 py-1.5 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-crimson">{dirtyFiles?.length || gitStatus.dirty} Uncommitted Changes</span>
+                      {onCommit && (
+                        <DropdownMenuItem
+                          onSelect={() => onCommit()}
+                          className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded text-crimson hover:bg-crimson/10 cursor-pointer h-auto"
+                        >
+                          Commit
+                          <GitCommitHorizontalIcon className="w-3 h-3" />
+                        </DropdownMenuItem>
+                      )}
+                    </div>
                     {dirtyFiles === null ? (
                       <DropdownMenuItem disabled className="text-xs text-text-tertiary justify-center">
                         <Loader2Icon className="w-3 h-3 animate-spin mr-2" /> Loading...
@@ -316,17 +324,11 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                     )}
                   </div>
                   <DropdownMenuSeparator />
-                  <div className="flex-shrink-0 p-1 flex gap-1">
-                    <DropdownMenuItem className="text-xs justify-center text-text-chrome flex-1" onSelect={openDiffModal}>
+                  <div className="flex-shrink-0 p-1">
+                    <DropdownMenuItem className="text-xs justify-center text-text-chrome" onSelect={openDiffModal}>
                       <DiffIcon className="!size-3" />
                       Diff
                     </DropdownMenuItem>
-                    {onCommit && (
-                      <DropdownMenuItem className="text-xs justify-center text-text-chrome flex-1" onSelect={onCommit}>
-                        <GitCommitHorizontalIcon className="!size-3" />
-                        Commit
-                      </DropdownMenuItem>
-                    )}
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -363,7 +365,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                     {/* Behind commits */}
                     {behind > 0 && (
                       <>
-                        <div className="sticky top-0 z-10 bg-surface-secondary border-b border-border-subtle/60 px-2 py-1.5 flex items-center justify-between">
+                        <div className="sticky top-0 z-10 bg-surface-modal border-b border-border-subtle/60 px-2 py-1.5 flex items-center justify-between">
                           <span className="text-xs font-semibold text-crimson">{behind} Commits Behind</span>
                           {onPull && (
                             <button
@@ -395,7 +397,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                     {/* Ahead commits */}
                     {ahead > 0 && (
                       <>
-                        <div className="sticky top-0 z-10 bg-surface-secondary border-b border-border-subtle/60 px-2 py-1.5 flex items-center justify-between">
+                        <div className="sticky top-0 z-10 bg-surface-modal border-b border-border-subtle/60 px-2 py-1.5 flex items-center justify-between">
                           <span className="text-xs font-semibold text-patina">{ahead} Commits Ahead</span>
                           {onPush && (
                             <button

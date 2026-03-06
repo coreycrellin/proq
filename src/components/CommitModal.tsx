@@ -19,7 +19,7 @@ export function CommitModal({ isOpen, projectId, onClose, onCommitted }: CommitM
   const [error, setError] = useState<string | null>(null);
   const [userTouchedTitle, setUserTouchedTitle] = useState(false);
   const [userTouchedDescription, setUserTouchedDescription] = useState(false);
-  const titleRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const generate = useCallback(async () => {
@@ -47,6 +47,12 @@ export function CommitModal({ isOpen, projectId, onClose, onCommitted }: CommitM
       if (!ctrl.signal.aborted) setGenerating(false);
     }
   }, [projectId, userTouchedTitle, userTouchedDescription]);
+
+  // Auto-resize title textarea when content changes (e.g. from generation)
+  useEffect(() => {
+    const el = titleRef.current;
+    if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+  }, [title]);
 
   // Start generation when modal opens
   useEffect(() => {
@@ -125,18 +131,22 @@ export function CommitModal({ isOpen, projectId, onClose, onCommitted }: CommitM
     <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-lg flex flex-col">
       {/* Title */}
       <div className="p-6 pb-0">
-        <input
+        <textarea
           ref={titleRef}
-          type="text"
+          rows={1}
           value={title}
-          onChange={(e) => handleTitleChange(e.target.value)}
+          onChange={(e) => {
+            handleTitleChange(e.target.value);
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+          }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               handleCommit();
             }
           }}
-          className="w-full bg-transparent text-base font-semibold text-text-primary placeholder-text-placeholder focus:outline-none pr-8"
+          className="w-full bg-transparent text-base font-semibold text-text-primary placeholder-text-placeholder focus:outline-none focus-visible:ring-0 pr-8 resize-none overflow-hidden leading-snug"
           placeholder={generating ? 'Generating commit message...' : 'Commit title'}
         />
       </div>

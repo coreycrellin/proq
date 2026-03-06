@@ -195,7 +195,7 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
   };
 
   return (
-    <div ref={containerRef} className={`flex flex-row h-full overflow-hidden ${className || ''}`}>
+    <div ref={containerRef} className={`flex flex-row h-full w-full overflow-hidden ${className || ''}`}>
       {/* Left panel: terminal or queued state */}
       <div className={`flex-1 min-h-0 flex flex-col${showStructuredPane ? ' bg-surface-deep' : ''}`}>
         {/* Worktree status — only in parallel mode */}
