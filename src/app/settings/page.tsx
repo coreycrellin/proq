@@ -138,10 +138,10 @@ export default function SettingsPage() {
       {/* Top bar */}
       <header className="h-16 bg-surface-base flex items-center px-6 flex-shrink-0">
         <div className="flex flex-col justify-center">
-          <h1 className="text-lg font-semibold text-bronze-900 dark:text-text-primary">
+          <h1 className="text-lg font-semibold text-text-primary">
             Settings
           </h1>
-          <p className="text-xs text-text-tertiary dark:text-text-secondary">
+          <p className="text-xs text-text-secondary">
             Configure your proq instance
           </p>
         </div>
@@ -157,8 +157,8 @@ export default function SettingsPage() {
               onClick={() => scrollToSection(s.id)}
               className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors relative ${
                 activeSection === s.id
-                  ? "text-bronze-900 dark:text-text-primary bg-bronze-300 dark:bg-surface-hover/50"
-                  : "text-text-tertiary dark:text-text-secondary hover:text-bronze-800 dark:hover:text-text-primary hover:bg-bronze-300/60 dark:hover:bg-surface-hover/40"
+                  ? "text-text-primary bg-surface-hover/50"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface-hover/40"
               }`}
             >
               {activeSection === s.id && (
@@ -184,21 +184,21 @@ export default function SettingsPage() {
                 icon={<InfoIcon className="w-4 h-4" />}
                 label="About"
               />
-              <p className="text-sm text-bronze-700 dark:text-text-secondary leading-relaxed mb-2">
+              <p className="text-sm text-text-secondary leading-relaxed mb-2">
                 A task board that runs your coding agents. You write tasks,
                 agents do the work, you review and merge. proq is a kanban
                 board that launches CLI coding agents in tmux, one per task,
                 against your actual codebase.
               </p>
-              <p className="text-sm text-bronze-700 dark:text-text-secondary leading-relaxed mb-4">
+              <p className="text-sm text-text-secondary leading-relaxed mb-4">
                 Internally it&apos;s a process manager — local, self-contained,
                 no external services. It works with whatever agent config, MCPs,
                 and subagents you already have.
               </p>
-              <p className="text-xs text-text-tertiary dark:text-text-tertiary mb-1">
+              <p className="text-xs text-text-tertiary mb-1">
                 This is version 0.1.0
               </p>
-              <p className="text-xs text-text-tertiary dark:text-text-tertiary">
+              <p className="text-xs text-text-tertiary">
                 Vibed with ♥ by{" "}
                 <a
                   href="https://brian.online"
@@ -274,7 +274,7 @@ export default function SettingsPage() {
                       Claude Code
                     </div>
                     <Tooltip text="Currently built for Claude Code. Codex/OpenCode coming soon.">
-                      <CircleHelpIcon className="w-4 h-4 text-text-secondary dark:text-text-tertiary" />
+                      <CircleHelpIcon className="w-4 h-4 text-text-tertiary" />
                     </Tooltip>
                   </div>
                 </Field>
@@ -306,7 +306,7 @@ export default function SettingsPage() {
                         }
                       }}
                       disabled={detectingBin}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm bg-bronze-200 dark:bg-surface-hover border border-border-default text-bronze-800 dark:text-text-primary hover:bg-bronze-300 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm bg-surface-hover border border-border-default text-text-primary hover:bg-border-strong transition-colors disabled:opacity-50"
                     >
                       {detectingBin ? (
                         <LoaderIcon className="w-3.5 h-3.5 animate-spin" />
@@ -385,7 +385,7 @@ export default function SettingsPage() {
                 icon={<BellIcon className="w-4 h-4" />}
                 label="Notifications"
               />
-              <p className="text-xs text-text-secondary dark:text-text-tertiary italic mb-4">
+              <p className="text-xs text-text-tertiary italic mb-4">
                 Notifications coming soon.
               </p>
               <div className="space-y-4 opacity-50 pointer-events-none select-none">
@@ -437,11 +437,11 @@ export default function SettingsPage() {
 // ── Shared styles ──
 
 const inputClass =
-  "w-full bg-bronze-100 dark:bg-surface-base border border-border-default rounded-md px-3 py-2 text-sm text-bronze-900 dark:text-text-primary focus:outline-none focus:border-steel";
+  "w-full bg-surface-base border border-border-default rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-steel";
 
 const inputClassMono =
   inputClass +
-  " font-mono placeholder:text-text-secondary dark:placeholder:text-text-placeholder";
+  " font-mono placeholder:text-text-placeholder";
 
 // ── Reusable components ──
 
@@ -453,7 +453,7 @@ function SectionHeading({
   label: string;
 }) {
   return (
-    <h2 className="text-base font-semibold text-bronze-800 dark:text-text-primary uppercase tracking-wider mb-1 flex items-center gap-2">
+    <h2 className="text-base font-semibold text-text-primary uppercase tracking-wider mb-1 flex items-center gap-2">
       {icon}
       {label}
     </h2>
@@ -471,11 +471,11 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-bronze-700 dark:text-text-secondary mb-1">
+      <label className="block text-sm font-medium text-text-secondary mb-1">
         {label}
       </label>
       {hint && (
-        <p className="text-xs text-text-secondary dark:text-text-tertiary mb-2">{hint}</p>
+        <p className="text-xs text-text-tertiary mb-2">{hint}</p>
       )}
       {children}
     </div>

@@ -194,7 +194,7 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
 
   return (
     <div
-      className={`w-full flex flex-col bg-bronze-100 dark:bg-surface-deep flex-shrink-0 relative transition-colors ${isDragOver ? 'ring-1 ring-bronze-500/40' : ''}`}
+      className={`w-full flex flex-col bg-surface-deep flex-shrink-0 relative transition-colors ${isDragOver ? 'ring-1 ring-bronze-500/40' : ''}`}
       style={{ minHeight: 0, ...style }}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
@@ -224,16 +224,16 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
               </div>
             ) : (
               <div className="flex items-baseline gap-2">
-                <div className="inline-flex flex-col bg-bronze-200/60 dark:bg-surface-topbar rounded px-2.5 py-1">
+                <div className="inline-flex flex-col bg-surface-topbar rounded px-2.5 py-1">
                   <div className="flex items-baseline gap-2">
                     <span className="text-xs font-bold text-bronze-500 shrink-0">{'\u276F'}</span>
-                    <p className="text-sm leading-relaxed text-bronze-800 dark:text-text-primary">{msg.message}</p>
+                    <p className="text-sm leading-relaxed text-text-primary">{msg.message}</p>
                   </div>
                   {msg.attachments && msg.attachments.length > 0 && (
                     <AttachmentPreview attachments={msg.attachments} />
                   )}
                 </div>
-                <span className="text-[10px] text-bronze-500 dark:text-text-placeholder ml-auto opacity-0 group-hover:opacity-100 shrink-0">
+                <span className="text-[10px] text-text-placeholder ml-auto opacity-0 group-hover:opacity-100 shrink-0">
                   {formatTimestamp(msg.timestamp)}
                 </span>
               </div>
@@ -279,7 +279,7 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
             return isImage ? (
               <div
                 key={att.id}
-                className="relative group rounded-md overflow-hidden border border-bronze-400/50 dark:border-border-default/50 bg-bronze-200/60 dark:bg-surface-hover/60"
+                className="relative group rounded-md overflow-hidden border border-border-default/50 bg-surface-hover/60"
               >
                 <img
                   src={url}
@@ -299,16 +299,16 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
             ) : (
               <div
                 key={att.id}
-                className="flex items-center gap-1.5 bg-bronze-200/60 dark:bg-surface-hover/60 border border-bronze-400/50 dark:border-border-default/50 rounded-md px-2.5 py-2 group"
+                className="flex items-center gap-1.5 bg-surface-hover/60 border border-border-default/50 rounded-md px-2.5 py-2 group"
               >
                 <FileIcon className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] text-zinc-700 dark:text-text-secondary truncate max-w-[120px] leading-tight">{att.name}</span>
-                  <span className="text-[9px] text-zinc-600 leading-tight">{formatSize(att.size)}</span>
+                  <span className="text-[10px] text-text-secondary truncate max-w-[120px] leading-tight">{att.name}</span>
+                  <span className="text-[9px] text-text-placeholder leading-tight">{formatSize(att.size)}</span>
                 </div>
                 <button
                   onClick={() => removeAttachment(att.id)}
-                  className="text-zinc-600 hover:text-crimson transition-colors ml-0.5 opacity-0 group-hover:opacity-100"
+                  className="text-text-placeholder hover:text-crimson transition-colors ml-0.5 opacity-0 group-hover:opacity-100"
                 >
                   <XIcon className="w-3 h-3" />
                 </button>
@@ -319,7 +319,7 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
       )}
 
       {/* Input */}
-      <div className="px-6 py-5 border-t border-bronze-300/60 dark:border-border-subtle/60 bg-bronze-200/20 dark:bg-surface-deep/50">
+      <div className="px-6 py-5 border-t border-border-subtle/60 bg-surface-deep/50">
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
           <span className="text-bronze-500 text-sm font-bold select-none">{'\u276F'}</span>
           <input
@@ -331,12 +331,12 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
             }}
             placeholder={isLoading ? "waiting for response..." : "message..."}
             disabled={isLoading}
-            className="flex-1 bg-transparent text-sm text-bronze-800 dark:text-text-primary placeholder:text-bronze-500 dark:placeholder:text-text-placeholder focus:outline-none caret-bronze-500 disabled:opacity-50"
+            className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none caret-bronze-500 disabled:opacity-50"
           />
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="text-zinc-400 dark:text-text-placeholder hover:text-bronze-500 dark:hover:text-bronze-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="text-text-placeholder hover:text-bronze-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             disabled={isLoading}
             title="Attach file"
           >
@@ -345,7 +345,7 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
           <button
             type="submit"
             disabled={(!inputValue.trim() && attachments.length === 0) || isLoading}
-            className="text-zinc-400 dark:text-text-placeholder hover:text-zinc-600 dark:hover:text-zinc-400 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="text-text-placeholder hover:text-text-secondary disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <CornerDownLeftIcon className="w-3.5 h-3.5" />
           </button>

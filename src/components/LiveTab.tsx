@@ -76,11 +76,11 @@ export function LiveTab({ project }: LiveTabProps) {
 
   if (!project.serverUrl) {
     return (
-      <div className="flex-1 h-full flex flex-col items-center justify-center bg-bronze-100 dark:bg-surface-deep text-text-tertiary dark:text-text-secondary p-8">
-        <div className="w-16 h-16 rounded-2xl bg-bronze-200 dark:bg-surface-base flex items-center justify-center mb-6 border border-bronze-300 dark:border-border-default">
-          <MonitorIcon className="w-8 h-8 text-text-secondary dark:text-text-placeholder" />
+      <div className="flex-1 h-full flex flex-col items-center justify-center bg-surface-deep text-text-secondary p-8">
+        <div className="w-16 h-16 rounded-2xl bg-surface-base flex items-center justify-center mb-6 border border-border-default">
+          <MonitorIcon className="w-8 h-8 text-text-placeholder" />
         </div>
-        <h3 className="text-lg font-medium text-bronze-800 dark:text-text-primary mb-2">
+        <h3 className="text-lg font-medium text-text-primary mb-2">
           No preview configured
         </h3>
         <p className="text-sm text-text-tertiary max-w-md text-center mb-8">
@@ -94,11 +94,11 @@ export function LiveTab({ project }: LiveTabProps) {
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
-            className="flex-1 bg-bronze-200 dark:bg-surface-base border border-bronze-300 dark:border-border-default rounded-md px-3 py-2 text-sm text-bronze-800 dark:text-text-primary placeholder:text-text-secondary dark:placeholder:text-text-placeholder focus:outline-none focus:ring-1 focus:ring-steel/50"
+            className="flex-1 bg-surface-base border border-border-default rounded-md px-3 py-2 text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-1 focus:ring-steel/50"
           />
           <button
             onClick={handleConnect}
-            className="bg-surface-base dark:bg-text-primary text-white dark:text-surface-base px-4 py-2 rounded-md text-sm font-medium hover:bg-surface-hover dark:hover:bg-text-primary"
+            className="bg-bronze-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 rounded-md text-sm font-medium hover:bg-bronze-800 dark:hover:bg-zinc-200"
           >
             Connect
           </button>
@@ -110,8 +110,8 @@ export function LiveTab({ project }: LiveTabProps) {
   const isDevice = viewport !== 'desktop';
 
   return (
-    <div className="flex-1 h-full flex flex-col bg-bronze-100 dark:bg-surface-deep">
-      <div className="h-10 bg-bronze-200 dark:bg-surface-base border-b border-bronze-300 dark:border-border-default flex items-center px-4 space-x-4">
+    <div className="flex-1 h-full flex flex-col bg-surface-deep">
+      <div className="h-10 bg-surface-base border-b border-border-default flex items-center px-4 space-x-4">
         <div className="flex space-x-1.5">
           <div className="w-3 h-3 rounded-full bg-crimson/20 border border-crimson/50" />
           <div className="w-3 h-3 rounded-full bg-gold/20 border border-gold/50" />
@@ -121,11 +121,11 @@ export function LiveTab({ project }: LiveTabProps) {
           <button
             onClick={handleRefresh}
             title="Refresh"
-            className="p-1.5 rounded text-text-secondary dark:text-text-placeholder hover:text-text-placeholder dark:hover:text-text-secondary hover:bg-bronze-50 dark:hover:bg-surface-hover transition-colors"
+            className="p-1.5 rounded text-text-placeholder hover:text-text-secondary hover:bg-surface-hover transition-colors"
           >
             <RotateCwIcon className="w-3.5 h-3.5" />
           </button>
-          <div className="bg-bronze-50 dark:bg-surface-deep border border-bronze-300 dark:border-border-default rounded px-3 py-1 text-xs text-text-tertiary dark:text-text-secondary flex items-center space-x-2 min-w-[300px]">
+          <div className="bg-surface-deep border border-border-default rounded px-3 py-1 text-xs text-text-secondary flex items-center space-x-2 min-w-[300px]">
             <GlobeIcon className="w-3 h-3 shrink-0" />
             <input
               type="text"
@@ -143,7 +143,7 @@ export function LiveTab({ project }: LiveTabProps) {
                   await refreshProjects();
                 }
               }}
-              className="flex-1 bg-transparent text-xs text-text-tertiary dark:text-text-secondary focus:text-text-primary dark:focus:text-text-primary outline-none"
+              className="flex-1 bg-transparent text-xs text-text-secondary focus:text-text-primary outline-none"
             />
           </div>
         </div>
@@ -159,8 +159,8 @@ export function LiveTab({ project }: LiveTabProps) {
               title={label}
               className={`p-1.5 rounded transition-colors ${
                 viewport === key
-                  ? 'bg-bronze-50 dark:bg-surface-hover text-text-primary dark:text-text-primary'
-                  : 'text-text-secondary dark:text-text-placeholder hover:text-text-placeholder dark:hover:text-text-secondary'
+                  ? 'bg-surface-hover text-text-primary'
+                  : 'text-text-placeholder hover:text-text-secondary'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />

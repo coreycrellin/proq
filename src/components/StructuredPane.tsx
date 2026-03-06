@@ -323,7 +323,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
 
   return (
     <div
-      className="flex-1 flex flex-col min-h-0 bg-bronze-50 dark:bg-surface-deep relative"
+      className="flex-1 flex flex-col min-h-0 bg-surface-deep relative"
       onDrop={handleDrop}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -332,7 +332,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
       {/* Drop overlay */}
       {isDragOver && (
         <div className="absolute inset-0 bg-bronze-500/25 dark:bg-bronze-500/20 border-2 border-bronze-500/50 flex items-center justify-center pointer-events-none z-20 rounded-md m-1">
-          <div className="text-sm text-text-secondary dark:text-text-secondary font-medium bg-bronze-300 dark:bg-bronze-800 border border-bronze-400 dark:border-bronze-700 px-4 py-2 rounded-md shadow-sm">Drop files here</div>
+          <div className="text-sm text-text-secondary font-medium bg-bronze-300 dark:bg-bronze-800 border border-bronze-400 dark:border-bronze-700 px-4 py-2 rounded-md shadow-sm">Drop files here</div>
         </div>
       )}
 
@@ -346,7 +346,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
         >
           {/* Starting session placeholder — shown before any blocks arrive */}
           {blocks.length === 0 && !sessionDone && (
-            <div className="flex items-center gap-2 py-2 text-xs text-bronze-500 dark:text-text-tertiary">
+            <div className="flex items-center gap-2 py-2 text-xs text-text-tertiary">
               <Loader2Icon className="w-3.5 h-3.5 text-steel animate-spin" />
               <span>Starting session...</span>
             </div>
@@ -440,7 +440,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
                 );
               case 'stream_delta':
                 return (
-                  <span key={idx} className="text-sm text-bronze-800 dark:text-text-secondary">
+                  <span key={idx} className="text-sm text-text-secondary">
                     {block.text}
                   </span>
                 );
@@ -461,7 +461,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
         {userScrolledUp && (
           <button
             onClick={jumpToBottom}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-3 py-1.5 text-[10px] font-medium text-bronze-600 dark:text-text-secondary bg-bronze-200 dark:bg-surface-hover border border-bronze-400 dark:border-border-strong rounded-full shadow-lg hover:bg-bronze-300 dark:hover:bg-border-strong transition-colors z-10"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-3 py-1.5 text-[10px] font-medium text-text-secondary bg-surface-hover border border-border-strong rounded-full shadow-lg hover:bg-border-strong transition-colors z-10"
           >
             <ArrowDownIcon className="w-3 h-3" />
             Jump to bottom
@@ -472,11 +472,11 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
       {/* Input area */}
       <div className="shrink-0 px-3 py-2.5">
         {taskStatus === 'done' ? (
-          <div className="flex items-center justify-between rounded-xl border border-bronze-300 dark:border-border-strong bg-bronze-50 dark:bg-surface-detail px-4 py-3">
-            <span className="text-xs text-bronze-500 dark:text-text-tertiary">This task is read-only. Move back to Verify to resume editing.</span>
+          <div className="flex items-center justify-between rounded-xl border border-border-strong bg-surface-detail px-4 py-3">
+            <span className="text-xs text-text-tertiary">This task is read-only. Move back to Verify to resume editing.</span>
             <button
               onClick={() => onTaskStatusChange?.('verify')}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-bronze-700 dark:text-text-secondary bg-bronze-200/60 dark:bg-surface-hover border border-bronze-400 dark:border-border-strong rounded-lg hover:bg-bronze-300 dark:hover:bg-border-strong transition-colors"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface-hover border border-border-strong rounded-lg hover:bg-border-strong transition-colors"
             >
               <RotateCcwIcon className="w-3 h-3" />
               Resume editing
@@ -484,7 +484,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
           </div>
         ) : (
         <>
-        <div className="rounded-xl border border-bronze-300 dark:border-border-strong bg-bronze-50 dark:bg-surface-detail focus-within:border-bronze-400 dark:focus-within:border-bronze-600 transition-colors overflow-hidden">
+        <div className="rounded-xl border border-border-strong bg-surface-detail focus-within:border-bronze-600 transition-colors overflow-hidden">
           {/* Attachment previews inside container */}
           {attachments.length > 0 && (
             <div className="flex flex-wrap gap-2 px-3 pt-3">
@@ -494,7 +494,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
                 return isImage ? (
                   <div
                     key={att.id}
-                    className="relative group rounded-lg overflow-hidden border border-bronze-400/50 dark:border-border-strong/50 bg-bronze-200/60 dark:bg-surface-hover/60"
+                    className="relative group rounded-lg overflow-hidden border border-border-strong/50 bg-surface-hover/60"
                   >
                     <img
                       src={url}
@@ -515,11 +515,11 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
                 ) : (
                   <div
                     key={att.id}
-                    className="flex items-center gap-1.5 bg-bronze-200/60 dark:bg-surface-hover/60 border border-bronze-400/50 dark:border-border-strong/50 rounded-lg px-2.5 py-2 group"
+                    className="flex items-center gap-1.5 bg-surface-hover/60 border border-border-strong/50 rounded-lg px-2.5 py-2 group"
                   >
                     <FileIcon className="w-3.5 h-3.5 text-text-tertiary shrink-0" />
                     <div className="flex flex-col min-w-0">
-                      <span className="text-[10px] text-text-secondary dark:text-text-secondary truncate max-w-[120px] leading-tight">{att.name}</span>
+                      <span className="text-[10px] text-text-secondary truncate max-w-[120px] leading-tight">{att.name}</span>
                       <span className="text-[9px] text-text-placeholder leading-tight">{formatSize(att.size)}</span>
                     </div>
                     <button
@@ -543,7 +543,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
             placeholder="Send a message..."
             rows={1}
             style={{ height: '36px' }}
-            className="w-full min-h-[36px] max-h-[160px] resize-none overflow-hidden bg-transparent px-3 pt-3 pb-2 text-sm leading-[20px] text-bronze-800 dark:text-text-secondary placeholder:text-bronze-400 dark:placeholder:text-text-placeholder focus:outline-none"
+            className="w-full min-h-[36px] max-h-[160px] resize-none overflow-hidden bg-transparent px-3 pt-3 pb-2 text-sm leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none"
           />
 
           {/* Bottom bar: attach left, send right */}
@@ -551,7 +551,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-bronze-500 dark:text-text-tertiary hover:text-bronze-600 dark:hover:text-bronze-400 hover:bg-bronze-200/60 dark:hover:bg-surface-hover transition-colors"
+              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-text-tertiary hover:text-bronze-400 hover:bg-surface-hover transition-colors"
               title="Attach file"
             >
               <PaperclipIcon className="w-4 h-4" />
@@ -568,7 +568,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
               <button
                 onClick={handleSend}
                 disabled={!inputValue.trim() && attachments.length === 0}
-                className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${inputValue.trim() || attachments.length > 0 ? 'text-bronze-600 dark:text-bronze-500 bg-bronze-200/60 dark:bg-surface-hover' : 'text-bronze-500 dark:text-text-tertiary disabled:opacity-30'}`}
+                className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${inputValue.trim() || attachments.length > 0 ? 'text-bronze-600 dark:text-bronze-500 bg-bronze-200/60 dark:bg-surface-hover' : 'text-text-tertiary disabled:opacity-30'}`}
                 title="Send message"
               >
                 <SendIcon className="w-4 h-4" />

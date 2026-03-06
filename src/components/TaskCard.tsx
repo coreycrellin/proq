@@ -77,7 +77,7 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDel
           ? 'border-zinc-500/30'
           : 'border-border-default'}
         ${flash ? 'ring-1 ring-gold/50 shadow-[0_0_12px_rgba(200,170,80,0.2)]' : ''}
-        ${isDragOverlay ? 'ring-1 ring-steel-dark shadow-lg shadow-black/20 dark:shadow-black/40' : `hover:bg-bronze-200/60 dark:hover:bg-surface-hover/50 cursor-pointer ${isRunning ? '' : 'hover:border-border-hover'}`}
+        ${isDragOverlay ? 'ring-1 ring-steel-dark shadow-lg shadow-black/30' : `hover:bg-surface-hover/50 cursor-pointer ${isRunning ? '' : 'hover:border-border-hover'}`}
         transition-shadow duration-700
       `}
       onClick={() => !isDragOverlay && onClick?.(task)}
@@ -113,14 +113,14 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDel
             />
           ) : task.title ? (
             <h4
-              className={`text-sm text-bronze-800 dark:text-text-primary leading-snug font-normal ${canEditTitle ? 'cursor-text hover:border-b hover:border-zinc-600' : ''}`}
+              className={`text-sm text-text-primary leading-snug font-normal ${canEditTitle ? 'cursor-text hover:border-b hover:border-zinc-600' : ''}`}
               onPointerDown={canEditTitle ? (e) => e.stopPropagation() : undefined}
               onClick={canEditTitle ? (e) => { e.stopPropagation(); setEditing(true); } : undefined}
             >
               {task.title}
             </h4>
           ) : (
-            <p className="text-sm text-bronze-800 dark:text-text-primary leading-snug font-normal line-clamp-2">
+            <p className="text-sm text-text-primary leading-snug font-normal line-clamp-2">
               {task.description}
             </p>
           )}
@@ -173,7 +173,7 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDel
           ) : (
             <span />
           )}
-          <span className="text-[10px] text-text-secondary dark:text-text-tertiary font-mono">
+          <span className="text-[10px] text-text-tertiary font-mono">
             {task.id.slice(0, 8)}
           </span>
         </div>

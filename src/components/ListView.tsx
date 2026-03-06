@@ -102,7 +102,7 @@ function DroppableSection({
         isOver
           ? isInProgress
             ? 'bg-steel/5 ring-1 ring-steel/20'
-            : 'bg-bronze-200/30 dark:bg-surface-hover/40 ring-1 ring-bronze-400/20 dark:ring-zinc-600/30'
+            : 'bg-surface-hover/40 ring-1 ring-zinc-600/30'
           : ''
       }`}
     >
@@ -154,8 +154,8 @@ function SortableListRow({
         onClick={() => onClick(task)}
         className={`relative w-full text-left px-6 py-2.5 transition-colors ${
           isSelected
-            ? 'bg-bronze-200/60 dark:bg-surface-selected'
-            : 'hover:bg-bronze-100/60 dark:hover:bg-surface-hover/40'
+            ? 'bg-surface-selected'
+            : 'hover:bg-surface-hover/40'
         }`}
       >
         {onDelete && (
@@ -181,15 +181,15 @@ function SortableListRow({
         {/* Title */}
         <div className={`text-sm leading-snug truncate ${
           task.title
-            ? 'text-bronze-800 dark:text-text-primary'
-            : 'text-bronze-500 dark:text-text-tertiary italic'
+            ? 'text-text-primary'
+            : 'text-text-tertiary italic'
         }`}>
           {task.title || task.description.slice(0, 60) || 'Untitled'}
         </div>
 
         {/* Description snippet */}
         {task.title && task.description && (
-          <p className="text-xs text-bronze-600 dark:text-text-tertiary leading-relaxed mt-1 line-clamp-2">
+          <p className="text-xs text-text-tertiary leading-relaxed mt-1 line-clamp-2">
             {task.description}
           </p>
         )}
@@ -214,12 +214,12 @@ function SortableListRow({
           ) : (
             <div className="flex items-center gap-1.5">
               {col?.icon}
-              <span className="text-[10px] text-bronze-500 dark:text-text-tertiary font-medium uppercase tracking-wide">
+              <span className="text-[10px] text-text-tertiary font-medium uppercase tracking-wide">
                 {col?.label}
               </span>
             </div>
           )}
-          <span className="ml-auto text-[10px] text-bronze-400 dark:text-text-tertiary font-mono">
+          <span className="ml-auto text-[10px] text-text-tertiary font-mono">
             {task.id.slice(0, 8)}
           </span>
         </div>
@@ -457,9 +457,9 @@ export function ListView({
   return (
     <div className="flex-1 h-full flex overflow-hidden bg-surface-base">
       {/* Master panel */}
-      <div data-master-panel className="shrink-0 flex flex-col border-r border-bronze-300 dark:border-border-default bg-bronze-100/50 dark:bg-surface-detail" style={{ width: masterWidth }}>
+      <div data-master-panel className="shrink-0 flex flex-col border-r border-border-default bg-surface-detail" style={{ width: masterWidth }}>
         {/* Master header */}
-        <div className="shrink-0 h-10 flex items-center gap-2 px-6 border-b border-bronze-300 dark:border-border-default bg-bronze-100/50 dark:bg-surface-detail">
+        <div className="shrink-0 h-10 flex items-center gap-2 px-6 border-b border-border-default bg-surface-detail">
           {onExecutionModeChange && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -522,23 +522,23 @@ export function ListView({
                 <DroppableSection id={status} isOver={isOver}>
                   {/* Section header — always shown */}
                   <div className="flex items-center gap-2 mx-6 my-2 py-1">
-                    <div className="flex-1 h-px bg-bronze-300/40 dark:bg-border-default/60" />
+                    <div className="flex-1 h-px bg-border-default/60" />
                     <div className="flex items-center gap-1.5">
                       {col?.icon}
-                      <span className="text-[10px] text-bronze-500 dark:text-text-tertiary font-medium uppercase tracking-wide">
+                      <span className="text-[10px] text-text-tertiary font-medium uppercase tracking-wide">
                         {col?.label}
                       </span>
-                      <span className="text-[10px] text-bronze-400 dark:text-text-placeholder font-mono">
+                      <span className="text-[10px] text-text-placeholder font-mono">
                         {statusTasks.length}
                       </span>
                     </div>
-                    <div className="flex-1 h-px bg-bronze-300/40 dark:bg-border-default/60" />
+                    <div className="flex-1 h-px bg-border-default/60" />
                   </div>
 
                   <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
                     {statusTasks.length === 0 && (
-                      <div className="mx-6 my-2 h-14 border border-dashed border-bronze-300/50 dark:border-border-default rounded-md flex items-center justify-center">
-                        <span className="text-[10px] text-bronze-400 dark:text-text-placeholder">Empty</span>
+                      <div className="mx-6 my-2 h-14 border border-dashed border-border-default rounded-md flex items-center justify-center">
+                        <span className="text-[10px] text-text-placeholder">Empty</span>
                       </div>
                     )}
 
@@ -579,7 +579,7 @@ export function ListView({
       {/* Resize handle */}
       <div
         onMouseDown={handleResizeMouseDown}
-        className="shrink-0 w-px cursor-col-resize bg-bronze-300 dark:bg-border-default hover:bg-bronze-400 dark:hover:bg-bronze-600 transition-colors relative"
+        className="shrink-0 w-px cursor-col-resize bg-border-default hover:bg-border-hover transition-colors relative"
       >
         <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
       </div>
@@ -588,10 +588,10 @@ export function ListView({
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {!selectedTask ? (
           <div className="flex-1 flex items-center justify-center">
-            <span className="text-sm text-bronze-500 dark:text-text-tertiary">Select a task</span>
+            <span className="text-sm text-text-tertiary">Select a task</span>
           </div>
         ) : (
-          <div className="flex-1 relative bg-bronze-50 dark:bg-surface-detail">
+          <div className="flex-1 relative bg-surface-detail">
             <TaskAgentDetail
               task={selectedTask}
               projectId={projectId}

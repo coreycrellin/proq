@@ -72,7 +72,7 @@ function TaskStatusSummary({ columns }: { columns: TaskColumns }) {
   if (counts["verify"]) {
     segments.push(
       <span key="v" className="flex items-center gap-1">
-        <CheckCircle2Icon className="w-2.5 h-2.5 text-gold dark:text-gold" />
+        <CheckCircle2Icon className="w-2.5 h-2.5 text-gold" />
         <span className="text-text-secondary">
           {counts["verify"]} to verify
         </span>
@@ -237,7 +237,7 @@ function SortableProject({
           router.push(`/projects/${project.id}`);
         }}
         className={`w-full text-left py-3 px-4 relative group block cursor-pointer
-          ${isActive ? "bg-bronze-300 dark:bg-surface-selected/50" : "hover:bg-bronze-300/60 dark:hover:bg-surface-hover/40"}
+          ${isActive ? "bg-surface-selected/50" : "hover:bg-surface-hover/40"}
           `}
       >
         {isActive && (
@@ -272,11 +272,11 @@ function SortableProject({
                   e.stopPropagation();
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="w-full text-sm font-medium leading-tight bg-bronze-100 dark:bg-surface-inset border border-bronze-400/50 rounded px-1.5 py-0.5 text-bronze-900 dark:text-text-primary outline-none focus:border-bronze-500 dark:focus:border-bronze-400"
+                className="w-full text-sm font-medium leading-tight bg-surface-inset border border-bronze-400/50 rounded px-1.5 py-0.5 text-text-primary outline-none focus:border-bronze-400"
               />
             ) : (
               <div
-                className={`text-sm font-medium leading-tight truncate ${pathInvalid ? "text-crimson dark:text-crimson" : isActive ? "text-bronze-900 dark:text-text-primary" : "text-bronze-700 dark:text-text-secondary group-hover:text-bronze-900 dark:group-hover:text-text-primary"}`}
+                className={`text-sm font-medium leading-tight truncate ${pathInvalid ? "text-crimson" : isActive ? "text-text-primary" : "text-text-secondary group-hover:text-text-primary"}`}
               >
                 {folderName(project)}
               </div>
@@ -315,7 +315,7 @@ function SortableProject({
         {/* Task Summary */}
         <div className="mt-1.5 text-[11px]">
           {pathInvalid ? (
-            <span className="text-crimson dark:text-crimson text-[11px]">
+            <span className="text-crimson text-[11px]">
               Folder not found
             </span>
           ) : (
@@ -425,7 +425,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
   if (collapsed) {
     return (
       <aside
-        className="w-10 h-full bg-surface-secondary border-r border-border-default flex-shrink-0 cursor-pointer hover:bg-bronze-100/60 dark:hover:bg-surface-hover/40 transition-colors"
+        className="w-10 h-full bg-surface-secondary border-r border-border-default flex-shrink-0 cursor-pointer hover:bg-surface-hover/40 transition-colors"
         onClick={onToggleCollapsed}
       >
         <div className="h-16 flex items-center justify-center">
@@ -446,7 +446,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
     <aside className="w-[260px] h-full bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0">
       {/* Header — collapse toggle */}
       <div
-        className="h-16 flex items-center gap-2.5 px-4 pl-[18px] group/logo hover:bg-bronze-100/60 dark:hover:bg-surface-hover/40 transition-colors relative cursor-pointer flex-shrink-0"
+        className="h-16 flex items-center gap-2.5 px-4 pl-[18px] group/logo hover:bg-surface-hover/40 transition-colors relative cursor-pointer flex-shrink-0"
         onClick={onToggleCollapsed}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -458,19 +458,19 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
           className="flex-shrink-0 translate-y-[4px]"
         />
         <span
-          className="text-lg font-[var(--font-gemunu-libre)] text-bronze-900 dark:text-text-primary lowercase flex-1"
+          className="text-lg font-[var(--font-gemunu-libre)] text-text-primary lowercase flex-1"
           style={{ fontFamily: "var(--font-gemunu-libre)" }}
         >
           proq
         </span>
-        <PanelLeftCloseIcon className="w-4 h-4 text-text-tertiary hover:text-bronze-700 dark:hover:text-text-secondary opacity-0 group-hover/logo:opacity-100 transition-opacity" />
+        <PanelLeftCloseIcon className="w-4 h-4 text-text-tertiary hover:text-text-secondary opacity-0 group-hover/logo:opacity-100 transition-opacity" />
       </div>
 
       {/* Main Chat Item */}
       <Link
         href="/supervisor"
         className={`w-full text-left p-3 px-4 relative group py-4 block flex-shrink-0
-          ${isChatActive ? "bg-bronze-300 dark:bg-surface-selected" : "hover:bg-bronze-300/60 dark:hover:bg-surface-hover/40"}`}
+          ${isChatActive ? "bg-surface-selected" : "hover:bg-surface-hover/40"}`}
       >
         {isChatActive && (
           <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-600 dark:bg-bronze-400" />
@@ -480,7 +480,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
             className={`w-4 h-4 ${isChatActive ? "text-bronze-500" : "text-text-tertiary group-hover:text-text-secondary"}`}
           />
           <span
-            className={`text-sm font-medium ${isChatActive ? "text-bronze-900 dark:text-text-primary" : "text-bronze-700 dark:text-text-secondary group-hover:text-bronze-900 dark:group-hover:text-text-primary"}`}
+            className={`text-sm font-medium ${isChatActive ? "text-text-primary" : "text-text-secondary group-hover:text-text-primary"}`}
           >
             Supervisor
           </span>
@@ -544,13 +544,13 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
       <Link
         href="/settings"
         className={`h-12 flex items-center gap-2.5 px-4 border-t border-border-default flex-shrink-0 group/settings
-          ${isSettingsActive ? "bg-bronze-300 dark:bg-surface-selected/50" : "hover:bg-bronze-100/60 dark:hover:bg-surface-hover/40"} transition-colors relative`}
+          ${isSettingsActive ? "bg-surface-selected/50" : "hover:bg-surface-hover/40"} transition-colors relative`}
       >
         {isSettingsActive && (
           <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-600 dark:bg-bronze-400" />
         )}
-        <SettingsIcon className={`w-4 h-4 flex-shrink-0 ${isSettingsActive ? "text-bronze-600 dark:text-text-secondary" : "text-text-tertiary group-hover/settings:text-text-secondary"}`} />
-        <span className={`text-sm font-medium ${isSettingsActive ? "text-bronze-900 dark:text-text-primary" : "text-bronze-700 dark:text-text-secondary group-hover/settings:text-bronze-900 dark:group-hover/settings:text-text-primary"}`}>
+        <SettingsIcon className={`w-4 h-4 flex-shrink-0 ${isSettingsActive ? "text-text-secondary" : "text-text-tertiary group-hover/settings:text-text-secondary"}`} />
+        <span className={`text-sm font-medium ${isSettingsActive ? "text-text-primary" : "text-text-secondary group-hover/settings:text-text-primary"}`}>
           Settings
         </span>
       </Link>

@@ -98,8 +98,8 @@ function DroppableColumn({
       className={`flex-1 flex flex-col min-w-[240px] rounded-lg transition-colors ${
         isOver
           ? isInProgress
-            ? 'bg-steel/5 dark:bg-steel/5 ring-2 ring-steel/20'
-            : 'bg-bronze-200/50 dark:bg-surface-hover/30 ring-2 ring-bronze-400/30 dark:ring-bronze-700/30'
+            ? 'bg-steel/5 ring-2 ring-steel/20'
+            : 'bg-surface-hover/30 ring-2 ring-border-hover/30'
           : 'bg-transparent'
       }`}
     >
@@ -331,7 +331,7 @@ export function KanbanBoard({
   }
 
   return (
-    <div className="flex-1 h-full overflow-x-auto bg-bronze-100 dark:bg-surface-topbar">
+    <div className="flex-1 h-full overflow-x-auto bg-surface-topbar">
       <DndContext
         sensors={sensors}
         collisionDetection={rectIntersection}
@@ -413,7 +413,7 @@ export function KanbanBoard({
 
                     {colTasks.length === 0 && (
                       <div className="h-24 border border-dashed border-border-default rounded-lg flex items-center justify-center">
-                        <span className="text-xs text-bronze-500 dark:text-text-placeholder">Empty</span>
+                        <span className="text-xs text-text-placeholder">Empty</span>
                       </div>
                     )}
 

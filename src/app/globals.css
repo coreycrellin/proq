@@ -63,10 +63,10 @@
     --text-chrome: 122 112 104;        /* bronze-600 #7a7068 */
     --text-chrome-hover: 92 83 75;     /* bronze-700 #5c534b */
     --text-chrome-active: 58 52 46;    /* bronze-800 #3a342e */
-    --text-primary: 24 24 27;          /* zinc-900 #18181b */
-    --text-secondary: 82 82 91;        /* zinc-600 #52525b */
-    --text-tertiary: 113 113 122;      /* zinc-500 #71717a */
-    --text-placeholder: 161 161 170;   /* zinc-400 #a1a1aa */
+    --text-primary: 42 37 32;           /* bronze-900 #2a2520 */
+    --text-secondary: 92 83 75;        /* bronze-700 #5c534b */
+    --text-tertiary: 122 112 104;      /* bronze-600 #7a7068 */
+    --text-placeholder: 168 157 144;   /* bronze-500 #a89d90 */
     --live-dot-color: rgba(0, 0, 0, 0.08); /* dot grid for live preview (light) */
   }
   .dark {

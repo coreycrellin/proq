@@ -198,11 +198,11 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
         : 'text-bronze-500';
 
   return (
-    <header className="h-[52px] bg-bronze-300/20 dark:bg-surface-topbar flex items-center px-6 flex-shrink-0 border-b border-bronze-300 dark:border-border-default">
+    <header className="h-[52px] bg-surface-topbar flex items-center px-6 flex-shrink-0 border-b border-border-default">
       <div className="flex-1 flex items-center min-w-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1.5 ml-1 text-bronze-500 dark:text-bronze-500 hover:text-bronze-600 dark:hover:text-bronze-400 transition-colors">
+            <button className="flex items-center gap-1.5 ml-1 text-bronze-500 hover:text-bronze-400 transition-colors">
               <h1 className="text-base font-semibold leading-none truncate">
                 {project.name}
               </h1>
@@ -252,12 +252,12 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 className={`relative px-3.5 py-1 text-xs font-medium rounded-md z-10 ${
-                  isActive ? 'text-text-chrome-active' : 'text-bronze-500 dark:text-bronze-500 hover:text-bronze-600 dark:hover:text-bronze-400'
+                  isActive ? 'text-text-chrome-active' : 'text-bronze-500 hover:text-bronze-400'
                 }`}
               >
                 {isActive && (
                   <div
-                    className="absolute inset-0 bg-bronze-50 dark:bg-surface-primary rounded-md border border-bronze-400/50 dark:border-bronze-800/50 shadow-sm"
+                    className="absolute inset-0 bg-surface-primary rounded-md border border-border-hover/50 shadow-sm"
                     style={{ zIndex: -1 }}
                   />
                 )}
@@ -547,7 +547,7 @@ function BranchItem({ branch, isCurrent, taskTitle, onSelect }: {
       {taskTitle ? (
         <>
           <span className="truncate">{taskTitle}</span>
-          <span className="ml-auto text-[10px] font-mono text-bronze-500 dark:text-text-tertiary truncate max-w-[100px]">
+          <span className="ml-auto text-[10px] font-mono text-text-tertiary truncate max-w-[100px]">
             {branch.replace('proq/', '')}
           </span>
         </>

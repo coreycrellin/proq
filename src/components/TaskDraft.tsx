@@ -196,7 +196,7 @@ export function TaskDraft({ task, isOpen, onClose, onSave, onMoveToInProgress }:
       />
 
       <div
-        className={`relative w-full max-w-2xl bg-bronze-50 dark:bg-surface-secondary border rounded-lg shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-150 transition-colors overflow-hidden ${isDragOver ? 'border-steel/50' : 'border-bronze-300 dark:border-border-default'}`}
+        className={`relative w-full max-w-2xl bg-surface-secondary border rounded-lg shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-150 transition-colors overflow-hidden ${isDragOver ? 'border-steel/50' : 'border-border-subtle'}`}
         style={{ height: modalHeight }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -204,14 +204,14 @@ export function TaskDraft({ task, isOpen, onClose, onSave, onMoveToInProgress }:
       >
         <button
           onClick={handleClose}
-          className="absolute top-3 right-3 text-text-secondary dark:text-text-placeholder hover:text-zinc-700 dark:hover:text-text-secondary transition-colors p-1 z-10"
+          className="absolute top-3 right-3 text-text-placeholder hover:text-text-secondary transition-colors p-1 z-10"
         >
           <XIcon className="w-4 h-4" />
         </button>
 
         {/* Header: mode selector + title */}
         <div ref={headerRef} className="p-6 pt-5 pb-0 shrink-0">
-          <div className="bg-bronze-200 dark:bg-surface-hover/40 p-0.5 rounded-md flex items-center border border-border-default w-fit mb-3">
+          <div className="bg-surface-hover/40 p-0.5 rounded-md flex items-center border border-border-default w-fit mb-3">
             {([
               ['answer', 'Answer', 'Research only, no code changes.'],
               ['plan', 'Plan', 'Agent proposes, you approve.'],
@@ -229,7 +229,7 @@ export function TaskDraft({ task, isOpen, onClose, onSave, onMoveToInProgress }:
               >
                 {mode === value && (
                   <div
-                    className="absolute inset-0 bg-bronze-50 dark:bg-surface-modal rounded border border-bronze-400/50 dark:border-bronze-800/50 shadow-sm"
+                    className="absolute inset-0 bg-surface-modal rounded border border-bronze-800/50 shadow-sm"
                     style={{ zIndex: -1 }}
                   />
                 )}
@@ -249,7 +249,7 @@ export function TaskDraft({ task, isOpen, onClose, onSave, onMoveToInProgress }:
                 descriptionRef.current?.focus();
               }
             }}
-            className="w-full bg-transparent text-xl font-semibold text-bronze-900 dark:text-text-primary placeholder-bronze-500 dark:placeholder-text-placeholder focus:outline-none mb-4 pr-8"
+            className="w-full bg-transparent text-xl font-semibold text-text-primary placeholder-text-placeholder focus:outline-none mb-4 pr-8"
             placeholder="(Auto title)"
           />
         </div>
@@ -270,7 +270,7 @@ export function TaskDraft({ task, isOpen, onClose, onSave, onMoveToInProgress }:
                 }
               }
             }}
-            className="w-full h-full bg-transparent text-sm text-bronze-700 dark:text-text-secondary placeholder-bronze-500 dark:placeholder-text-placeholder focus:outline-none resize-none leading-relaxed"
+            className="w-full h-full bg-transparent text-sm text-text-secondary placeholder-text-placeholder focus:outline-none focus-visible:ring-0 resize-none leading-relaxed"
             placeholder="Write something..."
           />
         </div>
@@ -283,7 +283,7 @@ export function TaskDraft({ task, isOpen, onClose, onSave, onMoveToInProgress }:
             return isImage && url ? (
               <div
                 key={att.id}
-                className="relative group rounded-md overflow-hidden border border-bronze-400/50 dark:border-border-strong/50 bg-bronze-200/60 dark:bg-surface-hover/60 cursor-pointer"
+                className="relative group rounded-md overflow-hidden border border-border-strong/50 bg-surface-hover/60 cursor-pointer"
                 onClick={() => window.open(url, '_blank')}
               >
                 <img
@@ -306,12 +306,12 @@ export function TaskDraft({ task, isOpen, onClose, onSave, onMoveToInProgress }:
             ) : (
               <div
                 key={att.id}
-                className="flex items-center gap-2 bg-bronze-200/60 dark:bg-surface-hover/60 border border-bronze-400/50 dark:border-border-strong/50 rounded-md px-3 py-2.5 group cursor-pointer"
+                className="flex items-center gap-2 bg-surface-hover/60 border border-border-strong/50 rounded-md px-3 py-2.5 group cursor-pointer"
                 onClick={() => url && window.open(url, '_blank')}
               >
                 <FileIcon className="w-4 h-4 text-text-tertiary shrink-0" />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] text-zinc-700 dark:text-text-secondary truncate max-w-[140px] leading-tight">
+                  <span className="text-[11px] text-text-secondary truncate max-w-[140px] leading-tight">
                     {att.name}
                   </span>
                   <span className="text-[10px] text-text-placeholder leading-tight">
@@ -339,10 +339,10 @@ export function TaskDraft({ task, isOpen, onClose, onSave, onMoveToInProgress }:
         )}
 
         {/* Footer toolbar */}
-        <div ref={toolbarRef} className="border-t border-bronze-300/60 dark:border-border-default/60 flex items-center shrink-0 px-2 py-2">
+        <div ref={toolbarRef} className="border-t border-border-default/60 flex items-center shrink-0 px-2 py-2">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 text-text-secondary dark:text-text-placeholder hover:text-text-placeholder dark:hover:text-text-secondary transition-colors text-xs px-2 py-1"
+            className="flex items-center gap-1.5 text-text-placeholder hover:text-text-secondary transition-colors text-xs px-2 py-1"
           >
             <PaperclipIcon className="w-3.5 h-3.5" />
             <span>Attach file</span>

@@ -86,8 +86,8 @@ function SortableTab({
         onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick(); }}
         className={`relative flex items-center gap-1.5 px-4 self-stretch text-xs transition-colors min-w-[100px] ${
           isActive
-            ? 'bg-bronze-300/60 dark:bg-surface-hover/60 text-bronze-500'
-            : 'text-text-tertiary hover:text-text-placeholder dark:hover:text-text-secondary hover:bg-bronze-300/30 dark:hover:bg-surface-hover/30'
+            ? 'bg-surface-hover/60 text-bronze-500'
+            : 'text-text-tertiary hover:text-text-secondary hover:bg-surface-hover/30'
         }`}
       >
         {icon}
@@ -226,7 +226,7 @@ export default function WorkbenchPanel({ projectId, projectPath, style, collapse
   return (
     <div
       ref={panelRef}
-      className="w-full flex flex-col bg-bronze-200 dark:bg-surface-deep flex-shrink-0 font-mono"
+      className="w-full flex flex-col bg-surface-deep flex-shrink-0 font-mono"
       style={{ minHeight: 0, ...(collapsed ? {} : style) }}
     >
       {/* Tab Bar — also serves as the resize drag handle */}
@@ -241,7 +241,7 @@ export default function WorkbenchPanel({ projectId, projectPath, style, collapse
           </div>
         )}
         <div
-          className={`h-12 flex items-stretch bg-bronze-300/20 dark:bg-surface-topbar overflow-visible border-t border-bronze-200 dark:border-border-default ${
+          className={`h-12 flex items-stretch bg-surface-topbar overflow-visible border-t border-border-default ${
             isDragging ? 'cursor-grabbing' : 'cursor-grab'
           }`}
           onMouseDown={(e) => {
@@ -253,7 +253,7 @@ export default function WorkbenchPanel({ projectId, projectPath, style, collapse
         >
         <button
           onClick={onToggleCollapsed}
-          className="flex items-center justify-center w-12 self-stretch text-text-secondary dark:text-text-placeholder hover:text-text-placeholder dark:hover:text-text-secondary hover:bg-bronze-300/30 dark:hover:bg-surface-hover/30 shrink-0"
+          className="flex items-center justify-center w-12 self-stretch text-text-placeholder hover:text-text-secondary hover:bg-surface-hover/30 shrink-0"
           title={collapsed ? 'Expand terminal' : 'Collapse terminal'}
         >
           {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -293,7 +293,7 @@ export default function WorkbenchPanel({ projectId, projectPath, style, collapse
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="flex items-center justify-center w-12 self-stretch h-full text-text-secondary dark:text-text-placeholder hover:text-text-placeholder dark:hover:text-text-secondary hover:bg-bronze-300/30 dark:hover:bg-surface-hover/30 shrink-0"
+              className="flex items-center justify-center w-12 self-stretch h-full text-text-placeholder hover:text-text-secondary hover:bg-surface-hover/30 shrink-0"
               title="New tab"
             >
               <Plus className="w-3.5 h-3.5" />

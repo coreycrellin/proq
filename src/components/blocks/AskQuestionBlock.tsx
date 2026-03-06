@@ -71,7 +71,7 @@ export function AskQuestionBlock({ questions, hasResult, resultText, isOld, onAn
           <span className="text-xs font-medium text-gold uppercase tracking-wide">
             Agent Question
           </span>
-          <span className="ml-auto text-[10px] text-bronze-500 dark:text-text-tertiary italic">
+          <span className="ml-auto text-[10px] text-text-tertiary italic">
             Select an option or provide your own answer
           </span>
         </div>
@@ -81,11 +81,11 @@ export function AskQuestionBlock({ questions, hasResult, resultText, isOld, onAn
           {questions.map((q, qi) => (
             <div key={qi} className="space-y-2">
               {q.header && (
-                <span className="text-[10px] font-medium text-bronze-500 dark:text-text-tertiary uppercase tracking-wide">
+                <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wide">
                   {q.header}
                 </span>
               )}
-              <p className="text-sm text-bronze-800 dark:text-text-primary leading-relaxed">
+              <p className="text-sm text-text-primary leading-relaxed">
                 {q.question}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -93,13 +93,13 @@ export function AskQuestionBlock({ questions, hasResult, resultText, isOld, onAn
                   <button
                     key={oi}
                     onClick={() => onAnswer(opt.label)}
-                    className="group/opt flex flex-col items-start gap-0.5 px-3 py-2 rounded-md border border-bronze-300 dark:border-border-default bg-bronze-100/50 dark:bg-surface-hover/50 hover:border-gold/50 hover:bg-gold/10 transition-colors text-left"
+                    className="group/opt flex flex-col items-start gap-0.5 px-3 py-2 rounded-md border border-border-default bg-surface-hover/50 hover:border-gold/50 hover:bg-gold/10 transition-colors text-left"
                   >
-                    <span className="text-xs font-medium text-bronze-800 dark:text-text-primary group-hover/opt:text-gold">
+                    <span className="text-xs font-medium text-text-primary group-hover/opt:text-gold">
                       {opt.label}
                     </span>
                     {opt.description && (
-                      <span className="text-[11px] text-bronze-500 dark:text-text-tertiary leading-snug">
+                      <span className="text-[11px] text-text-tertiary leading-snug">
                         {opt.description}
                       </span>
                     )}
