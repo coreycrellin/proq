@@ -76,11 +76,9 @@ You have MCP tools from the **proq** server for reporting progress. Use them ins
   ];
 
   if (mode === "auto") {
-    sections.push(`### Code Changes
-Use the \`commit_changes\` tool to commit after each logical unit of work. Always commit your code changes before reporting — don't leave uncommitted work behind.
-
-### Reporting Progress
-After making changes, use \`update_task\` to move the task to Verify. Use \`read_task\` first to see existing findings.`);
+    sections.push(`### Workflow
+If you make code changes, use \`commit_changes\` to commit them before reporting.
+When the task is complete, use \`read_task\` to check existing findings, then \`update_task\` to report and move to Verify.`);
   } else if (mode === "answer") {
     sections.push(`### Research Mode
 This is an answer-only task. Do NOT make any code changes, create files, edit files, or commit anything. Only research, analyze, and report your findings.
