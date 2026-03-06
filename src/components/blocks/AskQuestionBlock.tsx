@@ -33,13 +33,13 @@ export function AskQuestionBlock({ questions, hasResult, resultText, isOld, onAn
   if (answered) {
     return (
       <div className="my-2">
-        <div className="rounded-lg border border-zinc-700/50 bg-zinc-800/30 overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-700/30">
-            <MessageCircleQuestionIcon className="w-3.5 h-3.5 text-zinc-500" />
-            <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
+        <div className="rounded-lg border border-border-strong/40 bg-surface-topbar overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border-strong/30">
+            <MessageCircleQuestionIcon className="w-3.5 h-3.5 text-text-tertiary" />
+            <span className="text-xs font-medium text-text-tertiary uppercase tracking-wide">
               Agent Question
             </span>
-            <span className="ml-auto text-[10px] text-zinc-600 italic">
+            <span className="ml-auto text-[10px] text-text-tertiary italic">
               Answered below
             </span>
           </div>
@@ -47,11 +47,11 @@ export function AskQuestionBlock({ questions, hasResult, resultText, isOld, onAn
             {questions.map((q, qi) => (
               <div key={qi}>
                 {q.header && (
-                  <span className="text-[10px] font-medium text-zinc-600 uppercase tracking-wide">
+                  <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wide">
                     {q.header}
                   </span>
                 )}
-                <p className="text-sm text-zinc-400 leading-relaxed">
+                <p className="text-sm text-text-secondary leading-relaxed">
                   {q.question}
                 </p>
               </div>
@@ -64,9 +64,9 @@ export function AskQuestionBlock({ questions, hasResult, resultText, isOld, onAn
 
   return (
     <div className="my-2">
-      <div className="rounded-lg border border-gold/30 bg-gold/5 overflow-hidden">
+      <div className="rounded-lg border border-border-default bg-surface-topbar overflow-hidden">
         {/* Header */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-gold/20">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border-subtle/60">
           <MessageCircleQuestionIcon className="w-3.5 h-3.5 text-gold" />
           <span className="text-xs font-medium text-gold uppercase tracking-wide">
             Agent Question
@@ -93,9 +93,9 @@ export function AskQuestionBlock({ questions, hasResult, resultText, isOld, onAn
                   <button
                     key={oi}
                     onClick={() => onAnswer(opt.label)}
-                    className="group/opt flex flex-col items-start gap-0.5 px-3 py-2 rounded-md border border-border-default bg-surface-hover/50 hover:border-gold/50 hover:bg-gold/10 text-left"
+                    className="group/opt flex flex-col items-start gap-0.5 px-3 py-2 rounded-md border border-border-default bg-surface-hover/50 hover:border-border-strong hover:bg-surface-hover text-left"
                   >
-                    <span className="text-xs font-medium text-text-primary group-hover/opt:text-gold">
+                    <span className="text-xs font-medium text-text-primary">
                       {opt.label}
                     </span>
                     {opt.description && (
