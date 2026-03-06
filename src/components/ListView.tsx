@@ -449,9 +449,9 @@ export function ListView({
   return (
     <div className="flex-1 h-full flex overflow-hidden bg-surface-base">
       {/* Master panel */}
-      <div data-master-panel className="shrink-0 flex flex-col border-r border-bronze-300 dark:border-border-default bg-surface-base" style={{ width: masterWidth }}>
+      <div data-master-panel className="shrink-0 flex flex-col border-r border-bronze-300 dark:border-border-default bg-bronze-100/50 dark:bg-surface-detail" style={{ width: masterWidth }}>
         {/* Master header */}
-        <div className="shrink-0 flex items-center gap-2 px-6 py-3 border-b border-bronze-300 dark:border-border-default">
+        <div className="shrink-0 h-10 flex items-center gap-2 px-6 border-b border-bronze-300 dark:border-border-default bg-bronze-100/50 dark:bg-surface-detail">
           {onExecutionModeChange && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

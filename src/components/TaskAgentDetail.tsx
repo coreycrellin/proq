@@ -200,7 +200,7 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
       <div className={`flex-1 min-h-0 flex flex-col${showStructuredPane ? ' bg-bronze-50 dark:bg-surface-deep' : ''}`}>
         {/* Worktree status — only in parallel mode */}
         {parallelMode && (
-          <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-bronze-300 dark:border-border-default bg-bronze-100/50 dark:bg-surface-detail">
+          <div className="shrink-0 h-10 flex items-center gap-2 px-3 border-b border-bronze-300 dark:border-border-default bg-bronze-100/50 dark:bg-surface-detail">
             {task.status === 'verify' && task.branch && onSwitchBranch && currentBranch === task.branch ? (
               <>
                 <span className="text-xs text-gold font-medium">viewing</span>
