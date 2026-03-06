@@ -33,7 +33,7 @@ export function AskQuestionBlock({ questions, hasResult, resultText, isOld, onAn
   if (answered) {
     return (
       <div className="my-2">
-        <div className="rounded-lg border border-border-strong/40 bg-surface-deep overflow-hidden">
+        <div className="rounded-lg border border-border-strong/40 bg-surface-topbar overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border-strong/30">
             <MessageCircleQuestionIcon className="w-3.5 h-3.5 text-text-tertiary" />
             <span className="text-xs font-medium text-text-tertiary uppercase tracking-wide">
