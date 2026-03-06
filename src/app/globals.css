@@ -65,8 +65,8 @@
     --text-chrome-active: 54 40 24;    /* ~bronze-900 #362818 */
     --text-primary: 42 30 18;           /* darker than 900 */
     --text-secondary: 92 70 40;        /* ~bronze-800 #5C4628 */
-    --text-tertiary: 139 109 62;       /* bronze-700 #8B6D3E */
-    --text-placeholder: 196 154 94;    /* bronze-600 #C49A5E */
+    --text-tertiary: 118 98 68;        /* muted dark brown #765E44 */
+    --text-placeholder: 172 163 148;   /* warm gray #ACa394 */
     --live-dot-color: rgba(0, 0, 0, 0.08); /* dot grid for live preview (light) */
   }
   .dark {
@@ -175,12 +175,12 @@
   background: #f2ede5; /* surface-base */
 }
 ::-webkit-scrollbar-thumb {
-  background: #C49A5E; /* bronze-600 */
+  background: #B5AC9C; /* warm gray */
   border-radius: 9999px;
   border: 2px solid #f2ede5;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #8B6D3E; /* bronze-700 */
+  background: #9A9080; /* darker warm gray */
 }
 
 /* Custom scrollbar — dark mode */
