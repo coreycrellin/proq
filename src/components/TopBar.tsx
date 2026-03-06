@@ -246,7 +246,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
       </div>
 
       <div className="flex-1 flex justify-center min-w-0">
-        <div className="bg-surface-secondary p-0.5 rounded-md flex items-center border border-border-default">
+        <div className="bg-surface-hover/40 p-0.5 rounded-md flex items-center border border-border-default">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
