@@ -190,19 +190,19 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
   })();
   // Text color: patina/crimson for ahead/behind, chrome for up to date or mixed
   const historyTextColor = isUpToDate
-    ? 'text-bronze-500'
+    ? 'text-text-chrome'
     : behind > 0 && ahead === 0
       ? 'text-crimson'
       : ahead > 0 && behind === 0
         ? 'text-patina'
-        : 'text-bronze-500';
+        : 'text-text-chrome';
 
   return (
     <header className="h-[52px] bg-surface-topbar flex items-center px-6 flex-shrink-0 border-b border-border-default">
       <div className="flex-1 flex items-center min-w-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1.5 ml-1 text-bronze-500 hover:text-bronze-400 transition-colors">
+            <button className="flex items-center gap-1.5 ml-1 text-text-chrome hover:text-bronze-600 transition-colors">
               <h1 className="text-base font-semibold leading-none truncate">
                 {project.name}
               </h1>
@@ -252,7 +252,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 className={`relative px-3.5 py-1 text-xs font-medium rounded-md z-10 ${
-                  isActive ? 'text-text-chrome-active' : 'text-bronze-500 hover:text-bronze-400'
+                  isActive ? 'text-text-chrome-active' : 'text-text-chrome hover:text-bronze-600'
                 }`}
               >
                 {isActive && (
@@ -288,7 +288,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                     <span className="flex items-center gap-1.5 px-2.5 py-1.5">
                       {gitStatus.dirty} uncommitted {gitStatus.dirty === 1 ? 'file' : 'files'}
                     </span>
-                    <span className="px-1.5 py-1.5 border-l border-border-default text-bronze-500">
+                    <span className="px-1.5 py-1.5 border-l border-border-default text-text-chrome">
                       <ChevronDownIcon className="w-3 h-3" />
                     </span>
                   </button>
@@ -316,7 +316,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                   </div>
                   <DropdownMenuSeparator />
                   <div className="flex-shrink-0 p-1">
-                    <DropdownMenuItem className="text-xs justify-center text-bronze-500" onSelect={openDiffModal}>
+                    <DropdownMenuItem className="text-xs justify-center text-text-chrome" onSelect={openDiffModal}>
                       <DiffIcon className="!size-3" />
                       Diff
                     </DropdownMenuItem>
@@ -346,7 +346,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                     <span className="flex items-center gap-1.5 px-2.5 py-1.5">
                       {historyLabel}
                     </span>
-                    <span className="px-1.5 py-1.5 border-l border-border-default text-bronze-500">
+                    <span className="px-1.5 py-1.5 border-l border-border-default text-text-chrome">
                       <ChevronDownIcon className="w-3 h-3" />
                     </span>
                   </button>
@@ -378,7 +378,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                         ) : (
                           behindCommits.map((c, i) => (
                             <DropdownMenuItem key={i} className="text-xs gap-2 pointer-events-none">
-                              <span className="font-mono text-bronze-500 shrink-0">{c.hash}</span>
+                              <span className="font-mono text-text-chrome shrink-0">{c.hash}</span>
                               <span className="truncate text-text-secondary">{c.message}</span>
                             </DropdownMenuItem>
                           ))
@@ -410,7 +410,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                         ) : (
                           aheadCommits.map((c, i) => (
                             <DropdownMenuItem key={i} className="text-xs gap-2 pointer-events-none">
-                              <span className="font-mono text-bronze-500 shrink-0">{c.hash}</span>
+                              <span className="font-mono text-text-chrome shrink-0">{c.hash}</span>
                               <span className="truncate text-text-secondary">{c.message}</span>
                             </DropdownMenuItem>
                           ))
@@ -425,7 +425,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                   )}
                   <DropdownMenuSeparator />
                   <div className="flex-shrink-0 p-1">
-                    <DropdownMenuItem className="text-xs justify-center text-bronze-500" onSelect={openHistoryModal}>
+                    <DropdownMenuItem className="text-xs justify-center text-text-chrome" onSelect={openHistoryModal}>
                       <HistoryIcon className="!size-3" />
                       Commit History
                     </DropdownMenuItem>

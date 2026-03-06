@@ -194,7 +194,7 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
 
   return (
     <div
-      className={`w-full flex flex-col bg-surface-deep flex-shrink-0 relative transition-colors ${isDragOver ? 'ring-1 ring-bronze-500/40' : ''}`}
+      className={`w-full flex flex-col bg-surface-deep flex-shrink-0 relative transition-colors ${isDragOver ? 'ring-1 ring-bronze-600/40' : ''}`}
       style={{ minHeight: 0, ...style }}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
@@ -203,7 +203,7 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
       {/* Drop overlay */}
       {isDragOver && (
         <div className="absolute inset-0 bg-bronze-500/5 flex items-center justify-center pointer-events-none z-20 rounded">
-          <div className="text-sm text-bronze-500 font-medium">Drop files here</div>
+          <div className="text-sm text-text-chrome font-medium">Drop files here</div>
         </div>
       )}
 
@@ -226,7 +226,7 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
               <div className="flex items-baseline gap-2">
                 <div className="inline-flex flex-col bg-surface-topbar rounded px-2.5 py-1">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-bold text-bronze-500 shrink-0">{'\u276F'}</span>
+                    <span className="text-xs font-bold text-text-chrome shrink-0">{'\u276F'}</span>
                     <p className="text-sm leading-relaxed text-text-primary">{msg.message}</p>
                   </div>
                   {msg.attachments && msg.attachments.length > 0 && (
@@ -321,7 +321,7 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
       {/* Input */}
       <div className="px-6 py-5 border-t border-border-subtle/60 bg-surface-deep/50">
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
-          <span className="text-bronze-500 text-sm font-bold select-none">{'\u276F'}</span>
+          <span className="text-text-chrome text-sm font-bold select-none">{'\u276F'}</span>
           <input
             type="text"
             value={inputValue}
@@ -331,12 +331,12 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
             }}
             placeholder={isLoading ? "waiting for response..." : "message..."}
             disabled={isLoading}
-            className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none caret-bronze-500 disabled:opacity-50"
+            className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none caret-bronze-600 disabled:opacity-50"
           />
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="text-text-placeholder hover:text-bronze-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="text-text-placeholder hover:text-bronze-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             disabled={isLoading}
             title="Attach file"
           >

@@ -357,7 +357,7 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
             onKeyDown={canEditTitle ? (e) => {
               if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur(); }
             } : undefined}
-            className={`relative text-base font-semibold text-text-primary leading-snug outline-none ${canEditTitle ? 'cursor-text after:absolute after:left-0 after:right-0 after:bottom-[-3px] after:h-px after:bg-transparent focus:after:bg-bronze-400/40' : ''}`}
+            className={`relative text-base font-semibold text-text-primary leading-snug outline-none ${canEditTitle ? 'cursor-text after:absolute after:left-0 after:right-0 after:bottom-[-3px] after:h-px after:bg-transparent focus:after:bg-bronze-500/40' : ''}`}
           >
             {task.title || 'Untitled task'}
           </h2>

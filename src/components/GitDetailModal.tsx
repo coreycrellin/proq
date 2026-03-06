@@ -164,7 +164,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
     if (aheadCount > 0) parts.push(`${aheadCount} ${aheadCount === 1 ? 'commit' : 'commits'} ahead`);
     if (behindCount > 0) parts.push(`${behindCount} ${behindCount === 1 ? 'commit' : 'commits'} behind`);
     if (parts.length > 0) return <>{parts.join(', ')}</>;
-    return <>up to date with <span className="text-bronze-500">{branchLabel}</span></>;
+    return <>up to date with <span className="text-text-chrome">{branchLabel}</span></>;
   })();
 
   return (
@@ -178,30 +178,30 @@ export function GitDetailModal(props: GitDetailModalProps) {
         {type === 'log' && selectedCommit && (
           <button
             onClick={handleBack}
-            className="text-bronze-500 hover:text-bronze-400 transition-colors p-1 rounded hover:bg-zinc-800/50"
+            className="text-text-chrome hover:text-bronze-600 transition-colors p-1 rounded hover:bg-zinc-800/50"
           >
             <ArrowLeftIcon className="w-4 h-4" />
           </button>
         )}
         <h3 className="flex-1 min-w-0 truncate flex items-center">
           {type === 'log' && selectedCommit
-            ? <span className="text-sm font-semibold"><span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide leading-none mr-1.5">commit</span><span className="font-mono text-bronze-500 leading-none">{selectedCommit.hash}</span></span>
+            ? <span className="text-sm font-semibold"><span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide leading-none mr-1.5">commit</span><span className="font-mono text-text-chrome leading-none">{selectedCommit.hash}</span></span>
             : type === 'log'
-              ? <span className="text-[10px] text-zinc-500 font-semibold leading-none flex items-center gap-1.5"><span className="uppercase tracking-wide">Git Log</span> <span className="text-zinc-600">·</span> on branch <span className="text-bronze-500">{props.currentBranch || 'main'}</span> <span className="text-zinc-600">·</span> {headerSummary}</span>
+              ? <span className="text-[10px] text-zinc-500 font-semibold leading-none flex items-center gap-1.5"><span className="uppercase tracking-wide">Git Log</span> <span className="text-zinc-600">·</span> on branch <span className="text-text-chrome">{props.currentBranch || 'main'}</span> <span className="text-zinc-600">·</span> {headerSummary}</span>
               : <span className="text-[10px] text-zinc-500 font-semibold leading-none uppercase tracking-wide">{title}</span>
           }
         </h3>
         {currentFiles.length > 0 && (
           <button
             onClick={handleExpandCollapseAll}
-            className="text-xs text-bronze-500 hover:text-bronze-400 transition-colors px-2 py-1 rounded border border-zinc-700/50 shrink-0"
+            className="text-xs text-text-chrome hover:text-bronze-600 transition-colors px-2 py-1 rounded border border-zinc-700/50 shrink-0"
           >
             {allExpanded ? 'Collapse All' : 'Expand All'}
           </button>
         )}
         <button
           onClick={handleClose}
-          className="text-bronze-500 hover:text-bronze-400 transition-colors p-1 rounded hover:bg-zinc-800/50"
+          className="text-text-chrome hover:text-bronze-600 transition-colors p-1 rounded hover:bg-zinc-800/50"
         >
           <XIcon className="w-4 h-4" />
         </button>
@@ -328,10 +328,10 @@ export function GitDetailModal(props: GitDetailModalProps) {
             )}
 
             {/* Origin separator — always shown */}
-            <div className="flex items-center gap-3 px-4 py-2 text-[10px] text-bronze-500 font-mono">
-              <div className="flex-1 border-t border-bronze-500/30" />
+            <div className="flex items-center gap-3 px-4 py-2 text-[10px] text-text-chrome font-mono">
+              <div className="flex-1 border-t border-bronze-600/30" />
               <span>{branchLabel}</span>
-              <div className="flex-1 border-t border-bronze-500/30" />
+              <div className="flex-1 border-t border-bronze-600/30" />
             </div>
 
             {/* Paginated history */}
@@ -354,7 +354,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
               <div className="flex justify-center py-4">
                 <button
                   onClick={loadMore}
-                  className="text-xs text-bronze-500 hover:text-bronze-400 transition-colors px-3 py-1.5 rounded border border-zinc-700/50 hover:border-zinc-600"
+                  className="text-xs text-text-chrome hover:text-bronze-600 transition-colors px-3 py-1.5 rounded border border-zinc-700/50 hover:border-zinc-600"
                 >
                   Show more
                 </button>
@@ -421,7 +421,7 @@ function CommitRow({ commit, onSelect }: { commit: CommitInfo; onSelect: (hash: 
       onClick={() => onSelect(commit.hash)}
       className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-zinc-800/40 transition-colors group"
     >
-      <span className="font-mono text-xs text-bronze-500 shrink-0">{commit.hash}</span>
+      <span className="font-mono text-xs text-text-chrome shrink-0">{commit.hash}</span>
       <span className="text-xs text-zinc-200 truncate flex-1 flex items-center gap-2">
         <span className="truncate">{commit.message}</span>
         {(commit.insertions != null || commit.deletions != null) && (

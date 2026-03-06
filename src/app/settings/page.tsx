@@ -155,7 +155,7 @@ export default function SettingsPage() {
               }`}
             >
               {activeSection === s.id && (
-                <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-600 dark:bg-bronze-500" />
+                <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-700 dark:bg-bronze-600" />
               )}
               {s.icon}
               {s.label}
@@ -197,7 +197,7 @@ export default function SettingsPage() {
                   href="https://brian.online"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-bronze-600 dark:text-bronze-400 hover:underline"
+                  className="text-bronze-700 dark:text-bronze-400 hover:underline"
                 >
                   brian.online
                 </a>{" "}
@@ -206,7 +206,7 @@ export default function SettingsPage() {
                   href="https://x.com/0xc00010ff"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-bronze-600 dark:text-bronze-400 hover:underline"
+                  className="text-bronze-700 dark:text-bronze-400 hover:underline"
                 >
                   X
                 </a>{" "}
@@ -215,7 +215,7 @@ export default function SettingsPage() {
                   href="https://github.com/0xc00010ff"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-bronze-600 dark:text-bronze-400 hover:underline"
+                  className="text-bronze-700 dark:text-bronze-400 hover:underline"
                 >
                   GitHub
                 </a>
@@ -492,7 +492,7 @@ function Toggle({
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
         checked
-          ? "bg-bronze-600 dark:bg-bronze-500"
+          ? "bg-bronze-700 dark:bg-bronze-600"
           : "bg-zinc-300 dark:bg-border-strong"
       }`}
     >

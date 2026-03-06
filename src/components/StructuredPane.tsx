@@ -331,8 +331,8 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     >
       {/* Drop overlay */}
       {isDragOver && (
-        <div className="absolute inset-0 bg-bronze-500/25 dark:bg-bronze-500/20 border-2 border-bronze-500/50 flex items-center justify-center pointer-events-none z-20 rounded-md m-1">
-          <div className="text-sm text-text-secondary font-medium bg-bronze-300 dark:bg-bronze-800 border border-bronze-400 dark:border-bronze-700 px-4 py-2 rounded-md shadow-sm">Drop files here</div>
+        <div className="absolute inset-0 bg-bronze-600/20 dark:bg-bronze-600/15 border-2 border-bronze-600/50 flex items-center justify-center pointer-events-none z-20 rounded-md m-1">
+          <div className="text-sm text-text-secondary font-medium bg-bronze-400 dark:bg-bronze-800 border border-bronze-500 dark:border-bronze-700 px-4 py-2 rounded-md shadow-sm">Drop files here</div>
         </div>
       )}
 
@@ -484,7 +484,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
           </div>
         ) : (
         <>
-        <div className="rounded-xl border border-border-strong bg-surface-detail focus-within:border-bronze-600 transition-colors overflow-hidden">
+        <div className="rounded-xl border border-border-strong bg-surface-detail focus-within:border-bronze-700 transition-colors overflow-hidden">
           {/* Attachment previews inside container */}
           {attachments.length > 0 && (
             <div className="flex flex-wrap gap-2 px-3 pt-3">
@@ -551,7 +551,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-text-tertiary hover:text-bronze-400 hover:bg-surface-hover transition-colors"
+              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-text-tertiary hover:text-bronze-600 hover:bg-surface-hover transition-colors"
               title="Attach file"
             >
               <PaperclipIcon className="w-4 h-4" />
@@ -568,7 +568,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
               <button
                 onClick={handleSend}
                 disabled={!inputValue.trim() && attachments.length === 0}
-                className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${inputValue.trim() || attachments.length > 0 ? 'text-bronze-600 dark:text-bronze-500 bg-bronze-200/60 dark:bg-surface-hover' : 'text-text-tertiary disabled:opacity-30'}`}
+                className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${inputValue.trim() || attachments.length > 0 ? 'text-text-chrome bg-bronze-400/30 dark:bg-surface-hover' : 'text-text-tertiary disabled:opacity-30'}`}
                 title="Send message"
               >
                 <SendIcon className="w-4 h-4" />

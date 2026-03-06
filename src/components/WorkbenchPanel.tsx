@@ -86,7 +86,7 @@ function SortableTab({
         onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick(); }}
         className={`relative flex items-center gap-1.5 px-4 self-stretch text-xs transition-colors min-w-[100px] ${
           isActive
-            ? 'bg-surface-hover/60 text-bronze-500'
+            ? 'bg-surface-hover/60 text-text-chrome-active'
             : 'text-text-tertiary hover:text-text-secondary hover:bg-surface-hover/30'
         }`}
       >

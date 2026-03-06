@@ -128,14 +128,14 @@ export function ToolGroupBlock({ toolName, items, forceCollapsed }: ToolGroupBlo
         {/* Status dot */}
         <span className="shrink-0">
           {isActive ? (
-            <Loader2Icon className="w-3.5 h-3.5 text-bronze-500 animate-spin" />
+            <Loader2Icon className="w-3.5 h-3.5 text-text-chrome animate-spin" />
           ) : (
             <span className={`block w-2 h-2 rounded-full ${anyError ? 'bg-red-400' : 'bg-patina-dark dark:bg-patina'}`} />
           )}
         </span>
 
         {/* Tool icon */}
-        <span className={`shrink-0 ${isActive ? 'text-bronze-500' : anyError ? 'text-red-400' : 'text-text-tertiary'}`}>
+        <span className={`shrink-0 ${isActive ? 'text-text-chrome' : anyError ? 'text-red-400' : 'text-text-tertiary'}`}>
           {getToolIcon(toolName)}
         </span>
 

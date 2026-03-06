@@ -60,13 +60,13 @@
     --border-hover: 210 200 184;       /* soft bronze #d2c8b8 */
     --border-subtle: 234 229 221;      /* subtle bronze (use /60 in classes) */
     --border-strong: 184 160 120;      /* muted gold #b8a078 */
-    --text-chrome: 122 112 104;        /* bronze-600 #7a7068 */
-    --text-chrome-hover: 92 83 75;     /* bronze-700 #5c534b */
-    --text-chrome-active: 58 52 46;    /* bronze-800 #3a342e */
-    --text-primary: 42 37 32;           /* bronze-900 #2a2520 */
-    --text-secondary: 92 83 75;        /* bronze-700 #5c534b */
-    --text-tertiary: 122 112 104;      /* bronze-600 #7a7068 */
-    --text-placeholder: 168 157 144;   /* bronze-500 #a89d90 */
+    --text-chrome: 139 109 62;         /* bronze-700 #8B6D3E */
+    --text-chrome-hover: 92 70 40;     /* ~bronze-800 #5C4628 */
+    --text-chrome-active: 54 40 24;    /* ~bronze-900 #362818 */
+    --text-primary: 42 30 18;           /* darker than 900 */
+    --text-secondary: 92 70 40;        /* ~bronze-800 #5C4628 */
+    --text-tertiary: 139 109 62;       /* bronze-700 #8B6D3E */
+    --text-placeholder: 196 154 94;    /* bronze-600 #C49A5E */
     --live-dot-color: rgba(0, 0, 0, 0.08); /* dot grid for live preview (light) */
   }
   .dark {
@@ -107,12 +107,12 @@
     --surface-inset: 12 12 14;         /* input wells, recessed #0C0C0E */
     --surface-deep: 8 8 9;             /* chat bg, terminals #080809 */
     --border-default: 39 39 42;        /* zinc-800 #27272a */
-    --border-hover: 58 52 46;          /* bronze-800 #3a342e */
+    --border-hover: 92 70 40;          /* ~bronze-800 #5C4628 */
     --border-subtle: 39 39 42;         /* zinc-800 (use /60 in classes) */
     --border-strong: 63 63 70;         /* zinc-700 #3f3f46 */
-    --text-chrome: 122 112 104;        /* bronze-600 #7a7068 */
-    --text-chrome-hover: 168 157 144;  /* bronze-500 #a89d90 */
-    --text-chrome-active: 168 157 144; /* bronze-500 #a89d90 */
+    --text-chrome: 155 148 138;         /* warm gray #9B948A — neutral-warm, not bright gold */
+    --text-chrome-hover: 196 154 94;   /* bronze-600 #C49A5E */
+    --text-chrome-active: 228 189 137; /* bronze-500 #E4BD89 — bright gold reserved for selected */
     --text-primary: 244 244 245;       /* zinc-100 #f4f4f5 */
     --text-secondary: 161 161 170;     /* zinc-400 #a1a1aa */
     --text-tertiary: 113 113 122;      /* zinc-500 #71717a */
@@ -161,7 +161,7 @@
   }
   /* Replace default blue focus ring with subtle bronze */
   *:focus-visible {
-    @apply outline-none ring-1 ring-bronze-400/40;
+    @apply outline-none ring-1 ring-bronze-600/40;
   }
 }
 
@@ -174,12 +174,12 @@
   background: #f2ede5; /* surface-base */
 }
 ::-webkit-scrollbar-thumb {
-  background: #d4cbbf; /* bronze-400 */
+  background: #C49A5E; /* bronze-600 */
   border-radius: 9999px;
   border: 2px solid #f2ede5;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a89d90; /* bronze-500 */
+  background: #8B6D3E; /* bronze-700 */
 }
 
 /* Custom scrollbar — dark mode */

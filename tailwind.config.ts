@@ -11,16 +11,16 @@ const config: Config = {
   	extend: {
   		colors: {
   			bronze: {
-  				50: '#faf7f1',
-  				100: '#f5f0e6',
-  				200: '#ede7db',
-  				300: '#e2dbd0',
-  				400: '#d4cbbf',
-  				500: '#a89d90',
-  				600: '#7a7068',
-  				700: '#5c534b',
-  				800: '#3a342e',
-  				900: '#2a2520',
+  				50: '#FFF8F0',
+  				100: '#FFEEDD',
+  				200: '#F5D4AA',
+  				300: '#EDCA96',
+  				400: '#E9C48E',
+  				500: '#E4BD89',
+  				600: '#C49A5E',
+  				700: '#8B6D3E',
+  				800: '#5C4628',
+  				900: '#362818',
   			},
   			// Action accents — warm, muted, imperial
   			steel: {

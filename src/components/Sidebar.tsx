@@ -241,7 +241,7 @@ function SortableProject({
           `}
       >
         {isActive && (
-          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-600 dark:bg-bronze-400" />
+          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-700 dark:bg-bronze-600" />
         )}
         {pathInvalid && (
           <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-crimson" />
@@ -272,7 +272,7 @@ function SortableProject({
                   e.stopPropagation();
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="w-full text-sm font-medium leading-tight bg-surface-inset border border-bronze-400/50 rounded px-1.5 py-0.5 text-text-primary outline-none focus:border-bronze-400"
+                className="w-full text-sm font-medium leading-tight bg-surface-inset border border-bronze-600/50 rounded px-1.5 py-0.5 text-text-primary outline-none focus:border-bronze-600"
               />
             ) : (
               <div
@@ -473,11 +473,11 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
           ${isChatActive ? "bg-surface-selected" : "hover:bg-surface-hover/40"}`}
       >
         {isChatActive && (
-          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-600 dark:bg-bronze-400" />
+          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-700 dark:bg-bronze-600" />
         )}
         <div className="flex items-center gap-2.5">
           <SquareChevronUpIcon
-            className={`w-4 h-4 ${isChatActive ? "text-bronze-500" : "text-text-tertiary group-hover:text-text-secondary"}`}
+            className={`w-4 h-4 ${isChatActive ? "text-text-chrome-active" : "text-text-tertiary group-hover:text-text-secondary"}`}
           />
           <span
             className={`text-sm font-medium ${isChatActive ? "text-text-primary" : "text-text-secondary group-hover:text-text-primary"}`}
@@ -547,7 +547,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
           ${isSettingsActive ? "bg-surface-selected/50" : "hover:bg-surface-hover/40"} transition-colors relative`}
       >
         {isSettingsActive && (
-          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-600 dark:bg-bronze-400" />
+          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-bronze-700 dark:bg-bronze-600" />
         )}
         <SettingsIcon className={`w-4 h-4 flex-shrink-0 ${isSettingsActive ? "text-text-secondary" : "text-text-tertiary group-hover/settings:text-text-secondary"}`} />
         <span className={`text-sm font-medium ${isSettingsActive ? "text-text-primary" : "text-text-secondary group-hover/settings:text-text-primary"}`}>
