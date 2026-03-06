@@ -272,7 +272,7 @@ function SortableProject({
                   e.stopPropagation();
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="w-full text-sm font-medium leading-tight bg-surface-inset border border-bronze-600/50 rounded px-1.5 py-0.5 text-text-primary outline-none focus:border-bronze-600"
+                className="w-full text-sm font-medium leading-tight bg-surface-inset border border-border-default rounded px-1.5 py-0.5 text-text-primary outline-none"
               />
             ) : (
               <div

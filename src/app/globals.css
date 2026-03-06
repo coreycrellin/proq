@@ -159,9 +159,9 @@
   body {
     @apply bg-background text-foreground;
   }
-  /* Replace default blue focus ring with subtle bronze */
+  /* Suppress default focus ring — components handle their own focus styles */
   *:focus-visible {
-    @apply outline-none ring-1 ring-bronze-600/40;
+    @apply outline-none ring-0;
   }
 }
 

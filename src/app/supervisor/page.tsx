@@ -345,7 +345,7 @@ export default function SupervisorPage() {
 
         {/* Input area */}
         <div className="shrink-0 px-3 py-2.5">
-          <div className="rounded-xl border border-border-strong bg-surface-base focus-within:border-bronze-700 overflow-hidden">
+          <div className="rounded-xl border border-border-strong bg-surface-base overflow-hidden">
             {/* Attachment previews */}
             {attachments.length > 0 && (
               <div className="flex flex-wrap gap-2 px-3 pt-3">
