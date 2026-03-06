@@ -72,7 +72,7 @@ Surfaces stack from deep to modal. Use semantic tokens — never raw hex/zinc va
 .btn-danger     — crimson border/bg tint. Destructive actions only.
 ```
 
-All buttons: `px-3 py-1.5 text-xs font-medium rounded-md transition-colors`.
+All buttons: `px-3 py-1.5 text-xs font-medium rounded-md`.
 
 ---
 
@@ -118,19 +118,19 @@ All buttons: `px-3 py-1.5 text-xs font-medium rounded-md transition-colors`.
 
 ## Animation
 
-Restrained. Only animate to signal state changes.
+Restrained. Only animate to signal ongoing state — never for hover or interaction feedback.
 
 - `animate-pulse-subtle` — Running tasks (opacity 1→0.85→1, 2s ease)
 - `animate-spin` — Agent spinner (3s linear)
-- `transition-colors` — All interactive elements
-- 700ms shadow/ring transitions for findings flash
+- `<ScrambleText>` — Shimmering text scramble for agent thinking/working states. Characters resolve from random glyphs, shimmer with a gold sweep, then dissolve and restart. Used where the system is actively processing.
+- No `transition-colors`, no hover transitions — interactions should feel instant and snappy
 - No bouncing, no sliding, no gratuitous motion
 
 ---
 
 ## Light Mode
 
-Same tokens, warm palette. Surface elevations invert (lightest = modal, darkest = deep). Bronze chrome text stays bronze. All color roles (lazuli, emerald, crimson, gold) keep their identity. See `globals.css` `:root` block.
+Same tokens, warm palette. Surface elevations invert (lightest = modal, darkest = deep). Bronze and some accent colors shift to darker scale levels for contrast against the light backgrounds (e.g., chrome text uses bronze-700 instead of the warm gray used in dark mode). All color roles (lazuli, emerald, crimson, gold) keep their identity. See `globals.css` `:root` block.
 
 ---
 
@@ -138,7 +138,8 @@ Same tokens, warm palette. Surface elevations invert (lightest = modal, darkest 
 
 - Don't use raw `zinc-*` or hex — use semantic tokens
 - Don't add `text-white` or `text-black` — use `text-primary`
-- Don't over-animate — one subtle pulse or transition per element max
+- Don't add hover/focus transitions — interactions should be instant
+- Don't over-animate — one subtle pulse per element max, reserved for ongoing state
 - Don't use action colors (lazuli, emerald, crimson, gold) for decoration — each signals specific state
 - Don't bypass button classes — use `.btn-primary` etc.
 - Don't hardcode dark-mode colors — tokens adapt automatically
