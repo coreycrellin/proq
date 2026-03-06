@@ -75,7 +75,11 @@ You have MCP tools from the **proq** server for reporting progress. Use them ins
 - \`commit_changes\` — Stage and commit all current changes with a message`,
   ];
 
-  if (mode === "answer") {
+  if (mode === "auto") {
+    sections.push(`### Workflow
+If you make code changes, use \`commit_changes\` to commit them before reporting.
+When the task is complete, use \`read_task\` to check existing findings, then \`update_task\` to report and move to Verify.`);
+  } else if (mode === "answer") {
     sections.push(`### Research Mode
 This is an answer-only task. Do NOT make any code changes, create files, edit files, or commit anything. Only research, analyze, and report your findings.
 
