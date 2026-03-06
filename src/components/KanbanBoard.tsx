@@ -54,8 +54,8 @@ interface KanbanBoardProps {
 
 export const COLUMNS: { id: TaskStatus; label: string; icon: React.ReactNode }[] = [
   { id: 'todo', label: 'To Do', icon: <CircleDotIcon className="w-3.5 h-3.5 text-text-tertiary" /> },
-  { id: 'in-progress', label: 'In Progress', icon: <RefreshCwIcon className="w-3.5 h-3.5 text-steel" /> },
-  { id: 'verify', label: 'Verify', icon: <SearchCheckIcon className="w-3.5 h-3.5 text-gold" /> },
+  { id: 'in-progress', label: 'In Progress', icon: <RefreshCwIcon className="w-3.5 h-3.5 text-bronze-500" /> },
+  { id: 'verify', label: 'Verify', icon: <SearchCheckIcon className="w-3.5 h-3.5 text-steel" /> },
   { id: 'done', label: 'Done', icon: <CheckCircle2Icon className="w-3.5 h-3.5 text-patina" /> },
 ];
 
@@ -98,7 +98,7 @@ function DroppableColumn({
       className={`flex-1 flex flex-col min-w-[240px] rounded-lg ${
         isOver
           ? isInProgress
-            ? 'bg-steel/5 ring-2 ring-steel/20'
+            ? 'bg-bronze-500/5 ring-2 ring-bronze-500/20'
             : 'bg-surface-hover/30 ring-2 ring-border-hover/30'
           : 'bg-transparent'
       }`}

@@ -26,7 +26,7 @@ export function StatusBlock({ subtype, model, costUsd, durationMs, turns, error 
   if (subtype === 'init') {
     return (
       <div className="flex items-center gap-2 py-2 text-xs text-text-tertiary">
-        <PlayIcon className="w-3.5 h-3.5 text-steel" />
+        <PlayIcon className="w-3.5 h-3.5 text-bronze-500" />
         <span>Session started{model ? ` (${model})` : ''}</span>
       </div>
     );

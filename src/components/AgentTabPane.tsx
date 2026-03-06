@@ -218,7 +218,7 @@ export function AgentTabPane({ tabId, projectId, visible }: AgentTabPaneProps) {
           {/* Loading indicator */}
           {blocks.length === 0 && !sessionDone && (
             <div className="flex items-center gap-2 py-2 text-xs text-text-tertiary">
-              <Loader2Icon className="w-3.5 h-3.5 text-steel animate-spin" />
+              <Loader2Icon className="w-3.5 h-3.5 text-bronze-500 animate-spin" />
               <span>Starting session...</span>
             </div>
           )}

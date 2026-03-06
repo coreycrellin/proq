@@ -237,8 +237,8 @@ export function TerminalPane({
         onDrop={handleDrop}
       />
       {dropping && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-steel/10 border-2 border-dashed border-steel/40 rounded-md pointer-events-none">
-          <span className="text-sm text-steel font-medium">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-bronze-500/10 border-2 border-dashed border-bronze-500/40 rounded-md pointer-events-none">
+          <span className="text-sm text-bronze-500 font-medium">
             Drop image to paste path
           </span>
         </div>

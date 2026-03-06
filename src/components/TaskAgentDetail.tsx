@@ -203,8 +203,8 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
           <div className="shrink-0 h-10 flex items-center gap-2 px-3 border-b border-border-default bg-surface-topbar">
             {task.status === 'verify' && task.branch && onSwitchBranch && currentBranch === task.branch ? (
               <>
-                <span className="text-xs text-gold font-medium">viewing</span>
-                <span className="inline-flex items-center gap-1 text-xs font-mono px-1.5 py-0.5 rounded border border-gold/30 bg-gold/10 text-gold">
+                <span className="text-xs text-steel font-medium">viewing</span>
+                <span className="inline-flex items-center gap-1 text-xs font-mono px-1.5 py-0.5 rounded border border-steel/30 bg-steel/10 text-steel">
                   <GitBranchIcon className="w-3 h-3" />
                   {task.branch}
                 </span>
@@ -221,7 +221,7 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
                 <span className={`inline-flex items-center gap-1 text-xs font-mono px-1.5 py-0.5 rounded border ${
                   task.mergeConflict
                     ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
-                    : 'border-border-hover/40 bg-surface-hover/60 text-text-chrome-active'
+                    : 'border-border-hover/40 bg-surface-hover/60 text-text-chrome'
                 }`}>
                   <GitBranchIcon className="w-3 h-3" />
                   {task.mergeConflict ? task.mergeConflict.branch : (task.branch || 'main')}
@@ -229,7 +229,7 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
                 {task.status === 'verify' && task.branch && onSwitchBranch && (
                   <button
                     onClick={() => onSwitchBranch(task.branch!)}
-                    className="text-[10px] font-medium text-gold hover:text-gold/80 px-1.5 py-0.5 rounded border border-gold/30 hover:bg-gold/10"
+                    className="text-[10px] font-medium text-steel hover:text-steel/80 px-1.5 py-0.5 rounded border border-steel/30 hover:bg-steel/10"
                   >
                     Preview
                   </button>
@@ -258,7 +258,7 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
                 }
               }}
               disabled={dispatching}
-              className="px-3 py-1.5 text-xs font-medium rounded-md shadow-sm text-steel border border-steel/20 bg-steel/10 hover:bg-steel/15 flex items-center gap-1.5 disabled:opacity-50"
+              className="btn-agent flex items-center gap-1.5 disabled:opacity-50"
             >
               {dispatching ? (
                 <Loader2Icon className="w-3 h-3 animate-spin" />
@@ -326,12 +326,12 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
                 Queued
               </span>
             ) : isDispatched ? (
-              <span className="flex items-center gap-1.5 text-xs text-steel font-medium uppercase tracking-wide">
+              <span className="flex items-center gap-1.5 text-xs text-bronze-500 font-medium uppercase tracking-wide">
                 <Loader2Icon className="w-3 h-3 animate-spin" />
                 Agent working
               </span>
             ) : task.status === 'verify' ? (
-              <span className="flex items-center gap-1.5 text-xs text-gold-dark dark:text-gold font-medium uppercase tracking-wide">
+              <span className="flex items-center gap-1.5 text-xs text-steel-dark dark:text-steel font-medium uppercase tracking-wide">
                 <ClockIcon className="w-3 h-3" />
                 Awaiting review
               </span>
@@ -506,8 +506,8 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
             </div>
           ) : isDispatched && !isQueued ? (
             <div className="flex flex-col items-center justify-center gap-3">
-              <Loader2Icon className="w-5 h-5 text-steel animate-spin" />
-              <span className="text-xs text-steel font-medium uppercase tracking-wide">
+              <Loader2Icon className="w-5 h-5 text-bronze-500 animate-spin" />
+              <span className="text-xs text-bronze-500 font-medium uppercase tracking-wide">
                 Agent working
               </span>
               <p className="text-xs text-text-placeholder italic text-center mt-1">

@@ -143,9 +143,9 @@
     @apply px-3 py-1.5 text-xs font-medium rounded-md transition-colors;
     @apply text-text-tertiary hover:text-text-secondary hover:bg-surface-hover;
   }
-  .btn-steel {
+  .btn-agent {
     @apply px-3 py-1.5 text-xs font-medium rounded-md shadow-sm transition-colors;
-    @apply text-steel border border-steel/20 bg-steel/10 hover:bg-steel/15;
+    @apply text-bronze-500 border border-bronze-500/20 bg-bronze-500/10 hover:bg-bronze-500/15;
   }
   .btn-danger {
     @apply px-3 py-1.5 text-xs font-medium rounded-md shadow-sm transition-colors;

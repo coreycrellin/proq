@@ -477,11 +477,11 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                   <button
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono rounded-md border outline-none ${
                       isOnPreviewBranch
-                        ? 'border-gold/40 bg-surface-secondary text-gold shadow-[0_0_8px_rgba(201,168,76,0.1)] hover:text-gold-light hover:bg-surface-hover'
+                        ? 'border-steel/40 bg-surface-secondary text-steel shadow-[0_0_8px_rgba(91,131,176,0.1)] hover:text-steel-light hover:bg-surface-hover'
                         : 'border-border-default bg-surface-secondary text-text-chrome hover:bg-surface-hover'
                     }`}
                   >
-                    <GitBranchIcon className={`w-3.5 h-3.5 ${isOnPreviewBranch ? 'text-gold' : ''}`} />
+                    <GitBranchIcon className={`w-3.5 h-3.5 ${isOnPreviewBranch ? 'text-steel' : ''}`} />
                     <span className="max-w-[180px] truncate">
                       {isOnPreviewBranch && taskBranchMap?.[currentBranch!]
                         ? taskBranchMap[currentBranch!].split(/\s+/).slice(0, 4).join(' ')

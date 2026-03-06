@@ -262,7 +262,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
       />
 
       <div
-        className={`relative w-full max-w-2xl bg-surface-secondary border rounded-lg shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-150 overflow-hidden ${isDragOver ? 'border-steel/50' : 'border-border-subtle'}`}
+        className={`relative w-full max-w-2xl bg-surface-secondary border rounded-lg shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-150 overflow-hidden ${isDragOver ? 'border-bronze-500/50' : 'border-border-subtle'}`}
         style={{ height: modalHeight }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -397,8 +397,8 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
 
         {/* Drag overlay hint */}
         {isDragOver && (
-          <div className="absolute inset-0 bg-steel/5 rounded-lg flex items-center justify-center pointer-events-none z-20">
-            <div className="text-sm text-steel font-medium">
+          <div className="absolute inset-0 bg-bronze-500/5 rounded-lg flex items-center justify-center pointer-events-none z-20">
+            <div className="text-sm text-bronze-500 font-medium">
               Drop files here
             </div>
           </div>
@@ -424,7 +424,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
                 await onMoveToInProgress(task.id, { title, description, attachments, mode });
               }}
               disabled={!description.trim() || dispatching}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md shadow-sm text-steel border border-steel/20 bg-steel/10 hover:bg-steel/15 flex items-center gap-1.5 ${dispatching ? 'pointer-events-none' : 'disabled:opacity-30 disabled:pointer-events-none'}`}
+              className={`btn-agent flex items-center gap-1.5 ${dispatching ? 'pointer-events-none' : 'disabled:opacity-30 disabled:pointer-events-none'}`}
             >
               {dispatching ? (
                 <Loader2Icon className="w-3 h-3 animate-spin" />

@@ -62,7 +62,7 @@ function TaskStatusSummary({ columns }: { columns: TaskColumns }) {
   if (counts["in-progress"]) {
     segments.push(
       <span key="ip" className="flex items-center gap-1">
-        <RefreshCwIcon className="w-3 h-3 text-steel animate-[spin_3s_linear_infinite]" />
+        <RefreshCwIcon className="w-3 h-3 text-bronze-500 animate-[spin_3s_linear_infinite]" />
         <span className="text-text-secondary">
           {counts["in-progress"]} in progress
         </span>
@@ -72,7 +72,7 @@ function TaskStatusSummary({ columns }: { columns: TaskColumns }) {
   if (counts["verify"]) {
     segments.push(
       <span key="v" className="flex items-center gap-1">
-        <CheckCircle2Icon className="w-2.5 h-2.5 text-gold" />
+        <CheckCircle2Icon className="w-2.5 h-2.5 text-steel" />
         <span className="text-text-secondary">
           {counts["verify"]} to verify
         </span>
