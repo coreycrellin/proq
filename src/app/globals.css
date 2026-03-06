@@ -112,7 +112,7 @@
     --border-strong: 63 63 70;         /* zinc-700 #3f3f46 */
     --text-chrome: 155 148 138;         /* warm gray #9B948A — neutral-warm, not bright gold */
     --text-chrome-hover: 228 189 137;  /* bronze-500 #E4BD89 — bright gold on hover */
-    --text-chrome-active: 228 189 137; /* bronze-500 #E4BD89 — bright gold reserved for selected */
+    --text-chrome-active: 205 170 120; /* bronze-550 #CDAA78 — muted gold for selected */
     --text-primary: 244 244 245;       /* zinc-100 #f4f4f5 */
     --text-secondary: 161 161 170;     /* zinc-400 #a1a1aa */
     --text-tertiary: 113 113 122;      /* zinc-500 #71717a */
