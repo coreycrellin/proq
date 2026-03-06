@@ -175,41 +175,41 @@ export function GitDetailModal(props: GitDetailModalProps) {
       showClose={false}
       className="w-[50vw] min-w-[40vw] max-w-[80vw] h-[80vh] flex flex-col resize overflow-auto"
     >
-      <div className="px-3 border-b border-zinc-800 flex items-center gap-2 shrink-0 h-[48px]">
+      <div className="px-3 border-b border-border-default flex items-center gap-2 shrink-0 h-[48px]">
         {type === 'log' && selectedCommit && (
           <button
             onClick={handleBack}
-            className="text-text-chrome hover:text-text-chrome-hover p-1 rounded hover:bg-zinc-800/50"
+            className="text-text-chrome hover:text-text-chrome-hover p-1 rounded hover:bg-surface-hover/50"
           >
             <ArrowLeftIcon className="w-4 h-4" />
           </button>
         )}
         <h3 className="flex-1 min-w-0 truncate flex items-center">
           {type === 'log' && selectedCommit
-            ? <span className="text-sm font-semibold"><span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide leading-none mr-1.5">commit</span><span className="font-mono text-text-chrome leading-none">{selectedCommit.hash}</span></span>
+            ? <span className="text-sm font-semibold"><span className="text-[10px] text-text-tertiary font-semibold uppercase tracking-wide leading-none mr-1.5">commit</span><span className="font-mono text-text-chrome leading-none">{selectedCommit.hash}</span></span>
             : type === 'log'
-              ? <span className="text-[10px] text-zinc-500 font-semibold leading-none flex items-center gap-1.5"><span className="uppercase tracking-wide">Git Log</span> <span className="text-zinc-600">·</span> on branch <span className="text-bronze-600">{props.currentBranch || 'main'}</span> <span className="text-zinc-600">·</span> {headerSummary}</span>
-              : <span className="text-[10px] text-zinc-500 font-semibold leading-none uppercase tracking-wide">{title}</span>
+              ? <span className="text-[10px] text-text-tertiary font-semibold leading-none flex items-center gap-1.5"><span className="uppercase tracking-wide">Git Log</span> <span className="text-text-tertiary">·</span> on branch <span className="text-bronze-600">{props.currentBranch || 'main'}</span> <span className="text-text-tertiary">·</span> {headerSummary}</span>
+              : <span className="text-[10px] text-text-tertiary font-semibold leading-none uppercase tracking-wide">{title}</span>
           }
         </h3>
         {currentFiles.length > 0 && (
           <button
             onClick={handleExpandCollapseAll}
-            className="text-xs text-text-chrome hover:text-text-chrome-hover px-2 py-1 rounded border border-zinc-700/50 shrink-0"
+            className="text-xs text-text-chrome hover:text-text-chrome-hover px-2 py-1 rounded border border-border-strong/50 shrink-0"
           >
             {allExpanded ? 'Collapse All' : 'Expand All'}
           </button>
         )}
         <button
           onClick={handleClose}
-          className="text-text-chrome hover:text-text-chrome-hover p-1 rounded hover:bg-zinc-800/50"
+          className="text-text-chrome hover:text-text-chrome-hover p-1 rounded hover:bg-surface-hover/50"
         >
           <XIcon className="w-4 h-4" />
         </button>
       </div>
       <div className="flex-1 overflow-auto min-h-0">
         {type === 'diff' && diffFiles.length > 0 && (
-          <div className="px-5 py-3 border-b border-zinc-800">
+          <div className="px-5 py-3 border-b border-border-default">
             <FileStatSummary files={diffFiles} />
           </div>
         )}
@@ -226,7 +226,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
               {props.content.split('\n').map((line, i) => {
                 const color = colorDiffLine(line);
                 return (
-                  <div key={i} className={color || 'text-zinc-400'}>
+                  <div key={i} className={color || 'text-text-secondary'}>
                     {line || '\u00A0'}
                   </div>
                 );
@@ -239,10 +239,10 @@ export function GitDetailModal(props: GitDetailModalProps) {
           const commitTitle = lines[0];
           const body = lines.slice(1).join('\n').replace(/^\n+/, '');
           return (
-            <div className="px-5 py-3 border-b border-zinc-800 space-y-3">
-              <p className="text-sm text-zinc-100 font-medium">{commitTitle}</p>
+            <div className="px-5 py-3 border-b border-border-default space-y-3">
+              <p className="text-sm text-text-primary font-medium">{commitTitle}</p>
               {body && (
-                <p className="text-xs text-zinc-400 whitespace-pre-wrap leading-relaxed">{body}</p>
+                <p className="text-xs text-text-secondary whitespace-pre-wrap leading-relaxed">{body}</p>
               )}
               <FileStatSummary files={selectedCommit.files} />
             </div>
@@ -253,7 +253,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
             {/* Behind commits section */}
             {behindCount > 0 && props.behindCommits && (
               <div>
-                <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 border-b border-zinc-800/50">
+                <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 border-b border-border-default/50">
                   <span className="text-[10px] text-crimson font-semibold uppercase tracking-wide">
                     {behindCount} {behindCount === 1 ? 'commit' : 'commits'} behind
                   </span>
@@ -277,11 +277,11 @@ export function GitDetailModal(props: GitDetailModalProps) {
                   )}
                 </div>
                 {pullError && (
-                  <div className="px-4 py-1.5 text-xs text-red-400 whitespace-pre-wrap break-words bg-surface-secondary border-b border-zinc-800/50">
+                  <div className="px-4 py-1.5 text-xs text-red-400 whitespace-pre-wrap break-words bg-surface-secondary border-b border-border-default/50">
                     {pullError}
                   </div>
                 )}
-                <div className="divide-y divide-zinc-800/50">
+                <div className="divide-y divide-border-default/50">
                   {props.behindCommits.map((c) => (
                     <CommitRow key={c.hash} commit={c} onSelect={handleSelectCommit} />
                   ))}
@@ -292,7 +292,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
             {/* Ahead commits section */}
             {aheadCount > 0 && (
               <div>
-                <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 border-b border-zinc-800/50">
+                <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 border-b border-border-default/50">
                   <span className="text-[10px] text-patina font-semibold uppercase tracking-wide">
                     {aheadCount} {aheadCount === 1 ? 'commit' : 'commits'} ahead
                   </span>
@@ -316,11 +316,11 @@ export function GitDetailModal(props: GitDetailModalProps) {
                   )}
                 </div>
                 {pushError && (
-                  <div className="px-4 py-1.5 text-xs text-red-400 whitespace-pre-wrap break-words bg-surface-secondary border-b border-zinc-800/50">
+                  <div className="px-4 py-1.5 text-xs text-red-400 whitespace-pre-wrap break-words bg-surface-secondary border-b border-border-default/50">
                     {pushError}
                   </div>
                 )}
-                <div className="divide-y divide-zinc-800/50">
+                <div className="divide-y divide-border-default/50">
                   {props.commits.map((c) => (
                     <CommitRow key={c.hash} commit={c} onSelect={handleSelectCommit} />
                   ))}
@@ -337,7 +337,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
 
             {/* Paginated history */}
             {historyCommits.length > 0 && (
-              <div className="divide-y divide-zinc-800/50">
+              <div className="divide-y divide-border-default/50">
                 {historyCommits.map((c) => (
                   <CommitRow key={c.hash} commit={c} onSelect={handleSelectCommit} />
                 ))}
@@ -346,7 +346,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
 
             {/* Show more / loading */}
             {historyLoading && (
-              <div className="flex items-center justify-center py-4 text-zinc-500">
+              <div className="flex items-center justify-center py-4 text-text-tertiary">
                 <Loader2Icon className="w-4 h-4 animate-spin mr-2" />
                 <span className="text-xs">Loading...</span>
               </div>
@@ -355,7 +355,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
               <div className="flex justify-center py-4">
                 <button
                   onClick={loadMore}
-                  className="text-xs text-text-chrome hover:text-text-chrome-hover px-3 py-1.5 rounded border border-zinc-700/50 hover:border-zinc-600"
+                  className="text-xs text-text-chrome hover:text-text-chrome-hover px-3 py-1.5 rounded border border-border-strong/50 hover:border-border-hover"
                 >
                   Show more
                 </button>
@@ -363,14 +363,14 @@ export function GitDetailModal(props: GitDetailModalProps) {
             )}
 
             {aheadCount === 0 && behindCount === 0 && historyCommits.length === 0 && !historyLoading && (
-              <div className="flex items-center justify-center py-12 text-zinc-500 text-xs">
+              <div className="flex items-center justify-center py-12 text-text-tertiary text-xs">
                 No commits found
               </div>
             )}
           </>
         )}
         {type === 'log' && loading && (
-          <div className="flex items-center justify-center py-12 text-zinc-500">
+          <div className="flex items-center justify-center py-12 text-text-tertiary">
             <Loader2Icon className="w-5 h-5 animate-spin mr-2" />
             <span className="text-xs">Loading diff...</span>
           </div>
@@ -384,7 +384,7 @@ export function GitDetailModal(props: GitDetailModalProps) {
               );
             })
           ) : (
-            <div className="flex items-center justify-center py-12 text-zinc-500 text-xs">
+            <div className="flex items-center justify-center py-12 text-text-tertiary text-xs">
               No file changes
             </div>
           )
@@ -400,12 +400,12 @@ function FileStatSummary({ files }: { files: FileDiff[] }) {
   for (const f of files) counts[f.status]++;
   const parts: { label: string; count: number; color: string }[] = [];
   if (counts.added) parts.push({ label: counts.added === 1 ? 'new file' : 'new files', count: counts.added, color: 'text-green-400' });
-  if (counts.modified) parts.push({ label: 'modified', count: counts.modified, color: 'text-zinc-400' });
+  if (counts.modified) parts.push({ label: 'modified', count: counts.modified, color: 'text-text-secondary' });
   if (counts.deleted) parts.push({ label: 'deleted', count: counts.deleted, color: 'text-red-400' });
   if (counts.renamed) parts.push({ label: 'renamed', count: counts.renamed, color: 'text-blue-400' });
   return (
-    <div className="flex items-center gap-2 text-[11px] text-zinc-500">
-      <FileIcon className="w-3 h-3 text-zinc-500 shrink-0" />
+    <div className="flex items-center gap-2 text-[11px] text-text-tertiary">
+      <FileIcon className="w-3 h-3 text-text-tertiary shrink-0" />
       {parts.map((p, i) => (
         <span key={i} className={p.color}>
           {p.count} {p.label}
@@ -420,10 +420,10 @@ function CommitRow({ commit, onSelect }: { commit: CommitInfo; onSelect: (hash: 
   return (
     <button
       onClick={() => onSelect(commit.hash)}
-      className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-zinc-800/40 group"
+      className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-surface-hover/40 group"
     >
       <span className="font-mono text-xs text-text-chrome shrink-0">{commit.hash}</span>
-      <span className="text-xs text-zinc-200 truncate flex-1 flex items-center gap-2">
+      <span className="text-xs text-text-primary truncate flex-1 flex items-center gap-2">
         <span className="truncate">{commit.message}</span>
         {(commit.insertions != null || commit.deletions != null) && (
           <span className="flex items-center gap-1 font-mono text-[10px] shrink-0">
@@ -432,8 +432,8 @@ function CommitRow({ commit, onSelect }: { commit: CommitInfo; onSelect: (hash: 
           </span>
         )}
       </span>
-      <span className="text-[10px] text-zinc-500 w-20 text-right truncate hidden sm:block">{commit.author}</span>
-      <span className="text-[10px] text-zinc-600 w-20 text-right truncate">{commit.date}</span>
+      <span className="text-[10px] text-text-tertiary w-20 text-right truncate hidden sm:block">{commit.author}</span>
+      <span className="text-[10px] text-text-tertiary w-20 text-right truncate">{commit.date}</span>
     </button>
   );
 }
