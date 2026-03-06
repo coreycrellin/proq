@@ -217,7 +217,7 @@ function findAutoStash(projectPath: string, branch: string): number {
     const target = stashMessage(branch);
     const entries = list.split("\n");
     for (let i = 0; i < entries.length; i++) {
-      if (entries[i] === target) return i;
+      if (entries[i] === target || entries[i].endsWith(`: ${target}`)) return i;
     }
   } catch { /* no stash list */ }
   return -1;
@@ -234,15 +234,11 @@ function popStashAt(projectPath: string, index: number): boolean {
     execSync(`git -C '${projectPath}' stash pop '${ref}'`, { timeout: 10_000 });
     return true;
   } catch {
-    // Pop failed (likely conflicts) — the stash is NOT removed by git on conflict.
-    // Reset the conflicted state and drop the stash to avoid it lingering.
+    // Pop failed (conflicts) — reset conflicted working tree but keep stash for manual recovery.
     try {
       execSync(`git -C '${projectPath}' checkout -- .`, { timeout: 10_000 });
-      execSync(`git -C '${projectPath}' stash drop '${ref}'`, { timeout: 10_000 });
-      console.error(`[git] auto-stash for ${ref} had conflicts — changes were dropped`);
-    } catch {
-      console.error(`[git] failed to clean up conflicted stash ${ref}`);
-    }
+    } catch { /* best effort */ }
+    console.error(`[git] auto-stash ${ref} could not be applied (conflicts) — stash kept for manual recovery`);
     return false;
   }
 }

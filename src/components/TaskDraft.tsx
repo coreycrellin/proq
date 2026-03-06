@@ -54,7 +54,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
   // Sync title from props when it arrives (e.g. via SSE auto-title) and local title is still empty
   useEffect(() => {
     if (task.title) {
-      setTitle((cur) => cur || task.title);
+      setTitle((cur) => cur || task.title || '');
     }
   }, [task.title]);
 
