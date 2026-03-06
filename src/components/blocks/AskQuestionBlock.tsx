@@ -95,7 +95,7 @@ export function AskQuestionBlock({ questions, hasResult, resultText, isOld, onAn
                     onClick={() => onAnswer(opt.label)}
                     className="group/opt flex flex-col items-start gap-0.5 px-3 py-2 rounded-md border border-border-default bg-surface-hover/50 hover:border-border-strong hover:bg-surface-hover text-left"
                   >
-                    <span className="text-xs font-medium text-text-primary group-hover/opt:text-gold">
+                    <span className="text-xs font-medium text-text-primary">
                       {opt.label}
                     </span>
                     {opt.description && (
