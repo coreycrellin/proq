@@ -350,7 +350,9 @@ export function KanbanBoard({
               <DroppableColumn key={column.id} id={column.id} isOver={isOver}>
                 <div className="flex items-center justify-between mb-4 px-1">
                   <div className="flex items-center gap-2">
-                    {column.icon}
+                    {column.id === 'in-progress' && colTasks.length > 0
+                      ? <RefreshCwIcon className="w-3.5 h-3.5 text-bronze-500 animate-[spin_3s_linear_infinite]" />
+                      : column.icon}
                     <h3 className="text-sm font-medium text-text-secondary">{column.label}</h3>
                     {column.id === 'in-progress' && onExecutionModeChange && (
                       <DropdownMenu>
