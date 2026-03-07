@@ -715,6 +715,9 @@ export default function ExperimentsPage() {
             viewBox="0 0 1001 372"
             aspectRatio={1001 / 372}
           />
+        </div>
+
+        <div className="flex items-center gap-16 mt-12">
           <LogoAnimation
             config={configC}
             selected={selected === "c"}
