@@ -43,17 +43,6 @@ const PRESET_A: Config = {
   startRetracted: false,
 };
 
-const PRESET_B: Config = {
-  duration: 1900,
-  retractPercent: 6.5,
-  holdFullMs: 2900,
-  holdRetractedMs: 1550,
-  easing: "cubic-bezier(0.4, 0, 0.2, 1)",
-  strokeWidth: 27,
-  logoSize: 128,
-  direction: "inward",
-  startRetracted: false,
-};
 
 const PRESET_C: Config = {
   duration: 8000,
@@ -388,20 +377,12 @@ function ConfigPanel({
 
 export default function ExperimentsPage() {
   const [configA, setConfigA] = useState<Config>(PRESET_A);
-  const [configB, setConfigB] = useState<Config>(PRESET_B);
   const [configC, setConfigC] = useState<Config>(PRESET_C);
-  const [selected, setSelected] = useState<"a" | "b" | "c" | null>(null);
+  const [selected, setSelected] = useState<"a" | "c" | null>(null);
 
   const updateA = useCallback(
     <K extends keyof Config>(key: K, value: Config[K]) => {
       setConfigA((prev) => ({ ...prev, [key]: value }));
-    },
-    []
-  );
-
-  const updateB = useCallback(
-    <K extends keyof Config>(key: K, value: Config[K]) => {
-      setConfigB((prev) => ({ ...prev, [key]: value }));
     },
     []
   );
@@ -413,10 +394,10 @@ export default function ExperimentsPage() {
     []
   );
 
-  const activeConfig = selected === "a" ? configA : selected === "b" ? configB : configC;
-  const activeUpdate = selected === "a" ? updateA : selected === "b" ? updateB : updateC;
-  const activeSetConfig = selected === "a" ? setConfigA : selected === "b" ? setConfigB : setConfigC;
-  const activeLabel = selected === "a" ? "Variant A" : selected === "b" ? "Variant B" : "Variant C";
+  const activeConfig = selected === "a" ? configA : configC;
+  const activeUpdate = selected === "a" ? updateA : updateC;
+  const activeSetConfig = selected === "a" ? setConfigA : setConfigC;
+  const activeLabel = selected === "a" ? "Variant A" : "Variant C";
 
   return (
     <div className="min-h-screen bg-zinc-950 flex">
@@ -447,12 +428,6 @@ export default function ExperimentsPage() {
             selected={selected === "a"}
             onClick={() => setSelected(selected === "a" ? null : "a")}
             label="A"
-          />
-          <LogoAnimation
-            config={configB}
-            selected={selected === "b"}
-            onClick={() => setSelected(selected === "b" ? null : "b")}
-            label="B"
           />
           <LogoAnimation
             config={configC}
