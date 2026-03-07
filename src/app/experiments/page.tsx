@@ -376,7 +376,7 @@ export default function ExperimentsPage() {
       )}
 
       {/* Preview area */}
-      <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex-1 flex flex-col items-center overflow-y-auto py-16">
         <h1 className="text-zinc-400 text-sm font-medium tracking-wide uppercase mb-16">
           Proq logo loader
         </h1>
@@ -394,6 +394,48 @@ export default function ExperimentsPage() {
             onClick={() => setSelected(selected === "b" ? null : "b")}
             label="B"
           />
+        </div>
+
+        <h1 className="text-zinc-400 text-sm font-medium tracking-wide uppercase mt-24 mb-16">
+          Proq logotype
+        </h1>
+
+        <div className="flex flex-col items-center gap-12">
+          {/* Single stroke logotype */}
+          <div className="flex flex-col items-center gap-3">
+            <span className="text-zinc-500 text-xs uppercase tracking-wider">Single stroke</span>
+            <svg
+              width="500"
+              height="186"
+              viewBox="0 0 1001 372"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M145.152 165.235H182.126V113.651H106.241V217.41H236.237V60H53V271.749H289.5V233V60H472.737V217.41H342.741V113.651H418.626V165.235H391.5V271.749H527V60H710.237V217.41H580.241V165.235V113.651H656.126V165.235V271.749H947.5V60.0001H764.5V217.41H894.328V113.651H818.541V165.235H855.467"
+                stroke="#E4BD89"
+                strokeWidth="27"
+              />
+            </svg>
+          </div>
+
+          {/* Separate strokes logotype */}
+          <div className="flex flex-col items-center gap-3">
+            <span className="text-zinc-500 text-xs uppercase tracking-wider">Separate strokes</span>
+            <svg
+              width="500"
+              height="186"
+              viewBox="0 0 1001 372"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M55 317.501V80.5006H238.237V237.911H108.241V134.152H184.126V185.736H147.152M291.5 253.501V80.5006H474.737V237.911H344.741V134.152H420.626V185.736H383.652M949.5 317.501V80.5007H766.5V237.911H896.328V134.152H820.541V185.736H857.467M529 237.911V80.5006H712.237V237.911H529ZM582.241 134.152H658.126V185.736H582.241V134.152Z"
+                stroke="#E4BD89"
+                strokeWidth="27"
+              />
+            </svg>
+          </div>
         </div>
       </div>
     </div>
