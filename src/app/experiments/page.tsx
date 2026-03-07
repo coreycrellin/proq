@@ -40,6 +40,17 @@ const PRESET_A: Config = {
   direction: "inward",
 };
 
+const PRESET_B: Config = {
+  duration: 4400,
+  retractPercent: 100,
+  holdFullMs: 850,
+  holdRetractedMs: 1300,
+  easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+  strokeWidth: 27,
+  logoSize: 128,
+  direction: "inward",
+};
+
 const EASING_OPTIONS = [
   "linear",
   "ease",
@@ -326,7 +337,7 @@ function ConfigPanel({
 
 export default function ExperimentsPage() {
   const [configA, setConfigA] = useState<Config>(PRESET_A);
-  const [configB, setConfigB] = useState<Config>(DEFAULT_CONFIG);
+  const [configB, setConfigB] = useState<Config>(PRESET_B);
   const [selected, setSelected] = useState<"a" | "b" | null>(null);
 
   const updateA = useCallback(
