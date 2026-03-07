@@ -243,6 +243,7 @@ const ALL_GLITCH_COLORS: { color: string; label: string; key: string }[] = [
   { color: "#6a9a58", label: "Emerald", key: "emerald" },
   { color: "#b35a5a", label: "Crimson", key: "crimson" },
   { color: "#c9a84c", label: "Gold", key: "gold" },
+  { color: "#ffffff", label: "White", key: "white" },
 ];
 
 interface GlitchConfig extends Config {
