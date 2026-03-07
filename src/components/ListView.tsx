@@ -591,7 +591,7 @@ export function ListView({
             <span className="text-sm text-text-tertiary">Select a task</span>
           </div>
         ) : (
-          <div className="flex-1 relative bg-surface-topbar">
+          <div className="flex-1 relative overflow-hidden bg-surface-topbar">
             <TaskAgentDetail
               task={selectedTask}
               projectId={projectId}
