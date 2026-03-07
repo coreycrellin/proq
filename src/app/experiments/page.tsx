@@ -55,6 +55,18 @@ const PRESET_B: Config = {
   startRetracted: false,
 };
 
+const PRESET_C: Config = {
+  duration: 8000,
+  retractPercent: 100,
+  holdFullMs: 2350,
+  holdRetractedMs: 1300,
+  easing: "linear",
+  strokeWidth: 27,
+  logoSize: 128,
+  direction: "outward",
+  startRetracted: true,
+};
+
 const EASING_OPTIONS = [
   "linear",
   "ease",
@@ -377,7 +389,7 @@ function ConfigPanel({
 export default function ExperimentsPage() {
   const [configA, setConfigA] = useState<Config>(PRESET_A);
   const [configB, setConfigB] = useState<Config>(PRESET_B);
-  const [configC, setConfigC] = useState<Config>(PRESET_A);
+  const [configC, setConfigC] = useState<Config>(PRESET_C);
   const [selected, setSelected] = useState<"a" | "b" | "c" | null>(null);
 
   const updateA = useCallback(
