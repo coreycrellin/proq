@@ -113,6 +113,13 @@ export function PlanApprovalBlock({ input, planContent, planFilePath, alreadyRes
               <textarea
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.metaKey && feedback.trim()) {
+                    e.preventDefault();
+                    setResponded('rejected');
+                    onReject(feedback.trim());
+                  }
+                }}
                 placeholder="What changes would you like to the plan?"
                 className="w-full h-20 px-2.5 py-2 rounded-md border border-border-default bg-surface-inset text-xs text-text-primary placeholder:text-text-placeholder resize-none focus:outline-none focus:border-border-strong"
                 autoFocus
