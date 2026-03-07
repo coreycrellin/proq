@@ -369,12 +369,12 @@ function processStreamEvent(
             thinking: b.thinking as string,
           });
         } else if (b.type === "tool_use") {
-          appendBlock(session, {
+          const toolBlock: AgentBlock & { type: "tool_use" } = {
             type: "tool_use",
             toolId: b.id as string,
             name: b.name as string,
             input: b.input as Record<string, unknown>,
-          });
+          };
 
           // Plan mode: when the agent calls ExitPlanMode, read the plan file
           // from disk and enrich the block, then kill the process.
@@ -393,22 +393,22 @@ function processStreamEvent(
                 }
               }
             }
-            // Read the plan file and enrich the block before killing
+            // Read the plan file, enrich the block, then append+broadcast once and kill
             const enrichAndKill = planPath
               ? readFile(planPath, "utf-8").then((content) => {
-                  const exitBlock = session.blocks[session.blocks.length - 1];
-                  if (exitBlock.type === "tool_use" && exitBlock.name === "ExitPlanMode") {
-                    exitBlock.input._planContent = content;
-                    exitBlock.input._planFilePath = planPath;
-                    broadcast(session, { type: "block", block: exitBlock });
-                  }
+                  toolBlock.input._planContent = content;
+                  toolBlock.input._planFilePath = planPath;
                 }).catch(() => { /* plan file may not exist */ })
               : Promise.resolve();
-            enrichAndKill.finally(() => {
+            enrichAndKill.then(() => {
+              appendBlock(session, toolBlock);
+            }).finally(() => {
               if (session.queryHandle) {
                 session.queryHandle.kill("SIGTERM");
               }
             });
+          } else {
+            appendBlock(session, toolBlock);
           }
         }
       }
