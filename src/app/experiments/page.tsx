@@ -237,6 +237,161 @@ function LogoAnimation({
   );
 }
 
+const GLITCH_COLORS = [
+  "#E4BD89", // bronze
+  "#5b83b0", // lazuli
+  "#6a9a58", // emerald
+  "#b35a5a", // crimson
+  "#c9a84c", // gold
+];
+
+function GlitchAnimation({
+  config,
+  selected,
+  onClick,
+  label,
+  svgPath = LOGO_PATH,
+  viewBox = "0 0 256 256",
+  aspectRatio,
+}: {
+  config: Config;
+  selected: boolean;
+  onClick: () => void;
+  label: string;
+  svgPath?: string;
+  viewBox?: string;
+  aspectRatio?: number;
+}) {
+  const pathRef = useRef<SVGPathElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const animRef = useRef<Animation | null>(null);
+
+  useEffect(() => {
+    const path = pathRef.current;
+    const svg = svgRef.current;
+    if (!path || !svg) return;
+
+    const totalLength = path.getTotalLength();
+    path.style.strokeDasharray = `${totalLength}`;
+    path.style.strokeDashoffset = "0";
+
+    if (animRef.current) animRef.current.cancel();
+
+    const retractOffset = totalLength * (config.retractPercent / 100);
+    const sign = config.direction === "inward" ? -1 : 1;
+    const target = `${sign * retractOffset}`;
+
+    const totalTime =
+      config.duration + config.holdFullMs + config.holdRetractedMs;
+    const animDuration = config.duration / 2;
+    const retractFrac = animDuration / totalTime;
+
+    const from = config.startRetracted ? target : "0";
+    const to = config.startRetracted ? "0" : target;
+    const holdFirstFrac = config.startRetracted
+      ? config.holdRetractedMs / totalTime
+      : config.holdFullMs / totalTime;
+    const holdSecondFrac = config.startRetracted
+      ? config.holdFullMs / totalTime
+      : config.holdRetractedMs / totalTime;
+
+    const s1 = holdFirstFrac;
+    const s2 = s1 + retractFrac;
+    const s3 = s2 + holdSecondFrac;
+
+    // Determine the "hold at full" window as fraction of cycle
+    let glitchStart: number, glitchEnd: number;
+    if (config.startRetracted) {
+      // full state is 'to' (0), held between s2 and s3
+      glitchStart = s2;
+      glitchEnd = s3;
+    } else {
+      // full state is 'from' (0), held between 0 and s1
+      glitchStart = 0;
+      glitchEnd = s1;
+    }
+
+    const keyframes: Keyframe[] = [
+      { strokeDashoffset: from, offset: 0, easing: config.easing },
+      ...(holdFirstFrac > 0
+        ? [{ strokeDashoffset: from, offset: s1, easing: config.easing }]
+        : []),
+      { strokeDashoffset: to, offset: s2, easing: config.easing },
+      ...(holdSecondFrac > 0
+        ? [{ strokeDashoffset: to, offset: s3, easing: config.easing }]
+        : []),
+      { strokeDashoffset: from, offset: 1 },
+    ];
+
+    const animation = path.animate(keyframes, {
+      duration: totalTime,
+      iterations: Infinity,
+    });
+
+    animRef.current = animation;
+
+    // Glitch effect: rapid color + jitter during hold-at-full
+    const glitchInterval = setInterval(() => {
+      const anim = animRef.current;
+      if (!anim || anim.currentTime == null) return;
+
+      const progress =
+        ((anim.currentTime as number) % totalTime) / totalTime;
+
+      if (
+        glitchEnd > glitchStart
+          ? progress >= glitchStart && progress <= glitchEnd
+          : progress >= glitchStart || progress <= glitchEnd
+      ) {
+        const color =
+          GLITCH_COLORS[Math.floor(Math.random() * GLITCH_COLORS.length)];
+        path.style.stroke = color;
+        const jx = (Math.random() - 0.5) * 6;
+        const jy = (Math.random() - 0.5) * 4;
+        svg.style.transform = `translate(${jx}px, ${jy}px)`;
+      } else {
+        path.style.stroke = STROKE_COLOR;
+        svg.style.transform = "";
+      }
+    }, 60);
+
+    return () => {
+      clearInterval(glitchInterval);
+      animation.cancel();
+    };
+  }, [config]);
+
+  return (
+    <div
+      onClick={onClick}
+      className={`flex flex-col items-center gap-4 cursor-pointer rounded-xl p-6 transition-all ${
+        selected
+          ? "ring-1 ring-amber-500/40 bg-zinc-900/50"
+          : "hover:bg-zinc-900/30"
+      }`}
+    >
+      <span className="text-zinc-500 text-xs uppercase tracking-wider">
+        {label}
+      </span>
+      <svg
+        ref={svgRef}
+        width={aspectRatio ? config.logoSize * aspectRatio : config.logoSize}
+        height={config.logoSize}
+        viewBox={viewBox}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          ref={pathRef}
+          d={svgPath}
+          stroke={STROKE_COLOR}
+          strokeWidth={config.strokeWidth}
+        />
+      </svg>
+    </div>
+  );
+}
+
 function ConfigPanel({
   config,
   onChange,
@@ -382,7 +537,8 @@ export default function ExperimentsPage() {
   const [configA, setConfigA] = useState<Config>(PRESET_A);
   const [configB, setConfigB] = useState<Config>(PRESET_C);
   const [configC, setConfigC] = useState<Config>(PRESET_C);
-  const [selected, setSelected] = useState<"a" | "b" | "c" | null>(null);
+  const [configD, setConfigD] = useState<Config>(PRESET_C);
+  const [selected, setSelected] = useState<"a" | "b" | "c" | "d" | null>(null);
 
   const updateA = useCallback(
     <K extends keyof Config>(key: K, value: Config[K]) => {
@@ -405,10 +561,22 @@ export default function ExperimentsPage() {
     []
   );
 
-  const activeConfig = selected === "a" ? configA : selected === "b" ? configB : configC;
-  const activeUpdate = selected === "a" ? updateA : selected === "b" ? updateB : updateC;
-  const activeSetConfig = selected === "a" ? setConfigA : selected === "b" ? setConfigB : setConfigC;
-  const activeLabel = selected === "a" ? "Variant A" : selected === "b" ? "Variant B" : "Variant C";
+  const updateD = useCallback(
+    <K extends keyof Config>(key: K, value: Config[K]) => {
+      setConfigD((prev) => ({ ...prev, [key]: value }));
+    },
+    []
+  );
+
+  const configs = { a: configA, b: configB, c: configC, d: configD };
+  const updates = { a: updateA, b: updateB, c: updateC, d: updateD };
+  const setConfigs = { a: setConfigA, b: setConfigB, c: setConfigC, d: setConfigD };
+  const labels = { a: "Variant A", b: "Variant B", c: "Variant C", d: "Variant D" };
+
+  const activeConfig = selected ? configs[selected] : configA;
+  const activeUpdate = selected ? updates[selected] : updateA;
+  const activeSetConfig = selected ? setConfigs[selected] : setConfigA;
+  const activeLabel = selected ? labels[selected] : "";
 
   return (
     <div className="min-h-screen bg-zinc-950 flex">
@@ -458,6 +626,15 @@ export default function ExperimentsPage() {
             onClick={() => setSelected(selected === "c" ? null : "c")}
             label="C"
             svgPath={LOGOTYPE_SINGLE_PATH}
+            viewBox="0 0 1001 372"
+            aspectRatio={1001 / 372}
+          />
+          <GlitchAnimation
+            config={configD}
+            selected={selected === "d"}
+            onClick={() => setSelected(selected === "d" ? null : "d")}
+            label="D"
+            svgPath={LOGOTYPE_SINGLE_PATH_2}
             viewBox="0 0 1001 372"
             aspectRatio={1001 / 372}
           />
