@@ -30,11 +30,11 @@ const DEFAULT_CONFIG: Config = {
 };
 
 const PRESET_A: Config = {
-  duration: 2400,
+  duration: 1900,
   retractPercent: 6.5,
-  holdFullMs: 350,
-  holdRetractedMs: 250,
-  easing: "ease",
+  holdFullMs: 2900,
+  holdRetractedMs: 1550,
+  easing: "cubic-bezier(0.4, 0, 0.2, 1)",
   strokeWidth: 27,
   logoSize: 128,
   direction: "inward",
