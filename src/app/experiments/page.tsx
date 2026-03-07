@@ -256,13 +256,21 @@ interface GlitchConfig extends Config {
 }
 
 const DEFAULT_GLITCH_CONFIG: GlitchConfig = {
-  ...PRESET_C,
-  glitchRate: 60,
-  glitchJitterX: 6,
-  glitchJitterY: 4,
-  glitchOpacityMin: 100,
+  duration: 8000,
+  retractPercent: 100,
+  holdFullMs: 2350,
+  holdRetractedMs: 1300,
+  easing: "linear",
+  strokeWidth: 27,
+  logoSize: 128,
+  direction: "outward",
+  startRetracted: true,
+  glitchRate: 37,
+  glitchJitterX: 10.5,
+  glitchJitterY: 11,
+  glitchOpacityMin: 0,
   glitchColors: ALL_GLITCH_COLORS.map((c) => c.color),
-  glitchOnlyDuringHold: true,
+  glitchOnlyDuringHold: false,
 };
 
 function GlitchAnimation({
