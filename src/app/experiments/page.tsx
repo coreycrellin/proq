@@ -16,6 +16,7 @@ interface Config {
   strokeWidth: number;
   logoSize: number;
   direction: "inward" | "outward";
+  startRetracted: boolean;
 }
 
 const DEFAULT_CONFIG: Config = {
@@ -27,6 +28,7 @@ const DEFAULT_CONFIG: Config = {
   strokeWidth: STROKE_WIDTH,
   logoSize: 128,
   direction: "inward",
+  startRetracted: false,
 };
 
 const PRESET_A: Config = {
@@ -38,6 +40,7 @@ const PRESET_A: Config = {
   strokeWidth: 27,
   logoSize: 128,
   direction: "inward",
+  startRetracted: false,
 };
 
 const PRESET_B: Config = {
@@ -49,6 +52,7 @@ const PRESET_B: Config = {
   strokeWidth: 27,
   logoSize: 128,
   direction: "inward",
+  startRetracted: false,
 };
 
 const EASING_OPTIONS = [
@@ -168,16 +172,26 @@ function LogoAnimation({
     const t2 = t1 + retractFrac;
     const t3 = t2 + holdRetractedFrac;
 
+    // When startRetracted, the resting state is retracted and it extends out then back
+    const from = config.startRetracted ? target : "0";
+    const to = config.startRetracted ? "0" : target;
+    const holdFirstFrac = config.startRetracted ? config.holdRetractedMs / totalTime : config.holdFullMs / totalTime;
+    const holdSecondFrac = config.startRetracted ? config.holdFullMs / totalTime : config.holdRetractedMs / totalTime;
+
+    const s1 = holdFirstFrac;
+    const s2 = s1 + retractFrac;
+    const s3 = s2 + holdSecondFrac;
+
     const keyframes: Keyframe[] = [
-      { strokeDashoffset: "0", offset: 0, easing: config.easing },
-      ...(config.holdFullMs > 0
-        ? [{ strokeDashoffset: "0", offset: t1, easing: config.easing }]
+      { strokeDashoffset: from, offset: 0, easing: config.easing },
+      ...(holdFirstFrac > 0
+        ? [{ strokeDashoffset: from, offset: s1, easing: config.easing }]
         : []),
-      { strokeDashoffset: target, offset: t2, easing: config.easing },
-      ...(config.holdRetractedMs > 0
-        ? [{ strokeDashoffset: target, offset: t3, easing: config.easing }]
+      { strokeDashoffset: to, offset: s2, easing: config.easing },
+      ...(holdSecondFrac > 0
+        ? [{ strokeDashoffset: to, offset: s3, easing: config.easing }]
         : []),
-      { strokeDashoffset: "0", offset: 1 },
+      { strokeDashoffset: from, offset: 1 },
     ];
 
     const animation = path.animate(keyframes, {
@@ -306,6 +320,22 @@ function ConfigPanel({
           <option value="outward">Shrink from outside</option>
         </select>
       </div>
+
+      <label className="flex items-center justify-between cursor-pointer">
+        <span className="text-zinc-400 text-xs">Start retracted</span>
+        <button
+          onClick={() => onChange("startRetracted", !config.startRetracted)}
+          className={`w-8 h-4 rounded-full transition-colors relative ${
+            config.startRetracted ? "bg-amber-500/80" : "bg-zinc-700"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${
+              config.startRetracted ? "translate-x-4" : "translate-x-0.5"
+            }`}
+          />
+        </button>
+      </label>
 
       <Slider
         label="Stroke width"
