@@ -120,16 +120,25 @@ function Slider({
   );
 }
 
+const LOGOTYPE_SINGLE_PATH =
+  "M145.152 165.235H182.126V113.651H106.241V217.41H236.237V60H53V271.749H289.5V233V60H472.737V217.41H342.741V113.651H418.626V165.235H391.5V271.749H527V60H710.237V217.41H580.241V165.235V113.651H656.126V165.235V271.749H947.5V60.0001H764.5V217.41H894.328V113.651H818.541V165.235H855.467";
+
 function LogoAnimation({
   config,
   selected,
   onClick,
   label,
+  svgPath = LOGO_PATH,
+  viewBox = "0 0 256 256",
+  aspectRatio,
 }: {
   config: Config;
   selected: boolean;
   onClick: () => void;
   label: string;
+  svgPath?: string;
+  viewBox?: string;
+  aspectRatio?: number;
 }) {
   const pathRef = useRef<SVGPathElement>(null);
   const animRef = useRef<Animation | null>(null);
@@ -193,15 +202,15 @@ function LogoAnimation({
         {label}
       </span>
       <svg
-        width={config.logoSize}
+        width={aspectRatio ? config.logoSize * aspectRatio : config.logoSize}
         height={config.logoSize}
-        viewBox="0 0 256 256"
+        viewBox={viewBox}
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
         <path
           ref={pathRef}
-          d={LOGO_PATH}
+          d={svgPath}
           stroke={STROKE_COLOR}
           strokeWidth={config.strokeWidth}
         />
@@ -338,7 +347,8 @@ function ConfigPanel({
 export default function ExperimentsPage() {
   const [configA, setConfigA] = useState<Config>(PRESET_A);
   const [configB, setConfigB] = useState<Config>(PRESET_B);
-  const [selected, setSelected] = useState<"a" | "b" | null>(null);
+  const [configC, setConfigC] = useState<Config>(PRESET_A);
+  const [selected, setSelected] = useState<"a" | "b" | "c" | null>(null);
 
   const updateA = useCallback(
     <K extends keyof Config>(key: K, value: Config[K]) => {
@@ -354,9 +364,17 @@ export default function ExperimentsPage() {
     []
   );
 
-  const activeConfig = selected === "a" ? configA : configB;
-  const activeUpdate = selected === "a" ? updateA : updateB;
-  const activeSetConfig = selected === "a" ? setConfigA : setConfigB;
+  const updateC = useCallback(
+    <K extends keyof Config>(key: K, value: Config[K]) => {
+      setConfigC((prev) => ({ ...prev, [key]: value }));
+    },
+    []
+  );
+
+  const activeConfig = selected === "a" ? configA : selected === "b" ? configB : configC;
+  const activeUpdate = selected === "a" ? updateA : selected === "b" ? updateB : updateC;
+  const activeSetConfig = selected === "a" ? setConfigA : selected === "b" ? setConfigB : setConfigC;
+  const activeLabel = selected === "a" ? "Variant A" : selected === "b" ? "Variant B" : "Variant C";
 
   return (
     <div className="min-h-screen bg-zinc-950 flex">
@@ -371,7 +389,7 @@ export default function ExperimentsPage() {
             )
           }
           onReset={() => activeSetConfig(DEFAULT_CONFIG)}
-          label={selected === "a" ? "Variant A" : "Variant B"}
+          label={activeLabel}
         />
       )}
 
@@ -393,6 +411,15 @@ export default function ExperimentsPage() {
             selected={selected === "b"}
             onClick={() => setSelected(selected === "b" ? null : "b")}
             label="B"
+          />
+          <LogoAnimation
+            config={configC}
+            selected={selected === "c"}
+            onClick={() => setSelected(selected === "c" ? null : "c")}
+            label="C"
+            svgPath={LOGOTYPE_SINGLE_PATH}
+            viewBox="0 0 1001 372"
+            aspectRatio={1001 / 372}
           />
         </div>
 
