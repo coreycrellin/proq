@@ -82,6 +82,7 @@ export interface Task {
   agentStatus?: "queued" | "starting" | "running" | null;
   worktreePath?: string;
   branch?: string;
+  baseBranch?: string;
   mergeConflict?: {
     error: string;
     files: string[];

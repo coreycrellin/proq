@@ -14,6 +14,7 @@ import {
   ClockIcon,
   PlayIcon,
   GitBranchIcon,
+  ArrowRightIcon,
 } from 'lucide-react';
 import type { Task, FollowUpDraft } from '@/lib/types';
 import { attachmentUrl } from '@/lib/upload';
@@ -36,10 +37,11 @@ interface TaskAgentDetailProps {
   parallelMode?: boolean;
   currentBranch?: string;
   onSwitchBranch?: (branch: string) => void;
+  defaultBranch?: string;
   className?: string;
 }
 
-export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, followUpDraft, onFollowUpDraftChange, onComplete, onResumeEditing, onUpdateTitle, parallelMode, currentBranch, onSwitchBranch, className }: TaskAgentDetailProps) {
+export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, followUpDraft, onFollowUpDraftChange, onComplete, onResumeEditing, onUpdateTitle, parallelMode, currentBranch, onSwitchBranch, defaultBranch = 'main', className }: TaskAgentDetailProps) {
   const shortId = task.id.slice(0, 8);
   const terminalTabId = `task-${shortId}`;
   const steps = parseLines(task.humanSteps);
@@ -204,27 +206,44 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
             {task.status === 'verify' && task.branch && onSwitchBranch && currentBranch === task.branch ? (
               <>
                 <span className="text-xs text-lazuli font-medium">viewing</span>
+                {task.baseBranch && task.baseBranch !== defaultBranch && (
+                  <>
+                    <span className="inline-flex items-center gap-1 text-xs font-mono px-1.5 py-0.5 rounded border border-border-hover/40 bg-surface-hover/60 text-text-tertiary">
+                      <GitBranchIcon className="w-3 h-3" />
+                      {task.baseBranch}
+                    </span>
+                    <ArrowRightIcon className="w-3 h-3 text-text-placeholder shrink-0" />
+                  </>
+                )}
                 <span className="inline-flex items-center gap-1 text-xs font-mono px-1.5 py-0.5 rounded border border-lazuli/30 bg-lazuli/10 text-lazuli">
                   <GitBranchIcon className="w-3 h-3" />
                   {task.branch}
                 </span>
                 <button
-                  onClick={() => onSwitchBranch('main')}
+                  onClick={() => onSwitchBranch(task.baseBranch || defaultBranch)}
                   className="text-[10px] font-medium text-text-chrome hover:text-text-chrome-hover px-1.5 py-0.5 rounded border border-border-default hover:bg-surface-hover"
                 >
-                  Back to main
+                  Back to {task.baseBranch || defaultBranch}
                 </button>
               </>
             ) : (
               <>
-                <span className="text-xs text-text-tertiary">worktree:</span>
+                {task.baseBranch && task.baseBranch !== defaultBranch && (
+                  <>
+                    <span className="inline-flex items-center gap-1 text-xs font-mono px-1.5 py-0.5 rounded border border-border-hover/40 bg-surface-hover/60 text-text-tertiary">
+                      <GitBranchIcon className="w-3 h-3" />
+                      {task.baseBranch}
+                    </span>
+                    <ArrowRightIcon className="w-3 h-3 text-text-placeholder shrink-0" />
+                  </>
+                )}
                 <span className={`inline-flex items-center gap-1 text-xs font-mono px-1.5 py-0.5 rounded border ${
                   task.mergeConflict
                     ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
                     : 'border-border-hover/40 bg-surface-hover/60 text-text-chrome'
                 }`}>
                   <GitBranchIcon className="w-3 h-3" />
-                  {task.mergeConflict ? task.mergeConflict.branch : (task.branch || 'main')}
+                  {task.mergeConflict ? task.mergeConflict.branch : (task.branch || defaultBranch)}
                 </span>
                 {task.status === 'verify' && task.branch && onSwitchBranch && (
                   <button

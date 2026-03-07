@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { moveTask, getProject, getTask, updateTask, getSettings } from "@/lib/db";
+import { moveTask, getProject, getTask, updateTask, getSettings, getProjectDefaultBranch } from "@/lib/db";
 import { abortTask, processQueue, getInitialAgentStatus, scheduleCleanup, cancelCleanup } from "@/lib/agent-dispatch";
 import { mergeWorktree, removeWorktree, ensureNotOnTaskBranch, ensureOnMainForMerge, popAutoStash } from "@/lib/worktree";
 import type { TaskStatus } from "@/lib/types";
@@ -51,13 +51,14 @@ export async function PUT(request: Request, { params }: Params) {
       // Remove worktree if task had one (no merge — work is discarded)
       if (prevTask?.worktreePath || prevTask?.branch) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
+        const defaultBr = await getProjectDefaultBranch(id);
         try {
-          ensureNotOnTaskBranch(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
+          ensureNotOnTaskBranch(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`, defaultBr);
         } catch { /* best effort */ }
         removeWorktree(projectPath, prevTask.id.slice(0, 8));
-        popAutoStash(projectPath);
+        popAutoStash(projectPath, prevTask.baseBranch || defaultBr);
       }
-      await updateTask(id, taskId, { agentStatus: null, findings: "", humanSteps: "", agentLog: "", worktreePath: undefined, branch: undefined, mergeConflict: undefined, renderMode: undefined, agentBlocks: undefined, sessionId: undefined });
+      await updateTask(id, taskId, { agentStatus: null, findings: "", humanSteps: "", agentLog: "", worktreePath: undefined, branch: undefined, baseBranch: undefined, mergeConflict: undefined, renderMode: undefined, agentBlocks: undefined, sessionId: undefined });
       if (prevStatus === "in-progress") {
         await abortTask(id, taskId);
       }
@@ -68,13 +69,14 @@ export async function PUT(request: Request, { params }: Params) {
       // Merge worktree when skipping verify
       if (prevTask?.worktreePath || prevTask?.branch) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
+        const mergeBranch = prevTask.baseBranch || await getProjectDefaultBranch(id);
         try {
-          ensureOnMainForMerge(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
+          ensureOnMainForMerge(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`, mergeBranch);
         } catch { /* best effort */ }
         const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
-        popAutoStash(projectPath);
+        popAutoStash(projectPath, mergeBranch);
         if (result.success) {
-          await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined, agentStatus: null });
+          await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, baseBranch: undefined, mergeConflict: undefined, agentStatus: null });
         } else {
           // Can't move to done with conflict — land in verify
           await moveTask(id, taskId, "verify", 0);
@@ -96,15 +98,16 @@ export async function PUT(request: Request, { params }: Params) {
     } else if (toColumn === "verify" && prevStatus === "done") {
       cancelCleanup(taskId);
     } else if (toColumn === "done" && prevStatus === "verify") {
-      // Merge worktree branch into main on completion
+      // Merge worktree branch into base on completion
       if (prevTask?.worktreePath || prevTask?.branch) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
+        const mergeBranch = prevTask.baseBranch || await getProjectDefaultBranch(id);
         try {
-          ensureOnMainForMerge(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
+          ensureOnMainForMerge(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`, mergeBranch);
         } catch { /* best effort */ }
         if (prevTask.worktreePath || prevTask.branch) {
           const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
-          popAutoStash(projectPath);
+          popAutoStash(projectPath, mergeBranch);
           if (!result.success) {
             await moveTask(id, taskId, "verify", 0);
             await updateTask(id, taskId, {
@@ -116,12 +119,12 @@ export async function PUT(request: Request, { params }: Params) {
               },
             });
             await processQueue(id);
-  
+
             return NextResponse.json({ success: false, error: result.error });
           }
-          await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined, agentStatus: null });
+          await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, baseBranch: undefined, mergeConflict: undefined, agentStatus: null });
         } else {
-          popAutoStash(projectPath);
+          popAutoStash(projectPath, mergeBranch);
         }
       }
       await updateTask(id, taskId, { agentStatus: null });

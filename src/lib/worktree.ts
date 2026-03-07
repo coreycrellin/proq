@@ -20,15 +20,17 @@ export function isGitRepo(projectPath: string): boolean {
 export function createWorktree(
   projectPath: string,
   shortId: string,
+  baseBranch?: string,
 ): string {
   ensureGitignore(projectPath);
   const worktreePath = join(projectPath, WORKTREE_DIR, shortId);
   const branch = `proq/${shortId}`;
+  const startPoint = baseBranch ? ` '${baseBranch}'` : '';
   execSync(
-    `git -C '${projectPath}' worktree add '${WORKTREE_DIR}/${shortId}' -b '${branch}'`,
+    `git -C '${projectPath}' worktree add '${WORKTREE_DIR}/${shortId}' -b '${branch}'${startPoint}`,
     { timeout: 30_000 },
   );
-  console.log(`[worktree] created ${worktreePath} on branch ${branch}`);
+  console.log(`[worktree] created ${worktreePath} on branch ${branch}${baseBranch ? ` (based on ${baseBranch})` : ''}`);
   return worktreePath;
 }
 
@@ -133,15 +135,16 @@ export function mergeWorktree(
 export function mergeMainIntoWorktree(
   projectPath: string,
   shortId: string,
+  baseBranch = "main",
 ): { success: boolean; error?: string } {
   const worktreePath = join(projectPath, WORKTREE_DIR, shortId);
   try {
-    // Merge main into the worktree branch — allow conflicts to remain
+    // Merge base branch into the worktree branch — allow conflicts to remain
     execSync(
-      `git -C '${worktreePath}' merge origin/main --no-ff -m 'Merge main into proq/${shortId} for conflict resolution' || git -C '${worktreePath}' merge main --no-ff -m 'Merge main into proq/${shortId} for conflict resolution'`,
+      `git -C '${worktreePath}' merge origin/${baseBranch} --no-ff -m 'Merge ${baseBranch} into proq/${shortId} for conflict resolution' || git -C '${worktreePath}' merge ${baseBranch} --no-ff -m 'Merge ${baseBranch} into proq/${shortId} for conflict resolution'`,
       { timeout: 30_000, shell: "/bin/bash" },
     );
-    console.log(`[worktree] merged main into proq/${shortId}`);
+    console.log(`[worktree] merged ${baseBranch} into proq/${shortId}`);
     return { success: true };
   } catch {
     // Merge left conflict markers — that's fine, the agent will resolve them
@@ -419,12 +422,12 @@ function deletePreviewBranch(
  * switch to main. Used before merge/remove operations so we don't operate on the
  * branch we're standing on.
  */
-export function ensureNotOnTaskBranch(projectPath: string, taskBranch: string): void {
+export function ensureNotOnTaskBranch(projectPath: string, taskBranch: string, defaultBranch = "main"): void {
   const cur = getCurrentBranch(projectPath);
   const isOnTask = cur.branch === taskBranch
     || (isPreviewBranch(cur.branch) && sourceProqBranch(cur.branch) === taskBranch);
   if (isOnTask) {
-    checkoutBranch(projectPath, "main", { skipStashPop: true });
+    checkoutBranch(projectPath, defaultBranch, { skipStashPop: true });
   }
   // Also clean up any leftover preview branch for this task
   deletePreviewBranch(projectPath, taskBranch);
@@ -436,10 +439,10 @@ export function ensureNotOnTaskBranch(projectPath: string, taskBranch: string): 
  * this always checks out main if we're on any non-main branch. This prevents
  * merging into the wrong branch (e.g., another task's preview branch).
  */
-export function ensureOnMainForMerge(projectPath: string, taskBranch: string): void {
+export function ensureOnMainForMerge(projectPath: string, taskBranch: string, targetBranch = "main"): void {
   const cur = getCurrentBranch(projectPath);
-  if (cur.branch !== "main") {
-    checkoutBranch(projectPath, "main", { skipStashPop: true });
+  if (cur.branch !== targetBranch) {
+    checkoutBranch(projectPath, targetBranch, { skipStashPop: true });
   }
   // Also clean up any leftover preview branch for this task
   deletePreviewBranch(projectPath, taskBranch);

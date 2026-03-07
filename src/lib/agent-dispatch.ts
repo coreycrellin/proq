@@ -15,10 +15,11 @@ import {
   getTask,
   updateTask,
   getSettings,
+  getProjectDefaultBranch,
 } from "./db";
 import { stripAnsi } from "./utils";
 import { emitTaskUpdate } from "./task-events";
-import { createWorktree, removeWorktree } from "./worktree";
+import { createWorktree, removeWorktree, getCurrentBranch } from "./worktree";
 import type { TaskAttachment, TaskMode, AgentRenderMode } from "./types";
 import {
   startSession,
@@ -259,9 +260,18 @@ export async function dispatchTask(
       console.log(`[agent-dispatch] reusing existing worktree ${effectivePath}`);
     } else {
       try {
-        const worktreePath = createWorktree(projectPath, shortId);
+        // Determine base branch: use current branch if it's a non-proq, non-default branch
+        const defaultBranch = await getProjectDefaultBranch(projectId);
+        const current = getCurrentBranch(projectPath);
+        const baseBranch = (
+          current.branch.startsWith("proq/") ||
+          current.branch.startsWith("proq-preview/") ||
+          current.branch === defaultBranch
+        ) ? defaultBranch : current.branch;
+
+        const worktreePath = createWorktree(projectPath, shortId, baseBranch);
         const branch = `proq/${shortId}`;
-        await updateTask(projectId, taskId, { worktreePath, branch });
+        await updateTask(projectId, taskId, { worktreePath, branch, baseBranch });
         effectivePath = worktreePath;
       } catch (err) {
         console.error(

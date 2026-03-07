@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getTask, getProject, updateTask, deleteTask, getSettings } from "@/lib/db";
+import { getTask, getProject, updateTask, deleteTask, getSettings, getProjectDefaultBranch } from "@/lib/db";
 import type { Task } from "@/lib/types";
 import { abortTask, processQueue, getInitialAgentStatus, scheduleCleanup, cancelCleanup, notify } from "@/lib/agent-dispatch";
 import { autoTitle } from "@/lib/auto-title";
@@ -53,14 +53,15 @@ export async function PATCH(request: Request, { params }: Params) {
         const proj = await getProject(id);
         if (proj) {
           const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
+          const defaultBr = await getProjectDefaultBranch(id);
           try {
-            ensureNotOnTaskBranch(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
+            ensureNotOnTaskBranch(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`, defaultBr);
           } catch { /* best effort */ }
           removeWorktree(projectPath, prevTask.id.slice(0, 8));
-          popAutoStash(projectPath);
+          popAutoStash(projectPath, prevTask.baseBranch || defaultBr);
         }
       }
-      const resetFields = { agentStatus: null as Task["agentStatus"], findings: "", humanSteps: "", agentLog: "", worktreePath: undefined as string | undefined, branch: undefined as string | undefined, mergeConflict: undefined as Task["mergeConflict"], renderMode: undefined as Task["renderMode"], agentBlocks: undefined as Task["agentBlocks"], sessionId: undefined as Task["sessionId"] };
+      const resetFields = { agentStatus: null as Task["agentStatus"], findings: "", humanSteps: "", agentLog: "", worktreePath: undefined as string | undefined, branch: undefined as string | undefined, baseBranch: undefined as string | undefined, mergeConflict: undefined as Task["mergeConflict"], renderMode: undefined as Task["renderMode"], agentBlocks: undefined as Task["agentBlocks"], sessionId: undefined as Task["sessionId"] };
       await updateTask(id, taskId, resetFields);
       Object.assign(updated, resetFields);
       if (prevStatus === "in-progress") {
@@ -76,13 +77,14 @@ export async function PATCH(request: Request, { params }: Params) {
         const proj = await getProject(id);
         if (proj) {
           const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
+          const mergeBranch = prevTask.baseBranch || await getProjectDefaultBranch(id);
           try {
-            ensureOnMainForMerge(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
+            ensureOnMainForMerge(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`, mergeBranch);
           } catch { /* best effort */ }
           const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
-          popAutoStash(projectPath);
+          popAutoStash(projectPath, mergeBranch);
           if (result.success) {
-            await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined, agentStatus: null });
+            await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, baseBranch: undefined, mergeConflict: undefined, agentStatus: null });
           } else {
             // Can't complete with conflict — stay in verify
             await updateTask(id, taskId, {
@@ -110,17 +112,18 @@ export async function PATCH(request: Request, { params }: Params) {
       // the user can continue chatting without the cleanup timer interfering.
       cancelCleanup(taskId);
     } else if (body.status === "done" && prevStatus === "verify") {
-      // Merge worktree branch into main on completion
+      // Merge worktree branch into base on completion
       if (prevTask?.worktreePath || prevTask?.branch) {
         const proj = await getProject(id);
         if (proj) {
           const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
+          const mergeBranch = prevTask.baseBranch || await getProjectDefaultBranch(id);
           try {
-            ensureOnMainForMerge(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`);
+            ensureOnMainForMerge(projectPath, prevTask.branch || `proq/${prevTask.id.slice(0, 8)}`, mergeBranch);
           } catch { /* best effort */ }
           if (prevTask.worktreePath || prevTask.branch) {
             const result = mergeWorktree(projectPath, prevTask.id.slice(0, 8));
-            popAutoStash(projectPath);
+            popAutoStash(projectPath, mergeBranch);
             if (!result.success) {
               await updateTask(id, taskId, {
                 status: "verify",
@@ -132,13 +135,13 @@ export async function PATCH(request: Request, { params }: Params) {
                 },
               });
               const fresh = await getTask(id, taskId);
-  
+
               if (fresh) return NextResponse.json(fresh);
               return NextResponse.json(updated);
             }
-            await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, mergeConflict: undefined, agentStatus: null });
+            await updateTask(id, taskId, { worktreePath: undefined, branch: undefined, baseBranch: undefined, mergeConflict: undefined, agentStatus: null });
           } else {
-            popAutoStash(projectPath);
+            popAutoStash(projectPath, mergeBranch);
           }
         }
       }
@@ -171,11 +174,12 @@ export async function DELETE(_request: Request, { params }: Params) {
     const proj = await getProject(id);
     if (proj) {
       const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
+      const defaultBr = await getProjectDefaultBranch(id);
       try {
-        ensureNotOnTaskBranch(projectPath, task.branch || `proq/${task.id.slice(0, 8)}`);
+        ensureNotOnTaskBranch(projectPath, task.branch || `proq/${task.id.slice(0, 8)}`, defaultBr);
       } catch { /* best effort */ }
       removeWorktree(projectPath, task.id.slice(0, 8));
-      popAutoStash(projectPath);
+      popAutoStash(projectPath, task.baseBranch || defaultBr);
     }
   }
 

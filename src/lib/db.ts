@@ -214,6 +214,11 @@ export async function getProject(id: string): Promise<Project | undefined> {
   return ws.projects.find((p) => p.id === id);
 }
 
+export async function getProjectDefaultBranch(projectId: string): Promise<string> {
+  const project = await getProject(projectId);
+  return project?.defaultBranch || "main";
+}
+
 function uniqueSlug(base: string, existing: string[]): string {
   if (!existing.includes(base)) return base;
   let i = 2;
@@ -369,7 +374,7 @@ export async function moveTask(
 export async function updateTask(
   projectId: string,
   taskId: string,
-  data: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "findings" | "humanSteps" | "agentLog" | "agentStatus" | "attachments" | "mode" | "worktreePath" | "branch" | "mergeConflict" | "renderMode" | "agentBlocks" | "sessionId">>
+  data: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "findings" | "humanSteps" | "agentLog" | "agentStatus" | "attachments" | "mode" | "worktreePath" | "branch" | "baseBranch" | "mergeConflict" | "renderMode" | "agentBlocks" | "sessionId">>
 ): Promise<Task | null> {
   return withWriteLock(`project:${projectId}`, async () => {
     const state = getProjectData(projectId);

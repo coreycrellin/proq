@@ -223,6 +223,26 @@ ${diff.slice(0, 12000)}`;
       }
     }
 
+    if (body.action === "create-branch") {
+      const name = body.name;
+      if (!name || typeof name !== "string") {
+        return NextResponse.json({ error: "name is required" }, { status: 400 });
+      }
+      // Validate branch name
+      if (/\s/.test(name) || /\.\./.test(name) || /[~^:\\?*\[]/.test(name) || name.startsWith("-") || name.endsWith(".lock") || name.endsWith("/")) {
+        return NextResponse.json({ error: "Invalid branch name" }, { status: 400 });
+      }
+      try {
+        const { execSync } = await import("child_process");
+        execSync(`git -C '${projectPath}' checkout -b '${name}'`, { timeout: 15_000 });
+        const result = getCurrentBranch(projectPath);
+        return NextResponse.json({ current: result.branch, detached: result.detached });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to create branch";
+        return NextResponse.json({ error: msg }, { status: 500 });
+      }
+    }
+
     return NextResponse.json({ error: `Unknown action: ${body.action}` }, { status: 400 });
   }
 

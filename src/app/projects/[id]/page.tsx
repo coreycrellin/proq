@@ -418,6 +418,22 @@ export default function ProjectPage() {
     }
   }, [projectId]);
 
+  const handleCreateBranch = useCallback(async (name: string) => {
+    const res = await fetch(`/api/projects/${projectId}/git`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create-branch', name }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setCurrentBranch(data.current || name);
+      fetchBranchState();
+    } else {
+      const data = await res.json();
+      throw new Error(data.error || 'Failed to create branch');
+    }
+  }, [projectId, fetchBranchState]);
+
   const hasTasksInFlight = columns['in-progress'].length > 0 || columns['verify'].length > 0;
 
   const handleExecutionModeChange = async (mode: ExecutionMode) => {
@@ -644,6 +660,7 @@ export default function ProjectPage() {
         onViewTypeChange={handleViewTypeChange}
         onOpenSettings={() => setShowProjectSettings(true)}
         onCommit={() => setShowCommitModal(true)}
+        onCreateBranch={handleCreateBranch}
       />
 
       <main ref={containerRef} className="flex-1 flex flex-col overflow-hidden relative">
@@ -718,6 +735,7 @@ export default function ProjectPage() {
                   parallelMode={executionMode === 'parallel'}
                   currentBranch={currentBranch}
                   onSwitchBranch={handleSwitchBranch}
+                  defaultBranch={project?.defaultBranch || 'main'}
                 />
               )}
             </div>
@@ -766,6 +784,7 @@ export default function ProjectPage() {
           parallelMode={executionMode === 'parallel'}
           currentBranch={currentBranch}
           onSwitchBranch={handleSwitchBranch}
+          defaultBranch={project?.defaultBranch || 'main'}
         />
       )}
 
@@ -842,6 +861,7 @@ export default function ProjectPage() {
         <ProjectSettingsModal
           isOpen={showProjectSettings}
           project={project}
+          branches={branches}
           onClose={() => setShowProjectSettings(false)}
           onSave={handleProjectSettingsSave}
         />

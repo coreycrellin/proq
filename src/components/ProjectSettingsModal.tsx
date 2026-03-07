@@ -3,15 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/Modal';
 import type { Project, ViewType } from '@/lib/types';
+import { ChevronDownIcon } from 'lucide-react';
 
 interface ProjectSettingsModalProps {
   isOpen: boolean;
   project: Project;
+  branches?: string[];
   onClose: () => void;
   onSave: (data: Partial<Project>) => void;
 }
 
-export function ProjectSettingsModal({ isOpen, project, onClose, onSave }: ProjectSettingsModalProps) {
+export function ProjectSettingsModal({ isOpen, project, branches, onClose, onSave }: ProjectSettingsModalProps) {
   const [name, setName] = useState(project.name);
   const [viewType, setViewType] = useState<ViewType>(project.viewType || 'kanban');
   const [defaultBranch, setDefaultBranch] = useState(project.defaultBranch || 'main');
@@ -33,6 +35,9 @@ export function ProjectSettingsModal({ isOpen, project, onClose, onSave }: Proje
     });
     onClose();
   };
+
+  // Filter out proq/* branches from the selector — they're task branches, not base branches
+  const selectableBranches = branches?.filter(b => !b.startsWith('proq/')) || [];
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-md">
@@ -87,13 +92,31 @@ export function ProjectSettingsModal({ isOpen, project, onClose, onSave }: Proje
             <label className="block text-xs font-medium text-text-secondary mb-1.5">
               Default Branch
             </label>
-            <input
-              type="text"
-              value={defaultBranch}
-              onChange={(e) => setDefaultBranch(e.target.value)}
-              placeholder="main"
-              className="w-full px-3 py-2 text-sm font-mono bg-surface-deep border border-border-strong rounded-md text-text-primary focus:outline-none focus:border-border-strong"
-            />
+            {selectableBranches.length > 0 ? (
+              <div className="relative">
+                <select
+                  value={defaultBranch}
+                  onChange={(e) => setDefaultBranch(e.target.value)}
+                  className="w-full px-3 py-2 text-sm font-mono bg-surface-deep border border-border-strong rounded-md text-text-primary focus:outline-none focus:border-border-strong appearance-none cursor-pointer"
+                >
+                  {selectableBranches.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                  {!selectableBranches.includes(defaultBranch) && (
+                    <option value={defaultBranch}>{defaultBranch}</option>
+                  )}
+                </select>
+                <ChevronDownIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={defaultBranch}
+                onChange={(e) => setDefaultBranch(e.target.value)}
+                placeholder="main"
+                className="w-full px-3 py-2 text-sm font-mono bg-surface-deep border border-border-strong rounded-md text-text-primary focus:outline-none focus:border-border-strong"
+              />
+            )}
           </div>
 
           {/* Dev Server URL */}

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getTask, getProject, updateTask } from "@/lib/db";
+import { getTask, getProject, updateTask, getProjectDefaultBranch } from "@/lib/db";
 import { mergeMainIntoWorktree } from "@/lib/worktree";
 
 type Params = { params: Promise<{ id: string; taskId: string }> };
@@ -37,8 +37,9 @@ export async function POST(_request: Request, { params }: Params) {
   const projectPath = project.path.replace(/^~/, process.env.HOME || "~");
   const shortId = taskId.slice(0, 8);
 
-  // Merge main into the worktree so conflict markers appear in the working tree
-  const mergeResult = mergeMainIntoWorktree(projectPath, shortId);
+  // Merge base branch into the worktree so conflict markers appear in the working tree
+  const baseBranch = task.baseBranch || await getProjectDefaultBranch(id);
+  const mergeResult = mergeMainIntoWorktree(projectPath, shortId, baseBranch);
   if (!mergeResult.success) {
     return NextResponse.json({ error: mergeResult.error || "Failed to merge main into worktree" }, { status: 500 });
   }
@@ -46,7 +47,7 @@ export async function POST(_request: Request, { params }: Params) {
   // Build a conflict resolution prompt for the chat input
   const conflictFiles = task.mergeConflict.files;
 
-  let prompt = `Resolve the merge conflicts. Main has been merged into this branch and conflict markers are in the working tree.\n\n`;
+  let prompt = `Resolve the merge conflicts. ${baseBranch} has been merged into this branch and conflict markers are in the working tree.\n\n`;
 
   if (conflictFiles.length > 0) {
     prompt += `Conflicting files:\n${conflictFiles.map(f => `- ${f}`).join("\n")}\n\n`;
