@@ -114,12 +114,14 @@ function DroppableSection({
 function SortableListRow({
   task,
   isSelected,
+  isPreviewActive,
   col,
   onClick,
   onDelete,
 }: {
   task: Task;
   isSelected: boolean;
+  isPreviewActive?: boolean;
   col: typeof COLUMNS[number] | undefined;
   onClick: (task: Task) => void;
   onDelete?: (taskId: string) => void;
@@ -153,7 +155,9 @@ function SortableListRow({
       <button
         onClick={() => onClick(task)}
         className={`relative w-full text-left px-6 py-2.5 ${
-          isSelected
+          isPreviewActive
+            ? 'bg-lazuli/5 border-l-2 border-lazuli/50'
+            : isSelected
             ? 'bg-surface-selected'
             : 'hover:bg-surface-hover/40'
         }`}
@@ -542,16 +546,20 @@ export function ListView({
                       </div>
                     )}
 
-                    {statusTasks.map((task) => (
-                      <SortableListRow
-                        key={task.id}
-                        task={task}
-                        isSelected={task.id === selectedTaskId}
-                        col={col}
-                        onClick={handleRowClick}
-                        onDelete={onDeleteTask}
-                      />
-                    ))}
+                    {statusTasks.map((task) => {
+                      const isPreviewActive = !!(currentBranch && task.branch && task.branch === currentBranch && currentBranch !== 'main' && currentBranch !== 'master');
+                      return (
+                        <SortableListRow
+                          key={task.id}
+                          task={task}
+                          isSelected={task.id === selectedTaskId}
+                          isPreviewActive={isPreviewActive}
+                          col={col}
+                          onClick={handleRowClick}
+                          onDelete={onDeleteTask}
+                        />
+                      );
+                    })}
                   </SortableContext>
                 </DroppableSection>
                 </React.Fragment>
