@@ -30,10 +30,10 @@ const DEFAULT_CONFIG: Config = {
 };
 
 const PRESET_A: Config = {
-  duration: 1900,
-  retractPercent: 6.5,
-  holdFullMs: 2900,
-  holdRetractedMs: 1550,
+  duration: 4400,
+  retractPercent: 100,
+  holdFullMs: 850,
+  holdRetractedMs: 1300,
   easing: "cubic-bezier(0.4, 0, 0.2, 1)",
   strokeWidth: 27,
   logoSize: 128,
@@ -41,10 +41,10 @@ const PRESET_A: Config = {
 };
 
 const PRESET_B: Config = {
-  duration: 4400,
-  retractPercent: 100,
-  holdFullMs: 850,
-  holdRetractedMs: 1300,
+  duration: 1900,
+  retractPercent: 6.5,
+  holdFullMs: 2900,
+  holdRetractedMs: 1550,
   easing: "cubic-bezier(0.4, 0, 0.2, 1)",
   strokeWidth: 27,
   logoSize: 128,
