@@ -24,7 +24,7 @@ export default function ExperimentsPage() {
     const animation = path.animate(
       [
         { strokeDashoffset: "0" },
-        { strokeDashoffset: `${totalLength * 0.75}` },
+        { strokeDashoffset: `${-totalLength * 0.75}` },
         { strokeDashoffset: "0" },
       ],
       {
