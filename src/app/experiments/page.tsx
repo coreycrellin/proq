@@ -56,7 +56,6 @@ export default function ExperimentsPage() {
             d={LOGO_PATH}
             stroke={STROKE_COLOR}
             strokeWidth={STROKE_WIDTH}
-            strokeLinecap="square"
           />
         </svg>
       </div>
