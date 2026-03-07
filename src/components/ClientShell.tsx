@@ -9,7 +9,7 @@ import { MissingPathModal } from './MissingPathModal';
 import { useProjects } from './ProjectsProvider';
 import type { Project } from '@/lib/types';
 
-const STANDALONE_ROUTES = ['/design'];
+const STANDALONE_ROUTES = ['/design', '/experiments'];
 
 function ShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
