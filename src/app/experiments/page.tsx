@@ -266,11 +266,11 @@ const DEFAULT_GLITCH_CONFIG: GlitchConfig = {
   logoSize: 128,
   direction: "outward",
   startRetracted: true,
-  glitchRate: 37,
-  glitchJitterX: 10.5,
-  glitchJitterY: 11,
-  glitchOpacityMin: 0,
-  glitchOpacityMax: 100,
+  glitchRate: 84,
+  glitchJitterX: 9,
+  glitchJitterY: 9.5,
+  glitchOpacityMin: 2,
+  glitchOpacityMax: 19,
   glitchColors: ALL_GLITCH_COLORS.map((c) => c.color),
   glitchOnlyDuringHold: false,
 };
@@ -430,15 +430,20 @@ function GlitchConfigPanel({
   onExport,
   onReset,
   label,
+  inline = false,
 }: {
   config: GlitchConfig;
   onChange: <K extends keyof GlitchConfig>(key: K, value: GlitchConfig[K]) => void;
   onExport: () => void;
   onReset: () => void;
   label: string;
+  inline?: boolean;
 }) {
   return (
-    <div className="w-72 border-r border-zinc-800 p-5 flex flex-col gap-5 overflow-y-auto shrink-0">
+    <div className={inline
+      ? "w-full border border-zinc-800 rounded-lg p-5 flex flex-col gap-5"
+      : "w-72 border-r border-zinc-800 p-5 flex flex-col gap-5 overflow-y-auto shrink-0"
+    }>
       <h2 className="text-zinc-300 text-xs font-semibold uppercase tracking-wider">
         {label} Config
       </h2>
@@ -677,7 +682,8 @@ export default function ExperimentsPage() {
   const [configB, setConfigB] = useState<Config>(PRESET_C);
   const [configC, setConfigC] = useState<Config>(PRESET_C);
   const [configD, setConfigD] = useState<GlitchConfig>(DEFAULT_GLITCH_CONFIG);
-  const [selected, setSelected] = useState<"a" | "b" | "c" | "d" | null>(null);
+  const [selected, setSelected] = useState<"a" | "b" | "c" | null>(null);
+  const [showGlitchConfig, setShowGlitchConfig] = useState(false);
 
   const updateA = useCallback(
     <K extends keyof Config>(key: K, value: Config[K]) => {
@@ -707,10 +713,10 @@ export default function ExperimentsPage() {
     []
   );
 
-  const configs = { a: configA, b: configB, c: configC, d: configD };
-  const updates = { a: updateA, b: updateB, c: updateC, d: updateD };
-  const setConfigs = { a: setConfigA, b: setConfigB, c: setConfigC, d: setConfigD };
-  const labels = { a: "Variant A", b: "Variant B", c: "Variant C", d: "Variant D" };
+  const configs = { a: configA, b: configB, c: configC };
+  const updates = { a: updateA, b: updateB, c: updateC };
+  const setConfigs = { a: setConfigA, b: setConfigB, c: setConfigC };
+  const labels = { a: "Variant A", b: "Variant B", c: "Variant C" };
 
   const activeConfig = selected ? configs[selected] : configA;
   const activeUpdate = selected ? updates[selected] : updateA;
@@ -720,19 +726,7 @@ export default function ExperimentsPage() {
   return (
     <div className="min-h-screen bg-zinc-950 flex">
       {/* Config Panel — only visible when a logo is selected */}
-      {selected === "d" ? (
-        <GlitchConfigPanel
-          config={configD}
-          onChange={updateD}
-          onExport={() =>
-            navigator.clipboard.writeText(
-              JSON.stringify(configD, null, 2)
-            )
-          }
-          onReset={() => setConfigD(DEFAULT_GLITCH_CONFIG)}
-          label="Variant D"
-        />
-      ) : selected ? (
+      {selected ? (
         <ConfigPanel
           config={activeConfig}
           onChange={activeUpdate}
@@ -780,16 +774,6 @@ export default function ExperimentsPage() {
             viewBox="0 0 1001 372"
             aspectRatio={1001 / 372}
           />
-          <GlitchAnimation
-            config={configD}
-            selected={selected === "d"}
-            onClick={() => setSelected(selected === "d" ? null : "d")}
-            label="D"
-            svgPath={LOGOTYPE_SINGLE_PATH_2}
-            viewBox="0 0 1001 372"
-            aspectRatio={1001 / 372}
-          />
-
         </div>
 
         <h1 className="text-zinc-400 text-sm font-medium tracking-wide uppercase mt-24 mb-16">
@@ -850,6 +834,38 @@ export default function ExperimentsPage() {
               />
             </svg>
           </div>
+        </div>
+
+        {/* Glitch loader section */}
+        <h1 className="text-zinc-400 text-sm font-medium tracking-wide uppercase mt-24 mb-16">
+          Proq glitch loader
+        </h1>
+
+        <div className="flex flex-col items-center gap-6 w-full max-w-4xl">
+          <GlitchAnimation
+            config={configD}
+            selected={false}
+            onClick={() => setShowGlitchConfig(!showGlitchConfig)}
+            label="Glitch"
+            svgPath={LOGOTYPE_SINGLE_PATH_2}
+            viewBox="0 0 1001 372"
+            aspectRatio={1001 / 372}
+          />
+
+          {showGlitchConfig && (
+            <GlitchConfigPanel
+              config={configD}
+              onChange={updateD}
+              onExport={() =>
+                navigator.clipboard.writeText(
+                  JSON.stringify(configD, null, 2)
+                )
+              }
+              onReset={() => setConfigD(DEFAULT_GLITCH_CONFIG)}
+              label="Glitch"
+              inline
+            />
+          )}
         </div>
       </div>
     </div>
