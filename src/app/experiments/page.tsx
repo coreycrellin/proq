@@ -251,6 +251,7 @@ interface GlitchConfig extends Config {
   glitchJitterX: number; // max horizontal jitter px
   glitchJitterY: number; // max vertical jitter px
   glitchOpacityMin: number; // min opacity during glitch (0-100)
+  glitchOpacityMax: number; // max opacity during glitch (0-100)
   glitchColors: string[]; // which colors to cycle through
   glitchOnlyDuringHold: boolean; // glitch only during hold-at-full
 }
@@ -269,6 +270,7 @@ const DEFAULT_GLITCH_CONFIG: GlitchConfig = {
   glitchJitterX: 10.5,
   glitchJitterY: 11,
   glitchOpacityMin: 0,
+  glitchOpacityMax: 100,
   glitchColors: ALL_GLITCH_COLORS.map((c) => c.color),
   glitchOnlyDuringHold: false,
 };
@@ -374,14 +376,10 @@ function GlitchAnimation({
         const jx = (Math.random() - 0.5) * config.glitchJitterX * 2;
         const jy = (Math.random() - 0.5) * config.glitchJitterY * 2;
         svg.style.transform = `translate(${jx}px, ${jy}px)`;
-        if (config.glitchOpacityMin < 100) {
-          const opacity =
-            config.glitchOpacityMin / 100 +
-            (Math.random() * (100 - config.glitchOpacityMin)) / 100;
-          svg.style.opacity = `${opacity}`;
-        } else {
-          svg.style.opacity = "1";
-        }
+        const oMin = config.glitchOpacityMin / 100;
+        const oMax = config.glitchOpacityMax / 100;
+        const opacity = oMin + Math.random() * (oMax - oMin);
+        svg.style.opacity = `${opacity}`;
       } else {
         path.style.stroke = STROKE_COLOR;
         svg.style.transform = "";
@@ -487,6 +485,7 @@ function GlitchConfigPanel({
       <Slider label="Jitter X" value={config.glitchJitterX} onChange={(v) => onChange("glitchJitterX", v)} min={0} max={30} step={0.5} unit="px" />
       <Slider label="Jitter Y" value={config.glitchJitterY} onChange={(v) => onChange("glitchJitterY", v)} min={0} max={30} step={0.5} unit="px" />
       <Slider label="Opacity min" value={config.glitchOpacityMin} onChange={(v) => onChange("glitchOpacityMin", v)} min={0} max={100} step={1} unit="%" />
+      <Slider label="Opacity max" value={config.glitchOpacityMax} onChange={(v) => onChange("glitchOpacityMax", v)} min={0} max={100} step={1} unit="%" />
 
       <label className="flex items-center justify-between cursor-pointer">
         <span className="text-zinc-400 text-xs">Only during hold</span>
