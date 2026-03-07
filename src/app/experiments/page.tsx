@@ -72,10 +72,18 @@ function Slider({
     <div className="flex flex-col gap-1">
       <div className="flex justify-between text-xs">
         <span className="text-zinc-400">{label}</span>
-        <span className="text-zinc-500 font-mono">
-          {value}
-          {unit}
-        </span>
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v)));
+          }}
+          className="w-16 bg-zinc-800 text-zinc-400 text-xs font-mono text-right rounded px-1.5 py-0.5 border border-zinc-700 focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
       </div>
       <input
         type="range"
