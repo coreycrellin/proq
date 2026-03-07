@@ -69,7 +69,21 @@ export function useAgentSession(
             setSessionDone(isDone);
           } else if (msg.type === 'block') {
             retryCount = 0;
-            setBlocks((prev) => [...prev, msg.block]);
+            setBlocks((prev) => {
+              // Dedup: if a tool_use block with the same toolId already exists, replace it
+              // (e.g. server may re-broadcast an enriched ExitPlanMode block)
+              if (msg.block.type === 'tool_use' && msg.block.toolId) {
+                const existingIdx = prev.findIndex(
+                  (b) => b.type === 'tool_use' && b.toolId === msg.block.toolId
+                );
+                if (existingIdx !== -1) {
+                  const updated = [...prev];
+                  updated[existingIdx] = msg.block;
+                  return updated;
+                }
+              }
+              return [...prev, msg.block];
+            });
             if (msg.block.type === 'status' && msg.block.subtype === 'init' || msg.block.type === 'user') {
               // New turn starting (follow-up or initial) — reset done state
               setSessionDone(false);
