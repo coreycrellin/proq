@@ -36,7 +36,7 @@ const PRESET_A: Config = {
   holdRetractedMs: 250,
   easing: "ease",
   strokeWidth: 27,
-  logoSize: 168,
+  logoSize: 128,
   direction: "inward",
 };
 
