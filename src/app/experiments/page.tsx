@@ -351,20 +351,23 @@ function FlipAnimation({
       <span className="text-zinc-500 text-xs uppercase tracking-wider">
         {label}
       </span>
-      <svg
-        ref={svgRef}
-        width={config.logoSize}
-        height={config.logoSize}
-        viewBox="0 0 256 256"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d={LOGO_PATH}
-          stroke={STROKE_COLOR}
-          strokeWidth={config.strokeWidth}
-        />
-      </svg>
+      <div className="overflow-visible" style={{ width: config.logoSize, height: config.logoSize }}>
+        <svg
+          ref={svgRef}
+          width={config.logoSize}
+          height={config.logoSize}
+          viewBox="0 0 256 256"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ transformOrigin: "right center" }}
+        >
+          <path
+            d={LOGO_PATH}
+            stroke={STROKE_COLOR}
+            strokeWidth={config.strokeWidth}
+          />
+        </svg>
+      </div>
     </div>
   );
 }
