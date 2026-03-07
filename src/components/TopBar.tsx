@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, SettingsIcon, GitCommitHorizontalIcon } from 'lucide-react';
+import React, { useState, useCallback, useRef } from 'react';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, SettingsIcon, GitCommitHorizontalIcon, PlusIcon } from 'lucide-react';
 import type { Project, ProjectTab, ViewType } from '@/lib/types';
 import {
   DropdownMenu,
@@ -40,9 +40,16 @@ interface TopBarProps {
   onViewTypeChange?: (viewType: ViewType) => void;
   onOpenSettings?: () => void;
   onCommit?: () => void;
+  onCreateBranch?: (name: string) => Promise<void>;
 }
 
-export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onInitGit, viewType = 'kanban', onViewTypeChange, onOpenSettings, onCommit }: TopBarProps) {
+export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onInitGit, viewType = 'kanban', onViewTypeChange, onOpenSettings, onCommit, onCreateBranch }: TopBarProps) {
+  // New branch creation
+  const [newBranchMode, setNewBranchMode] = useState(false);
+  const [newBranchName, setNewBranchName] = useState('');
+  const [newBranchLoading, setNewBranchLoading] = useState(false);
+  const newBranchInputRef = useRef<HTMLInputElement>(null);
+
   // Dropdown data for status labels
   const [dirtyFiles, setDirtyFiles] = useState<{ path: string; status: string }[] | null>(null);
   const [dirtyDropdownOpen, setDirtyDropdownOpen] = useState(false);
@@ -472,7 +479,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
 
             {/* Branch selector */}
             {currentBranch && branches && branches.length > 0 && (
-              <DropdownMenu>
+              <DropdownMenu onOpenChange={(open) => { if (!open) { setNewBranchMode(false); setNewBranchName(''); } }}>
                 <DropdownMenuTrigger asChild>
                   <button
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono rounded-md border outline-none ${
@@ -528,6 +535,65 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                       />
                     ))}
                   </div>
+                  {onCreateBranch && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <div className="flex-shrink-0 p-1">
+                        {newBranchMode ? (
+                          <form
+                            className="flex items-center gap-1.5 px-2 py-1"
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              const name = newBranchName.trim();
+                              if (!name || newBranchLoading) return;
+                              setNewBranchLoading(true);
+                              try {
+                                await onCreateBranch(name);
+                                setNewBranchName('');
+                                setNewBranchMode(false);
+                              } catch { /* handled by caller */ }
+                              setNewBranchLoading(false);
+                            }}
+                          >
+                            <input
+                              ref={newBranchInputRef}
+                              type="text"
+                              value={newBranchName}
+                              onChange={(e) => setNewBranchName(e.target.value)}
+                              placeholder="branch-name"
+                              autoFocus
+                              className="flex-1 min-w-0 px-2 py-1 text-xs font-mono bg-surface-deep border border-border-strong rounded text-text-primary focus:outline-none focus:border-border-hover"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Escape') {
+                                  setNewBranchMode(false);
+                                  setNewBranchName('');
+                                }
+                                e.stopPropagation();
+                              }}
+                            />
+                            <button
+                              type="submit"
+                              disabled={!newBranchName.trim() || newBranchLoading}
+                              className="text-xs font-medium text-text-chrome hover:text-text-chrome-hover disabled:opacity-40 px-1.5 py-1"
+                            >
+                              {newBranchLoading ? <Loader2Icon className="w-3 h-3 animate-spin" /> : 'Create'}
+                            </button>
+                          </form>
+                        ) : (
+                          <DropdownMenuItem
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              setNewBranchMode(true);
+                            }}
+                            className="text-xs gap-2 text-text-chrome"
+                          >
+                            <PlusIcon className="w-3 h-3" />
+                            New branch...
+                          </DropdownMenuItem>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

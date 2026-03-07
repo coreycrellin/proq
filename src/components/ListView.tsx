@@ -59,6 +59,7 @@ interface ListViewProps {
   parallelMode?: boolean;
   currentBranch?: string;
   onSwitchBranch?: (branch: string) => void;
+  defaultBranch?: string;
 }
 
 const STATUS_ORDER: TaskStatus[] = ['todo', 'in-progress', 'verify', 'done'];
@@ -257,6 +258,7 @@ export function ListView({
   parallelMode,
   currentBranch,
   onSwitchBranch,
+  defaultBranch,
 }: ListViewProps) {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [masterWidth, setMasterWidth] = useState(() => {
@@ -619,6 +621,7 @@ export function ListView({
               parallelMode={parallelMode}
               currentBranch={currentBranch}
               onSwitchBranch={onSwitchBranch}
+              defaultBranch={defaultBranch}
             />
           </div>
         )}
