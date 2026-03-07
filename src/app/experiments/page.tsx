@@ -237,252 +237,6 @@ function LogoAnimation({
   );
 }
 
-interface FlipConfig {
-  duration: number;
-  holdNormalMs: number;
-  holdCollapsedMs: number;
-  holdFlippedMs: number;
-  easing: string;
-  strokeWidth: number;
-  logoSize: number;
-}
-
-const DEFAULT_FLIP_CONFIG: FlipConfig = {
-  duration: 2000,
-  holdNormalMs: 500,
-  holdCollapsedMs: 200,
-  holdFlippedMs: 500,
-  easing: "ease-in-out",
-  strokeWidth: STROKE_WIDTH,
-  logoSize: 128,
-};
-
-function FlipAnimation({
-  config,
-  selected,
-  onClick,
-  label,
-}: {
-  config: FlipConfig;
-  selected: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const animRef = useRef<Animation | null>(null);
-
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-
-    if (animRef.current) animRef.current.cancel();
-
-    // Total cycle: hold normal → collapse → hold collapsed → expand flipped →
-    //              hold flipped → collapse → hold collapsed → expand normal
-    const collapseTime = config.duration / 4;
-    const totalTime =
-      config.holdNormalMs +
-      collapseTime +
-      config.holdCollapsedMs +
-      collapseTime +
-      config.holdFlippedMs +
-      collapseTime +
-      config.holdCollapsedMs +
-      collapseTime;
-
-    const t = (ms: number) => ms / totalTime;
-
-    let cursor = 0;
-    const p0 = 0; // start: normal
-    cursor += config.holdNormalMs;
-    const p1 = t(cursor); // end hold normal
-    cursor += collapseTime;
-    const p2 = t(cursor); // collapsed (first time)
-    cursor += config.holdCollapsedMs;
-    const p3 = t(cursor); // end hold collapsed
-    cursor += collapseTime;
-    const p4 = t(cursor); // fully flipped
-    cursor += config.holdFlippedMs;
-    const p5 = t(cursor); // end hold flipped
-    cursor += collapseTime;
-    const p6 = t(cursor); // collapsed (second time)
-    cursor += config.holdCollapsedMs;
-    const p7 = t(cursor); // end hold collapsed
-    // p8 = 1.0 back to normal
-
-    const keyframes: Keyframe[] = [
-      { transform: "scaleX(1)", offset: p0, easing: config.easing },
-      ...(config.holdNormalMs > 0
-        ? [{ transform: "scaleX(1)", offset: p1, easing: config.easing }]
-        : []),
-      { transform: "scaleX(0)", offset: p2, easing: config.easing },
-      ...(config.holdCollapsedMs > 0
-        ? [{ transform: "scaleX(0)", offset: p3, easing: config.easing }]
-        : []),
-      { transform: "scaleX(-1)", offset: p4, easing: config.easing },
-      ...(config.holdFlippedMs > 0
-        ? [{ transform: "scaleX(-1)", offset: p5, easing: config.easing }]
-        : []),
-      { transform: "scaleX(0)", offset: p6, easing: config.easing },
-      ...(config.holdCollapsedMs > 0
-        ? [{ transform: "scaleX(0)", offset: p7, easing: config.easing }]
-        : []),
-      { transform: "scaleX(1)", offset: 1 },
-    ];
-
-    const animation = svg.animate(keyframes, {
-      duration: totalTime,
-      iterations: Infinity,
-    });
-
-    animRef.current = animation;
-    return () => animation.cancel();
-  }, [config]);
-
-  return (
-    <div
-      onClick={onClick}
-      className={`flex flex-col items-center gap-4 cursor-pointer rounded-xl p-6 transition-all ${
-        selected
-          ? "ring-1 ring-amber-500/40 bg-zinc-900/50"
-          : "hover:bg-zinc-900/30"
-      }`}
-    >
-      <span className="text-zinc-500 text-xs uppercase tracking-wider">
-        {label}
-      </span>
-      <div className="overflow-visible" style={{ width: config.logoSize, height: config.logoSize }}>
-        <svg
-          ref={svgRef}
-          width={config.logoSize}
-          height={config.logoSize}
-          viewBox="0 0 256 256"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{ transformOrigin: "right center" }}
-        >
-          <path
-            d={LOGO_PATH}
-            stroke={STROKE_COLOR}
-            strokeWidth={config.strokeWidth}
-          />
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-function FlipConfigPanel({
-  config,
-  onChange,
-  onExport,
-  onReset,
-  label,
-}: {
-  config: FlipConfig;
-  onChange: <K extends keyof FlipConfig>(key: K, value: FlipConfig[K]) => void;
-  onExport: () => void;
-  onReset: () => void;
-  label: string;
-}) {
-  return (
-    <div className="w-72 border-r border-zinc-800 p-5 flex flex-col gap-5 overflow-y-auto shrink-0">
-      <h2 className="text-zinc-300 text-xs font-semibold uppercase tracking-wider">
-        {label} Config
-      </h2>
-
-      <Slider
-        label="Collapse/expand time"
-        value={config.duration}
-        onChange={(v) => onChange("duration", v)}
-        min={200}
-        max={8000}
-        step={100}
-        unit="ms"
-      />
-
-      <Slider
-        label="Hold normal"
-        value={config.holdNormalMs}
-        onChange={(v) => onChange("holdNormalMs", v)}
-        min={0}
-        max={3000}
-        step={50}
-        unit="ms"
-      />
-
-      <Slider
-        label="Hold collapsed"
-        value={config.holdCollapsedMs}
-        onChange={(v) => onChange("holdCollapsedMs", v)}
-        min={0}
-        max={3000}
-        step={50}
-        unit="ms"
-      />
-
-      <Slider
-        label="Hold flipped"
-        value={config.holdFlippedMs}
-        onChange={(v) => onChange("holdFlippedMs", v)}
-        min={0}
-        max={3000}
-        step={50}
-        unit="ms"
-      />
-
-      <div className="flex flex-col gap-1">
-        <span className="text-zinc-400 text-xs">Easing</span>
-        <select
-          value={config.easing}
-          onChange={(e) => onChange("easing", e.target.value)}
-          className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-        >
-          {EASING_OPTIONS.map((e) => (
-            <option key={e} value={e}>
-              {EASING_LABELS[e] || e}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <Slider
-        label="Stroke width"
-        value={config.strokeWidth}
-        onChange={(v) => onChange("strokeWidth", v)}
-        min={5}
-        max={50}
-        step={1}
-      />
-
-      <Slider
-        label="Logo size"
-        value={config.logoSize}
-        onChange={(v) => onChange("logoSize", v)}
-        min={32}
-        max={512}
-        step={8}
-        unit="px"
-      />
-
-      <div className="mt-auto pt-4 border-t border-zinc-800 flex flex-col gap-2">
-        <button
-          onClick={onExport}
-          className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded px-3 py-2 transition-colors"
-        >
-          Copy config to clipboard
-        </button>
-        <button
-          onClick={onReset}
-          className="w-full text-zinc-500 hover:text-zinc-400 text-xs rounded px-3 py-2 transition-colors"
-        >
-          Reset to defaults
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function ConfigPanel({
   config,
   onChange,
@@ -628,8 +382,7 @@ export default function ExperimentsPage() {
   const [configA, setConfigA] = useState<Config>(PRESET_A);
   const [configB, setConfigB] = useState<Config>(PRESET_C);
   const [configC, setConfigC] = useState<Config>(PRESET_C);
-  const [configD, setConfigD] = useState<FlipConfig>(DEFAULT_FLIP_CONFIG);
-  const [selected, setSelected] = useState<"a" | "b" | "c" | "d" | null>(null);
+  const [selected, setSelected] = useState<"a" | "b" | "c" | null>(null);
 
   const updateA = useCallback(
     <K extends keyof Config>(key: K, value: Config[K]) => {
@@ -652,34 +405,15 @@ export default function ExperimentsPage() {
     []
   );
 
-  const updateD = useCallback(
-    <K extends keyof FlipConfig>(key: K, value: FlipConfig[K]) => {
-      setConfigD((prev) => ({ ...prev, [key]: value }));
-    },
-    []
-  );
-
   const activeConfig = selected === "a" ? configA : selected === "b" ? configB : configC;
   const activeUpdate = selected === "a" ? updateA : selected === "b" ? updateB : updateC;
   const activeSetConfig = selected === "a" ? setConfigA : selected === "b" ? setConfigB : setConfigC;
-  const activeLabel = selected === "a" ? "Variant A" : selected === "b" ? "Variant B" : selected === "c" ? "Variant C" : "Variant D";
+  const activeLabel = selected === "a" ? "Variant A" : selected === "b" ? "Variant B" : "Variant C";
 
   return (
     <div className="min-h-screen bg-zinc-950 flex">
       {/* Config Panel — only visible when a logo is selected */}
-      {selected === "d" ? (
-        <FlipConfigPanel
-          config={configD}
-          onChange={updateD}
-          onExport={() =>
-            navigator.clipboard.writeText(
-              JSON.stringify(configD, null, 2)
-            )
-          }
-          onReset={() => setConfigD(DEFAULT_FLIP_CONFIG)}
-          label="Variant D"
-        />
-      ) : selected ? (
+      {selected ? (
         <ConfigPanel
           config={activeConfig}
           onChange={activeUpdate}
@@ -726,12 +460,6 @@ export default function ExperimentsPage() {
             svgPath={LOGOTYPE_SINGLE_PATH}
             viewBox="0 0 1001 372"
             aspectRatio={1001 / 372}
-          />
-          <FlipAnimation
-            config={configD}
-            selected={selected === "d"}
-            onClick={() => setSelected(selected === "d" ? null : "d")}
-            label="D"
           />
         </div>
 
