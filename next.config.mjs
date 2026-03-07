@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  devIndicators: false,
   serverExternalPackages: ["node-pty", "ws", "bufferutil", "utf-8-validate"],
 };
 

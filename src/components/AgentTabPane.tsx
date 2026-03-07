@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { SquareIcon, ArrowDownIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, Loader2Icon } from 'lucide-react';
 import type { AgentBlock, TaskAttachment } from '@/lib/types';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
+import { handleChatCommand } from '@/lib/chat-commands';
 import { useAgentTabSession } from '@/hooks/useAgentTabSession';
 import { ScrambleText } from './ScrambleText';
 import { TextBlock } from './blocks/TextBlock';
@@ -67,8 +68,18 @@ export function AgentTabPane({ tabId, projectId, visible }: AgentTabPaneProps) {
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputValue(e.target.value);
+    const val = e.target.value;
+    setInputValue(val);
     resizeTextarea();
+
+    const trimmed = val.trim().toLowerCase();
+    if (trimmed === '/atr' || trimmed === '/att') {
+      setInputValue('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      handleChatCommand(trimmed, (newAtts) => {
+        setAttachments((prev) => [...prev, ...newAtts]);
+      });
+    }
   };
 
   const addFiles = useCallback(async (files: FileList | File[]) => {

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { SquareChevronUpIcon, Trash2Icon, SquareIcon, ArrowDownIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, Loader2Icon } from 'lucide-react';
 import type { AgentBlock, TaskAttachment } from '@/lib/types';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
+import { handleChatCommand } from '@/lib/chat-commands';
 import { useSupervisorSession } from '@/hooks/useSupervisorSession';
 import { ScrambleText } from '@/components/ScrambleText';
 import { TextBlock } from '@/components/blocks/TextBlock';
@@ -62,8 +63,18 @@ export default function SupervisorPage() {
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputValue(e.target.value);
+    const val = e.target.value;
+    setInputValue(val);
     resizeTextarea();
+
+    const trimmed = val.trim().toLowerCase();
+    if (trimmed === '/atr' || trimmed === '/att') {
+      setInputValue('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      handleChatCommand(trimmed, (newAtts) => {
+        setAttachments((prev) => [...prev, ...newAtts]);
+      });
+    }
   };
 
   const addFiles = useCallback(async (files: FileList | File[]) => {

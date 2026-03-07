@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { SquareIcon, ArrowDownIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, Loader2Icon, RotateCcwIcon } from 'lucide-react';
 import type { AgentBlock, TaskAttachment, FollowUpDraft } from '@/lib/types';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
+import { handleChatCommand } from '@/lib/chat-commands';
 import { useAgentSession } from '@/hooks/useAgentSession';
 import { ScrambleText } from './ScrambleText';
 import { TextBlock } from './blocks/TextBlock';
@@ -117,6 +118,20 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     setInputValue(val);
     syncDraft(val, attachments);
     resizeTextarea();
+
+    const trimmed = val.trim().toLowerCase();
+    if (trimmed === '/atr' || trimmed === '/att') {
+      setInputValue('');
+      syncDraft('', attachments);
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      handleChatCommand(trimmed, (newAtts) => {
+        setAttachments((prev) => {
+          const updated = [...prev, ...newAtts];
+          syncDraft('', updated);
+          return updated;
+        });
+      });
+    }
   };
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
