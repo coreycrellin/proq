@@ -128,6 +128,9 @@ function Slider({
 const LOGOTYPE_SINGLE_PATH =
   "M145.152 165.235H182.126V113.651H106.241V217.41H236.237V60H53V271.749H289.5V233V60H472.737V217.41H342.741V113.651H418.626V165.235H391.5V271.749H527V60H710.237V217.41H580.241V165.235V113.651H656.126V165.235V271.749H947.5V60.0001H764.5V217.41H894.328V113.651H818.541V165.235H855.467";
 
+const LOGOTYPE_SINGLE_PATH_2 =
+  "M145.152 165.235H182.126V113.651H106.241V217.41H236.237V60H53V271.749H289.5V233V60H472.737V217.41H342.741V113.651H418.626V165.235H391.5V271.749H527V60H688.111V217.41H580.241V165.235V113.651H634V165.235V271.749H925.374V60.0001H742.374V217.41H872.202V113.651H796.415V165.235H833.342";
+
 function LogoAnimation({
   config,
   selected,
@@ -377,12 +380,20 @@ function ConfigPanel({
 
 export default function ExperimentsPage() {
   const [configA, setConfigA] = useState<Config>(PRESET_A);
+  const [configB, setConfigB] = useState<Config>(PRESET_C);
   const [configC, setConfigC] = useState<Config>(PRESET_C);
-  const [selected, setSelected] = useState<"a" | "c" | null>(null);
+  const [selected, setSelected] = useState<"a" | "b" | "c" | null>(null);
 
   const updateA = useCallback(
     <K extends keyof Config>(key: K, value: Config[K]) => {
       setConfigA((prev) => ({ ...prev, [key]: value }));
+    },
+    []
+  );
+
+  const updateB = useCallback(
+    <K extends keyof Config>(key: K, value: Config[K]) => {
+      setConfigB((prev) => ({ ...prev, [key]: value }));
     },
     []
   );
@@ -394,10 +405,10 @@ export default function ExperimentsPage() {
     []
   );
 
-  const activeConfig = selected === "a" ? configA : configC;
-  const activeUpdate = selected === "a" ? updateA : updateC;
-  const activeSetConfig = selected === "a" ? setConfigA : setConfigC;
-  const activeLabel = selected === "a" ? "Variant A" : "Variant C";
+  const activeConfig = selected === "a" ? configA : selected === "b" ? configB : configC;
+  const activeUpdate = selected === "a" ? updateA : selected === "b" ? updateB : updateC;
+  const activeSetConfig = selected === "a" ? setConfigA : selected === "b" ? setConfigB : setConfigC;
+  const activeLabel = selected === "a" ? "Variant A" : selected === "b" ? "Variant B" : "Variant C";
 
   return (
     <div className="min-h-screen bg-zinc-950 flex">
@@ -430,6 +441,15 @@ export default function ExperimentsPage() {
             label="A"
           />
           <LogoAnimation
+            config={configB}
+            selected={selected === "b"}
+            onClick={() => setSelected(selected === "b" ? null : "b")}
+            label="B"
+            svgPath={LOGOTYPE_SINGLE_PATH_2}
+            viewBox="0 0 1001 372"
+            aspectRatio={1001 / 372}
+          />
+          <LogoAnimation
             config={configC}
             selected={selected === "c"}
             onClick={() => setSelected(selected === "c" ? null : "c")}
@@ -445,9 +465,27 @@ export default function ExperimentsPage() {
         </h1>
 
         <div className="flex flex-col items-center gap-12">
-          {/* Single stroke logotype */}
+          {/* Single stroke logotype v2 */}
           <div className="flex flex-col items-center gap-3">
-            <span className="text-zinc-500 text-xs uppercase tracking-wider">Single stroke</span>
+            <span className="text-zinc-500 text-xs uppercase tracking-wider">Single stroke v2</span>
+            <svg
+              width="500"
+              height="186"
+              viewBox="0 0 1001 372"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M145.152 165.235H182.126V113.651H106.241V217.41H236.237V60H53V271.749H289.5V233V60H472.737V217.41H342.741V113.651H418.626V165.235H391.5V271.749H527V60H688.111V217.41H580.241V165.235V113.651H634V165.235V271.749H925.374V60.0001H742.374V217.41H872.202V113.651H796.415V165.235H833.342"
+                stroke="#E4BD89"
+                strokeWidth="27"
+              />
+            </svg>
+          </div>
+
+          {/* Single stroke logotype v1 */}
+          <div className="flex flex-col items-center gap-3">
+            <span className="text-zinc-500 text-xs uppercase tracking-wider">Single stroke v1</span>
             <svg
               width="500"
               height="186"
