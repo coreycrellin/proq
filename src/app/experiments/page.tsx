@@ -187,7 +187,7 @@ export default function ExperimentsPage() {
           label="Retract %"
           value={config.retractPercent}
           onChange={(v) => update("retractPercent", v)}
-          min={10}
+          min={1}
           max={100}
           step={1}
           unit="%"
