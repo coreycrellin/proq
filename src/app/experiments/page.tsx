@@ -29,6 +29,17 @@ const DEFAULT_CONFIG: Config = {
   direction: "inward",
 };
 
+const PRESET_A: Config = {
+  duration: 2400,
+  retractPercent: 6.5,
+  holdFullMs: 350,
+  holdRetractedMs: 250,
+  easing: "ease",
+  strokeWidth: 27,
+  logoSize: 168,
+  direction: "inward",
+};
+
 const EASING_OPTIONS = [
   "linear",
   "ease",
@@ -98,17 +109,19 @@ function Slider({
   );
 }
 
-export default function ExperimentsPage() {
+function LogoAnimation({
+  config,
+  selected,
+  onClick,
+  label,
+}: {
+  config: Config;
+  selected: boolean;
+  onClick: () => void;
+  label: string;
+}) {
   const pathRef = useRef<SVGPathElement>(null);
   const animRef = useRef<Animation | null>(null);
-  const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
-
-  const update = useCallback(
-    <K extends keyof Config>(key: K, value: Config[K]) => {
-      setConfig((prev) => ({ ...prev, [key]: value }));
-    },
-    []
-  );
 
   useEffect(() => {
     const path = pathRef.current;
@@ -124,20 +137,16 @@ export default function ExperimentsPage() {
     const sign = config.direction === "inward" ? -1 : 1;
     const target = `${sign * retractOffset}`;
 
-    // Build keyframes with hold times
     const totalTime =
       config.duration + config.holdFullMs + config.holdRetractedMs;
     const animDuration = config.duration / 2;
     const holdFullFrac = config.holdFullMs / totalTime;
     const retractFrac = animDuration / totalTime;
     const holdRetractedFrac = config.holdRetractedMs / totalTime;
-    const extendFrac = animDuration / totalTime;
 
-    // offset positions along 0..1
     const t1 = holdFullFrac;
     const t2 = t1 + retractFrac;
     const t3 = t2 + holdRetractedFrac;
-    const _t4 = t3 + extendFrac; // should be ~1
 
     const keyframes: Keyframe[] = [
       { strokeDashoffset: "0", offset: 0, easing: config.easing },
@@ -160,143 +169,221 @@ export default function ExperimentsPage() {
     return () => animation.cancel();
   }, [config]);
 
-  const exportConfig = () => {
-    const output = JSON.stringify(config, null, 2);
-    navigator.clipboard.writeText(output);
-  };
+  return (
+    <div
+      onClick={onClick}
+      className={`flex flex-col items-center gap-4 cursor-pointer rounded-xl p-6 transition-all ${
+        selected
+          ? "ring-1 ring-amber-500/40 bg-zinc-900/50"
+          : "hover:bg-zinc-900/30"
+      }`}
+    >
+      <span className="text-zinc-500 text-xs uppercase tracking-wider">
+        {label}
+      </span>
+      <svg
+        width={config.logoSize}
+        height={config.logoSize}
+        viewBox="0 0 256 256"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          ref={pathRef}
+          d={LOGO_PATH}
+          stroke={STROKE_COLOR}
+          strokeWidth={config.strokeWidth}
+        />
+      </svg>
+    </div>
+  );
+}
+
+function ConfigPanel({
+  config,
+  onChange,
+  onExport,
+  onReset,
+  label,
+}: {
+  config: Config;
+  onChange: <K extends keyof Config>(key: K, value: Config[K]) => void;
+  onExport: () => void;
+  onReset: () => void;
+  label: string;
+}) {
+  return (
+    <div className="w-72 border-r border-zinc-800 p-5 flex flex-col gap-5 overflow-y-auto shrink-0">
+      <h2 className="text-zinc-300 text-xs font-semibold uppercase tracking-wider">
+        {label} Config
+      </h2>
+
+      <Slider
+        label="Duration"
+        value={config.duration}
+        onChange={(v) => onChange("duration", v)}
+        min={200}
+        max={8000}
+        step={100}
+        unit="ms"
+      />
+
+      <Slider
+        label="Retract %"
+        value={config.retractPercent}
+        onChange={(v) => onChange("retractPercent", v)}
+        min={1}
+        max={100}
+        step={0.5}
+        unit="%"
+      />
+
+      <Slider
+        label="Hold at full"
+        value={config.holdFullMs}
+        onChange={(v) => onChange("holdFullMs", v)}
+        min={0}
+        max={3000}
+        step={50}
+        unit="ms"
+      />
+
+      <Slider
+        label="Hold at retracted"
+        value={config.holdRetractedMs}
+        onChange={(v) => onChange("holdRetractedMs", v)}
+        min={0}
+        max={3000}
+        step={50}
+        unit="ms"
+      />
+
+      <div className="flex flex-col gap-1">
+        <span className="text-zinc-400 text-xs">Easing</span>
+        <select
+          value={config.easing}
+          onChange={(e) => onChange("easing", e.target.value)}
+          className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        >
+          {EASING_OPTIONS.map((e) => (
+            <option key={e} value={e}>
+              {EASING_LABELS[e] || e}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span className="text-zinc-400 text-xs">Direction</span>
+        <select
+          value={config.direction}
+          onChange={(e) =>
+            onChange("direction", e.target.value as "inward" | "outward")
+          }
+          className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700 focus:outline-none focus:border-zinc-500"
+        >
+          <option value="inward">Shrink from center</option>
+          <option value="outward">Shrink from outside</option>
+        </select>
+      </div>
+
+      <Slider
+        label="Stroke width"
+        value={config.strokeWidth}
+        onChange={(v) => onChange("strokeWidth", v)}
+        min={5}
+        max={50}
+        step={1}
+      />
+
+      <Slider
+        label="Logo size"
+        value={config.logoSize}
+        onChange={(v) => onChange("logoSize", v)}
+        min={32}
+        max={512}
+        step={8}
+        unit="px"
+      />
+
+      <div className="mt-auto pt-4 border-t border-zinc-800 flex flex-col gap-2">
+        <button
+          onClick={onExport}
+          className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded px-3 py-2 transition-colors"
+        >
+          Copy config to clipboard
+        </button>
+        <button
+          onClick={onReset}
+          className="w-full text-zinc-500 hover:text-zinc-400 text-xs rounded px-3 py-2 transition-colors"
+        >
+          Reset to defaults
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function ExperimentsPage() {
+  const [configA, setConfigA] = useState<Config>(PRESET_A);
+  const [configB, setConfigB] = useState<Config>(DEFAULT_CONFIG);
+  const [selected, setSelected] = useState<"a" | "b" | null>(null);
+
+  const updateA = useCallback(
+    <K extends keyof Config>(key: K, value: Config[K]) => {
+      setConfigA((prev) => ({ ...prev, [key]: value }));
+    },
+    []
+  );
+
+  const updateB = useCallback(
+    <K extends keyof Config>(key: K, value: Config[K]) => {
+      setConfigB((prev) => ({ ...prev, [key]: value }));
+    },
+    []
+  );
+
+  const activeConfig = selected === "a" ? configA : configB;
+  const activeUpdate = selected === "a" ? updateA : updateB;
+  const activeSetConfig = selected === "a" ? setConfigA : setConfigB;
 
   return (
     <div className="min-h-screen bg-zinc-950 flex">
-      {/* Controls Panel */}
-      <div className="w-72 border-r border-zinc-800 p-5 flex flex-col gap-5 overflow-y-auto shrink-0">
-        <h2 className="text-zinc-300 text-xs font-semibold uppercase tracking-wider">
-          Animation Config
-        </h2>
-
-        <Slider
-          label="Duration"
-          value={config.duration}
-          onChange={(v) => update("duration", v)}
-          min={200}
-          max={8000}
-          step={100}
-          unit="ms"
+      {/* Config Panel — only visible when a logo is selected */}
+      {selected && (
+        <ConfigPanel
+          config={activeConfig}
+          onChange={activeUpdate}
+          onExport={() =>
+            navigator.clipboard.writeText(
+              JSON.stringify(activeConfig, null, 2)
+            )
+          }
+          onReset={() => activeSetConfig(DEFAULT_CONFIG)}
+          label={selected === "a" ? "Variant A" : "Variant B"}
         />
+      )}
 
-        <Slider
-          label="Retract %"
-          value={config.retractPercent}
-          onChange={(v) => update("retractPercent", v)}
-          min={1}
-          max={100}
-          step={1}
-          unit="%"
-        />
-
-        <Slider
-          label="Hold at full"
-          value={config.holdFullMs}
-          onChange={(v) => update("holdFullMs", v)}
-          min={0}
-          max={3000}
-          step={50}
-          unit="ms"
-        />
-
-        <Slider
-          label="Hold at retracted"
-          value={config.holdRetractedMs}
-          onChange={(v) => update("holdRetractedMs", v)}
-          min={0}
-          max={3000}
-          step={50}
-          unit="ms"
-        />
-
-        <div className="flex flex-col gap-1">
-          <span className="text-zinc-400 text-xs">Easing</span>
-          <select
-            value={config.easing}
-            onChange={(e) => update("easing", e.target.value)}
-            className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            {EASING_OPTIONS.map((e) => (
-              <option key={e} value={e}>
-                {EASING_LABELS[e] || e}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <span className="text-zinc-400 text-xs">Direction</span>
-          <select
-            value={config.direction}
-            onChange={(e) =>
-              update("direction", e.target.value as "inward" | "outward")
-            }
-            className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700 focus:outline-none focus:border-zinc-500"
-          >
-            <option value="inward">Shrink from center</option>
-            <option value="outward">Shrink from outside</option>
-          </select>
-        </div>
-
-        <Slider
-          label="Stroke width"
-          value={config.strokeWidth}
-          onChange={(v) => update("strokeWidth", v)}
-          min={5}
-          max={50}
-          step={1}
-        />
-
-        <Slider
-          label="Logo size"
-          value={config.logoSize}
-          onChange={(v) => update("logoSize", v)}
-          min={32}
-          max={512}
-          step={8}
-          unit="px"
-        />
-
-        <div className="mt-auto pt-4 border-t border-zinc-800 flex flex-col gap-2">
-          <button
-            onClick={exportConfig}
-            className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded px-3 py-2 transition-colors"
-          >
-            Copy config to clipboard
-          </button>
-          <button
-            onClick={() => setConfig(DEFAULT_CONFIG)}
-            className="w-full text-zinc-500 hover:text-zinc-400 text-xs rounded px-3 py-2 transition-colors"
-          >
-            Reset to defaults
-          </button>
-        </div>
-      </div>
-
-      {/* Preview */}
+      {/* Preview area */}
       <div className="flex-1 flex flex-col items-center justify-center">
         <h1 className="text-zinc-400 text-sm font-medium tracking-wide uppercase mb-16">
           Proq logo loader
         </h1>
 
-        <svg
-          width={config.logoSize}
-          height={config.logoSize}
-          viewBox="0 0 256 256"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            ref={pathRef}
-            d={LOGO_PATH}
-            stroke={STROKE_COLOR}
-            strokeWidth={config.strokeWidth}
+        <div className="flex items-center gap-16">
+          <LogoAnimation
+            config={configA}
+            selected={selected === "a"}
+            onClick={() => setSelected(selected === "a" ? null : "a")}
+            label="A"
           />
-        </svg>
+          <LogoAnimation
+            config={configB}
+            selected={selected === "b"}
+            onClick={() => setSelected(selected === "b" ? null : "b")}
+            label="B"
+          />
+        </div>
       </div>
     </div>
   );
