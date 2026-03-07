@@ -138,9 +138,6 @@ export interface ProqSettings {
   showCosts: boolean;
   codingAgent: string;
 
-  // Git
-  defaultBranch: string;
-
   // Appearance
   theme: 'dark' | 'light';
 

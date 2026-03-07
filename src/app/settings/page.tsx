@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   BotIcon,
-  GitBranchIcon,
+
   PaletteIcon,
   BellIcon,
   InfoIcon,
@@ -20,7 +20,6 @@ type SettingsSection =
   | "about"
   | "appearance"
   | "agent"
-  | "git"
   | "notifications";
 
 const SECTIONS: {
@@ -35,7 +34,6 @@ const SECTIONS: {
     icon: <PaletteIcon className="w-4 h-4" />,
   },
   { id: "agent", label: "Agent", icon: <BotIcon className="w-4 h-4" /> },
-  { id: "git", label: "Git", icon: <GitBranchIcon className="w-4 h-4" /> },
   {
     id: "notifications",
     label: "Notifications",
@@ -341,30 +339,6 @@ export default function SettingsPage() {
                     />
                   </Field>
                 )}
-              </div>
-            </section>
-
-            {/* Git */}
-            <section
-              ref={(el) => {
-                sectionRefs.current.git = el;
-              }}
-              id="settings-git"
-            >
-              <SectionHeading
-                icon={<GitBranchIcon className="w-4 h-4" />}
-                label="Git"
-              />
-              <div className="space-y-4">
-                <Field label="Default branch" hint="Global default used when a project doesn't specify its own. Override per-project in project settings.">
-                  <input
-                    type="text"
-                    value={settings.defaultBranch}
-                    onChange={(e) => update("defaultBranch", e.target.value)}
-                    placeholder="main"
-                    className={inputClass}
-                  />
-                </Field>
               </div>
             </section>
 
