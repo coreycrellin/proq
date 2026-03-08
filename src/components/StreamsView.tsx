@@ -9,6 +9,7 @@ import {
   RadioTowerIcon,
   MaximizeIcon,
   MinimizeIcon,
+  PlusIcon,
 } from 'lucide-react';
 import type { Task, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { StructuredPane } from './StructuredPane';
@@ -30,6 +31,7 @@ interface StreamsViewProps {
   currentBranch?: string;
   onSwitchBranch?: (branch: string) => void;
   defaultBranch?: string;
+  onAddTask?: () => void;
 }
 
 function getStreamTasks(columns: TaskColumns): Task[] {
@@ -90,6 +92,7 @@ export function StreamsView({
   onResumeEditing,
   followUpDraftsRef,
   onFollowUpDraftChange,
+  onAddTask,
 }: StreamsViewProps) {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const streamTasks = useMemo(() => getStreamTasks(tasks), [tasks]);
@@ -100,6 +103,15 @@ export function StreamsView({
         <RadioTowerIcon className="w-8 h-8 opacity-30" />
         <p className="text-sm">No active streams</p>
         <p className="text-xs opacity-60">Start a task to see agent output here</p>
+        {onAddTask && (
+          <button
+            onClick={onAddTask}
+            className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+          >
+            <PlusIcon className="w-3.5 h-3.5" />
+            New Task
+          </button>
+        )}
       </div>
     );
   }

@@ -742,6 +742,7 @@ export default function ProjectPage() {
                 <StreamsView
                   tasks={columns}
                   projectId={projectId}
+                  onAddTask={handleAddTask}
                   onClickTask={(task) => {
                     if (task.status === 'todo') {
                       setModalTask(task);
