@@ -2,14 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  AlertTriangleIcon,
   Trash2Icon,
   Loader2Icon,
   ClockIcon,
   EyeIcon,
+  BellDotIcon,
 } from 'lucide-react';
 import type { Task } from '@/lib/types';
-import { parseLines } from '@/lib/utils';
 
 interface TaskCardProps {
   task: Task;
@@ -22,7 +21,6 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDelete, onClick, onUpdateTitle }: TaskCardProps) {
-  const steps = parseLines(task.humanSteps);
   const isRunning = task.agentStatus === 'running';
   const isStarting = task.agentStatus === 'starting';
   const isActive = isRunning || isStarting;
@@ -132,15 +130,6 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDel
           </p>
         )}
 
-        {steps.length > 0 && task.status !== 'done' && (
-          <div className="mt-2 flex items-center gap-1.5">
-            <AlertTriangleIcon className="w-3 h-3 text-gold flex-shrink-0" />
-            <span className="text-[10px] text-gold font-medium uppercase tracking-wide">
-              {steps.length} step{steps.length !== 1 ? 's' : ''} for you
-            </span>
-          </div>
-        )}
-
         <div className="flex items-center justify-between mt-3 pt-2 border-t border-border-subtle/60">
           {isPreviewActive && !isActive && !isQueued ? (
             <div className="flex items-center gap-1.5">
@@ -168,6 +157,13 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDel
               <Loader2Icon className="w-3 h-3 text-text-secondary animate-spin" />
               <span className="text-[10px] text-text-secondary font-medium uppercase tracking-wide">
                 Starting...
+              </span>
+            </div>
+          ) : task.needsAttention ? (
+            <div className="flex items-center gap-1.5">
+              <BellDotIcon className="w-3 h-3 text-lazuli" />
+              <span className="text-[10px] text-lazuli font-medium uppercase tracking-wide">
+                Task updated
               </span>
             </div>
           ) : (

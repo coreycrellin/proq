@@ -78,6 +78,7 @@ export interface Task {
   order?: number; // deprecated — kept for migration only
   findings?: string;
   humanSteps?: string;
+  needsAttention?: boolean;
   agentLog?: string;
   agentStatus?: "queued" | "starting" | "running" | null;
   worktreePath?: string;
