@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { GlobeIcon, MonitorIcon, TabletSmartphoneIcon, SmartphoneIcon, RotateCwIcon, TerminalIcon, SparklesIcon } from 'lucide-react';
+import { GlobeIcon, MonitorIcon, TabletSmartphoneIcon, SmartphoneIcon, RotateCwIcon, TerminalIcon, SparklesIcon, XIcon } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { useProjects } from '@/components/ProjectsProvider';
 import WorkbenchPanel from '@/components/WorkbenchPanel';
@@ -64,6 +64,15 @@ export function LiveTab({ project, workbenchCollapsed, workbenchHeight, isDraggi
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ serverUrl: url }),
+    });
+    await refreshProjects();
+  };
+
+  const handleDisconnect = async () => {
+    await fetch(`/api/projects/${project.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serverUrl: '' }),
     });
     await refreshProjects();
   };
@@ -182,7 +191,13 @@ export function LiveTab({ project, workbenchCollapsed, workbenchHeight, isDraggi
           <>
             <div className="h-10 bg-surface-base border-b border-border-default flex items-center px-4 space-x-4 shrink-0">
               <div className="flex space-x-1.5">
-                <div className="w-3 h-3 rounded-full bg-crimson/20 border border-crimson/50" />
+                <button
+                  onClick={handleDisconnect}
+                  title="Disconnect"
+                  className="w-3 h-3 rounded-full bg-crimson/20 border border-crimson/50 hover:bg-crimson/60 flex items-center justify-center group/dot transition-colors"
+                >
+                  <XIcon className="w-1.5 h-1.5 text-transparent group-hover/dot:text-white transition-colors" />
+                </button>
                 <div className="w-3 h-3 rounded-full bg-gold/20 border border-gold/50" />
                 <div className="w-3 h-3 rounded-full bg-emerald/20 border border-emerald/50" />
               </div>
