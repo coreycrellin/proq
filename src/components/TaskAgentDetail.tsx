@@ -147,7 +147,7 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
     document.addEventListener('mouseup', onMouseUp);
   }, [finishDrag]);
 
-  // Scroll agent report to bottom on first load
+  // Scroll agent summary to bottom on first load
   useEffect(() => {
     if (bottomPanelRef.current) {
       bottomPanelRef.current.scrollTop = bottomPanelRef.current.scrollHeight;
@@ -473,7 +473,7 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
             <div className="flex items-center gap-2">
               <ClipboardListIcon className="w-3.5 h-3.5 text-text-tertiary" />
               <span className="text-xs font-medium text-text-tertiary uppercase tracking-wide">
-                Agent Report
+                Agent Summary
               </span>
               {findings.length > 0 && (
                 <button
@@ -530,16 +530,16 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
                 Agent working
               </span>
               <p className="text-xs text-text-placeholder italic text-center mt-1">
-                Agent is still working. Findings will appear here when reported.
+                Agent is still working. Summary will appear here when complete.
               </p>
             </div>
           ) : isQueued ? (
             <p className="text-xs text-text-placeholder italic">
-              Task is queued. Findings will appear here once the agent starts working.
+              Task is queued. Summary will appear here once the agent starts working.
             </p>
           ) : (
             <p className="text-xs text-text-placeholder italic">
-              No findings reported.
+              No summary yet.
             </p>
           )}
 
