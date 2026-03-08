@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Loader2Icon,
   ClockIcon,
@@ -12,6 +12,8 @@ import {
   PlusIcon,
   XIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from 'lucide-react';
 import type { Task, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { StructuredPane } from './StructuredPane';
@@ -60,6 +62,7 @@ function getStreamTasks(
     });
 }
 
+/** For <=6 tasks, use the classic fixed grid */
 function getGridStyle(count: number): React.CSSProperties {
   if (count <= 1) return { gridTemplateColumns: '1fr', gridTemplateRows: '1fr' };
   if (count === 2) return { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr' };
@@ -107,6 +110,9 @@ export function StreamsView({
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [showAddMenu, setShowAddMenu] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   // Close add menu when clicking outside
   useEffect(() => {
@@ -119,6 +125,35 @@ export function StreamsView({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showAddMenu]);
+
+  // Track scroll position for arrow visibility
+  const updateScrollState = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    updateScrollState();
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+    const ro = new ResizeObserver(updateScrollState);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', updateScrollState);
+      ro.disconnect();
+    };
+  }, [updateScrollState]);
+
+  const scrollBy = useCallback((dir: 'left' | 'right') => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    // Scroll by one "page" (3 columns worth)
+    const pageWidth = el.clientWidth;
+    el.scrollBy({ left: dir === 'left' ? -pageWidth : pageWidth, behavior: 'smooth' });
+  }, []);
 
   // Clean up pinned IDs for tasks that no longer exist in done
   const validPinnedIds = useMemo(() => {
@@ -292,7 +327,98 @@ export function StreamsView({
     );
   }
 
-  // Grid: all streams visible at once, each with its own StructuredPane
+  const useScrollLayout = streamTasks.length > 6;
+
+  // For >6 tasks: horizontal scrollable 2-row layout
+  if (useScrollLayout) {
+    // Split into 2 rows: top row gets ceil(n/2), bottom gets the rest
+    const half = Math.ceil(streamTasks.length / 2);
+    const topRow = streamTasks.slice(0, half);
+    const bottomRow = streamTasks.slice(half);
+    // Each column is 33.333% of container width (3 visible columns × 2 rows = 6 visible)
+    const colCount = Math.max(topRow.length, bottomRow.length);
+
+    return (
+      <div className="h-full flex flex-col min-h-0 overflow-hidden">
+        {/* Toolbar */}
+        <div className="flex items-center justify-end px-2 py-1 shrink-0 gap-1">
+          {streamTasks.length > 6 && (
+            <span className="text-[10px] text-text-placeholder mr-auto">
+              {streamTasks.length} streams
+            </span>
+          )}
+          {addStreamButton}
+        </div>
+        {/* Scrollable area with navigation arrows */}
+        <div className="flex-1 relative min-h-0">
+          {/* Left scroll arrow */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scrollBy('left')}
+              className="absolute left-0 top-0 bottom-0 z-10 w-8 flex items-center justify-center bg-gradient-to-r from-zinc-950/80 to-transparent hover:from-zinc-950 transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5 text-text-secondary" />
+            </button>
+          )}
+          {/* Right scroll arrow */}
+          {canScrollRight && (
+            <button
+              onClick={() => scrollBy('right')}
+              className="absolute right-0 top-0 bottom-0 z-10 w-8 flex items-center justify-center bg-gradient-to-l from-zinc-950/80 to-transparent hover:from-zinc-950 transition-colors"
+            >
+              <ChevronRightIcon className="w-5 h-5 text-text-secondary" />
+            </button>
+          )}
+          {/* Scroll container */}
+          <div
+            ref={scrollContainerRef}
+            className="h-full overflow-x-auto overflow-y-hidden scrollbar-thin"
+            style={{ scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}
+          >
+            <div
+              className="h-full grid gap-px bg-border-default"
+              style={{
+                gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`,
+                gridTemplateRows: '1fr 1fr',
+                minWidth: `${(colCount / 3) * 100}%`,
+              }}
+            >
+              {topRow.map((task) => (
+                <StreamCellFull
+                  key={task.id}
+                  task={task}
+                  projectId={projectId}
+                  compact
+                  onExpand={() => setExpandedTaskId(task.id)}
+                  onRemove={() => handleRemoveStream(task.id)}
+                  onComplete={onComplete}
+                  onResumeEditing={onResumeEditing}
+                  followUpDraft={followUpDraftsRef?.current.get(task.id)}
+                  onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
+                />
+              ))}
+              {bottomRow.map((task) => (
+                <StreamCellFull
+                  key={task.id}
+                  task={task}
+                  projectId={projectId}
+                  compact
+                  onExpand={() => setExpandedTaskId(task.id)}
+                  onRemove={() => handleRemoveStream(task.id)}
+                  onComplete={onComplete}
+                  onResumeEditing={onResumeEditing}
+                  followUpDraft={followUpDraftsRef?.current.get(task.id)}
+                  onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // <=6 tasks: classic fixed grid
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Toolbar */}
