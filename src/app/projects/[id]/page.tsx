@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { TopBar, type TabOption, type GitStatus } from '@/components/TopBar';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { ListView } from '@/components/ListView';
+import { StreamsView } from '@/components/StreamsView';
 import WorkbenchPanel from '@/components/WorkbenchPanel';
 import { LiveTab } from '@/components/LiveTab';
 import { CodeTab } from '@/components/CodeTab';
@@ -700,7 +701,7 @@ export default function ProjectPage() {
                   onDragActiveChange={(active) => { kanbanDraggingRef.current = active; }}
                   activeBranch={currentBranch}
                 />
-              ) : (
+              ) : (project.viewType === 'list') ? (
                 <ListView
                   tasks={columns}
                   projectId={projectId}
@@ -715,6 +716,40 @@ export default function ProjectPage() {
                   }}
                   onMoveTask={moveTask}
                   onDragActiveChange={(active) => { kanbanDraggingRef.current = active; }}
+                  executionMode={executionMode}
+                  onExecutionModeChange={handleExecutionModeChange}
+                  cleanupTimes={cleanupTimes}
+                  followUpDraftsRef={followUpDraftsRef}
+                  onFollowUpDraftChange={(taskId, draft) => {
+                    if (draft) followUpDraftsRef.current.set(taskId, draft);
+                    else followUpDraftsRef.current.delete(taskId);
+                  }}
+                  onComplete={async (taskId) => {
+                    followUpDraftsRef.current.delete(taskId);
+                    await updateTask(taskId, { status: 'done' });
+                    fetchBranchState();
+                  }}
+                  onResumeEditing={async (taskId) => {
+                    await updateTask(taskId, { status: 'verify' });
+                  }}
+                  onUpdateTitle={(taskId, title) => updateTask(taskId, { title })}
+                  parallelMode={executionMode === 'parallel'}
+                  currentBranch={currentBranch}
+                  onSwitchBranch={handleSwitchBranch}
+                  defaultBranch={project?.defaultBranch || 'main'}
+                />
+              ) : (
+                <StreamsView
+                  tasks={columns}
+                  projectId={projectId}
+                  onClickTask={(task) => {
+                    if (task.status === 'todo') {
+                      setModalTask(task);
+                    } else {
+                      setAgentModalTask(task);
+                    }
+                  }}
+                  onDeleteTask={deleteTask}
                   executionMode={executionMode}
                   onExecutionModeChange={handleExecutionModeChange}
                   cleanupTimes={cleanupTimes}

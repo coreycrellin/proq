@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef } from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, SettingsIcon, GitCommitHorizontalIcon, PlusIcon } from 'lucide-react';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, RadioTowerIcon, SettingsIcon, GitCommitHorizontalIcon, PlusIcon } from 'lucide-react';
 import type { Project, ProjectTab, ViewType } from '@/lib/types';
 import {
   DropdownMenu,
@@ -236,6 +236,14 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                 <ListIcon className="w-3.5 h-3.5" />
                 <span>List</span>
                 {viewType === 'list' && <CheckIcon className="w-3 h-3 ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => onViewTypeChange?.('streams')}
+                className={`text-xs gap-2 ${viewType === 'streams' ? 'text-text-chrome-active' : ''}`}
+              >
+                <RadioTowerIcon className="w-3.5 h-3.5" />
+                <span>Streams</span>
+                {viewType === 'streams' && <CheckIcon className="w-3 h-3 ml-auto" />}
               </DropdownMenuItem>
             </div>
             <DropdownMenuSeparator />
