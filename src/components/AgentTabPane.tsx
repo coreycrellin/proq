@@ -27,15 +27,17 @@ interface AgentTabPaneProps {
   tabId: string;
   projectId: string;
   visible: boolean;
+  context?: string;
+  initialDraft?: string;
 }
 
-export function AgentTabPane({ tabId, projectId, visible }: AgentTabPaneProps) {
-  const { blocks, sessionDone, sendMessage, stop } = useAgentTabSession(tabId, projectId);
+export function AgentTabPane({ tabId, projectId, visible, context, initialDraft }: AgentTabPaneProps) {
+  const { blocks, sessionDone, sendMessage, stop } = useAgentTabSession(tabId, projectId, context);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
-  const [inputValue, setInputValue] = useState(() => draftMap.get(tabId) || '');
+  const [inputValue, setInputValue] = useState(() => draftMap.get(tabId) || initialDraft || '');
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
