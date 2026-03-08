@@ -33,9 +33,10 @@ interface StructuredPaneProps {
   followUpDraft?: FollowUpDraft;
   onFollowUpDraftChange?: (draft: FollowUpDraft | null) => void;
   onTaskStatusChange?: (status: string) => void;
+  compact?: boolean;
 }
 
-export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange }: StructuredPaneProps) {
+export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact }: StructuredPaneProps) {
   const { blocks, sessionDone, sendFollowUp, approvePlan, stop } = useAgentSession(taskId, projectId, agentBlocks);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -485,8 +486,9 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
       </div>
 
       {/* Input area */}
-      <div className="shrink-0 px-3 py-2.5">
+      <div className={`shrink-0 ${compact ? 'px-1.5 py-1' : 'px-3 py-2.5'}`}>
         {taskStatus === 'done' ? (
+          compact ? null : (
           <div className="flex items-center justify-between rounded-xl border border-border-strong bg-surface-detail px-4 py-3">
             <span className="text-xs text-text-tertiary">This task is read-only. Move back to Verify to resume editing.</span>
             <button
@@ -497,12 +499,13 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
               Resume editing
             </button>
           </div>
+          )
         ) : (
         <>
-        <div className="rounded-xl border border-border-strong/40 focus-within:border-border-strong bg-surface-topbar overflow-hidden transition-colors">
+        <div className={`${compact ? 'rounded-lg' : 'rounded-xl'} border border-border-strong/40 focus-within:border-border-strong bg-surface-topbar overflow-hidden transition-colors`}>
           {/* Attachment previews inside container */}
           {attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2 px-3 pt-3">
+            <div className={`flex flex-wrap gap-2 ${compact ? 'px-2 pt-2' : 'px-3 pt-3'}`}>
               {attachments.map((att) => {
                 const url = att.filePath ? attachmentUrl(att.filePath) : undefined;
                 const isImage = att.type?.startsWith('image/') && url;
@@ -514,7 +517,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
                     <img
                       src={url}
                       alt={att.name}
-                      className="h-16 w-auto max-w-[100px] object-cover block cursor-pointer"
+                      className={`${compact ? 'h-10' : 'h-16'} w-auto max-w-[100px] object-cover block cursor-pointer`}
                       onClick={() => window.open(url, '_blank')}
                     />
                     <button
@@ -549,47 +552,91 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
             </div>
           )}
 
-          {/* Textarea */}
-          <textarea
-            ref={textareaRef}
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Send a message..."
-            rows={1}
-            style={{ height: '36px' }}
-            className="w-full min-h-[36px] max-h-[160px] resize-none overflow-hidden bg-transparent px-3 pt-3 pb-2 text-sm leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none"
-          />
+          {compact ? (
+            /* Compact: single-line input with inline buttons */
+            <div className="flex items-center gap-1 px-1 py-1">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-tertiary hover:text-text-chrome-hover"
+                title="Attach file"
+              >
+                <PaperclipIcon className="w-3 h-3" />
+              </button>
+              <textarea
+                ref={textareaRef}
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Send a message..."
+                rows={1}
+                style={{ height: '24px' }}
+                className="flex-1 min-h-[24px] max-h-[60px] resize-none overflow-hidden bg-transparent text-xs leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none py-0.5"
+              />
+              {isRunning ? (
+                <button
+                  onClick={stop}
+                  className="shrink-0 w-6 h-6 flex items-center justify-center rounded bg-red-500/10 hover:bg-red-500/20"
+                  title="Stop agent"
+                >
+                  <SquareIcon className="w-3 h-3 text-red-400 fill-red-400" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSend}
+                  disabled={!inputValue.trim() && attachments.length === 0}
+                  className={`shrink-0 w-6 h-6 flex items-center justify-center rounded ${inputValue.trim() || attachments.length > 0 ? 'text-text-chrome bg-bronze-400/30 dark:bg-surface-hover' : 'text-text-tertiary disabled:opacity-30'}`}
+                  title="Send message"
+                >
+                  <SendIcon className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          ) : (
+            /* Normal: multi-line textarea with separate button bar */
+            <>
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Send a message..."
+              rows={1}
+              style={{ height: '36px' }}
+              className="w-full min-h-[36px] max-h-[160px] resize-none overflow-hidden bg-transparent px-3 pt-3 pb-2 text-sm leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none"
+            />
 
-          {/* Bottom bar: attach left, send right */}
-          <div className="flex items-center justify-between px-1.5 pb-1.5">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-text-tertiary hover:text-text-chrome-hover hover:bg-surface-hover"
-              title="Attach file"
-            >
-              <PaperclipIcon className="w-4 h-4" />
-            </button>
-            {isRunning ? (
+            {/* Bottom bar: attach left, send right */}
+            <div className="flex items-center justify-between px-1.5 pb-1.5">
               <button
-                onClick={stop}
-                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20"
-                title="Stop agent"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-text-tertiary hover:text-text-chrome-hover hover:bg-surface-hover"
+                title="Attach file"
               >
-                <SquareIcon className="w-3.5 h-3.5 text-red-400 fill-red-400" />
+                <PaperclipIcon className="w-4 h-4" />
               </button>
-            ) : (
-              <button
-                onClick={handleSend}
-                disabled={!inputValue.trim() && attachments.length === 0}
-                className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-lg ${inputValue.trim() || attachments.length > 0 ? 'text-text-chrome bg-bronze-400/30 dark:bg-surface-hover' : 'text-text-tertiary disabled:opacity-30'}`}
-                title="Send message"
-              >
-                <SendIcon className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+              {isRunning ? (
+                <button
+                  onClick={stop}
+                  className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20"
+                  title="Stop agent"
+                >
+                  <SquareIcon className="w-3.5 h-3.5 text-red-400 fill-red-400" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSend}
+                  disabled={!inputValue.trim() && attachments.length === 0}
+                  className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-lg ${inputValue.trim() || attachments.length > 0 ? 'text-text-chrome bg-bronze-400/30 dark:bg-surface-hover' : 'text-text-tertiary disabled:opacity-30'}`}
+                  title="Send message"
+                >
+                  <SendIcon className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            </>
+          )}
         </div>
         <input
           ref={fileInputRef}
