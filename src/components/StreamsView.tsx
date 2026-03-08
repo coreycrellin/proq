@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Loader2Icon,
   ClockIcon,
@@ -10,6 +10,8 @@ import {
   MaximizeIcon,
   MinimizeIcon,
   PlusIcon,
+  XIcon,
+  ChevronDownIcon,
 } from 'lucide-react';
 import type { Task, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { StructuredPane } from './StructuredPane';
@@ -34,11 +36,17 @@ interface StreamsViewProps {
   onAddTask?: () => void;
 }
 
-function getStreamTasks(columns: TaskColumns): Task[] {
+function getStreamTasks(
+  columns: TaskColumns,
+  pinnedDoneIds: Set<string>,
+  hiddenIds: Set<string>,
+): Task[] {
+  const pinnedDone = columns['done'].filter((t) => pinnedDoneIds.has(t.id));
   const allTasks = [
     ...columns['in-progress'],
     ...columns['verify'],
-  ];
+    ...pinnedDone,
+  ].filter((t) => !hiddenIds.has(t.id));
 
   return allTasks
     .sort((a, b) => {
@@ -46,10 +54,10 @@ function getStreamTasks(columns: TaskColumns): Task[] {
         t.agentStatus === 'running' ? 0
         : t.agentStatus === 'starting' ? 1
         : t.agentStatus === 'queued' ? 2
-        : 3;
+        : t.status === 'verify' ? 3
+        : 4;
       return score(a) - score(b);
-    })
-    .slice(0, 6);
+    });
 }
 
 function getGridStyle(count: number): React.CSSProperties {
@@ -95,23 +103,168 @@ export function StreamsView({
   onAddTask,
 }: StreamsViewProps) {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
-  const streamTasks = useMemo(() => getStreamTasks(tasks), [tasks]);
+  const [pinnedDoneIds, setPinnedDoneIds] = useState<Set<string>>(new Set());
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close add menu when clicking outside
+  useEffect(() => {
+    if (!showAddMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setShowAddMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAddMenu]);
+
+  // Clean up pinned IDs for tasks that no longer exist in done
+  const validPinnedIds = useMemo(() => {
+    const doneIds = new Set(tasks['done'].map((t) => t.id));
+    const valid = new Set<string>();
+    pinnedDoneIds.forEach((id) => { if (doneIds.has(id)) valid.add(id); });
+    return valid;
+  }, [tasks, pinnedDoneIds]);
+
+  // Clean up hidden IDs for tasks that are no longer in-progress/verify
+  const validHiddenIds = useMemo(() => {
+    const activeIds = new Set([
+      ...tasks['in-progress'].map((t) => t.id),
+      ...tasks['verify'].map((t) => t.id),
+    ]);
+    const valid = new Set<string>();
+    hiddenIds.forEach((id) => { if (activeIds.has(id)) valid.add(id); });
+    return valid;
+  }, [tasks, hiddenIds]);
+
+  const streamTasks = useMemo(
+    () => getStreamTasks(tasks, validPinnedIds, validHiddenIds),
+    [tasks, validPinnedIds, validHiddenIds],
+  );
+
+  // Done tasks available to add (not already pinned)
+  const addableDoneTasks = useMemo(
+    () => tasks['done'].filter((t) => !validPinnedIds.has(t.id)),
+    [tasks, validPinnedIds],
+  );
+
+  const handleRemoveStream = (taskId: string) => {
+    // If it's a pinned done task, unpin it
+    if (validPinnedIds.has(taskId)) {
+      setPinnedDoneIds((prev) => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    } else {
+      // Hide an in-progress/verify task
+      setHiddenIds((prev) => new Set(prev).add(taskId));
+    }
+    if (expandedTaskId === taskId) setExpandedTaskId(null);
+  };
+
+  const handleAddDoneTask = (taskId: string) => {
+    setPinnedDoneIds((prev) => new Set(prev).add(taskId));
+    // Unhide if it was hidden
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.delete(taskId);
+      return next;
+    });
+    setShowAddMenu(false);
+  };
+
+  const handleRestoreHidden = (taskId: string) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.delete(taskId);
+      return next;
+    });
+    setShowAddMenu(false);
+  };
+
+  // Hidden active tasks that can be restored
+  const hiddenActiveTasks = useMemo(
+    () => [...tasks['in-progress'], ...tasks['verify']].filter((t) => validHiddenIds.has(t.id)),
+    [tasks, validHiddenIds],
+  );
+
+  const hasAddableItems = addableDoneTasks.length > 0 || hiddenActiveTasks.length > 0;
+
+  // Add button for top-right corner
+  const addStreamButton = hasAddableItems ? (
+    <div className="relative" ref={addMenuRef}>
+      <button
+        onClick={() => setShowAddMenu((v) => !v)}
+        className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-text-tertiary hover:text-text-secondary hover:bg-surface-hover transition-colors"
+        title="Add task to streams"
+      >
+        <PlusIcon className="w-3 h-3" />
+        <ChevronDownIcon className="w-2.5 h-2.5" />
+      </button>
+      {showAddMenu && (
+        <div className="absolute right-0 top-full mt-1 z-50 w-64 max-h-72 overflow-y-auto rounded-lg border border-border-default bg-surface-primary shadow-xl">
+          {hiddenActiveTasks.length > 0 && (
+            <>
+              <div className="px-3 py-1.5 text-[10px] font-semibold text-text-placeholder uppercase tracking-wider border-b border-border-default">
+                Hidden
+              </div>
+              {hiddenActiveTasks.map((task) => (
+                <button
+                  key={task.id}
+                  onClick={() => handleRestoreHidden(task.id)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-surface-hover text-left"
+                >
+                  {statusIcon(task)}
+                  <span className="truncate">{task.title || task.description?.slice(0, 40) || 'Untitled'}</span>
+                </button>
+              ))}
+            </>
+          )}
+          {addableDoneTasks.length > 0 && (
+            <>
+              <div className="px-3 py-1.5 text-[10px] font-semibold text-text-placeholder uppercase tracking-wider border-b border-border-default">
+                Done
+              </div>
+              {addableDoneTasks.map((task) => (
+                <button
+                  key={task.id}
+                  onClick={() => handleAddDoneTask(task.id)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-surface-hover text-left"
+                >
+                  <CheckCircle2Icon className="w-3 h-3 text-emerald shrink-0" />
+                  <span className="truncate">{task.title || task.description?.slice(0, 40) || 'Untitled'}</span>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  ) : null;
 
   if (streamTasks.length === 0) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-text-tertiary gap-3">
+      <div className="h-full flex flex-col items-center justify-center text-text-tertiary gap-3 relative">
+        {addStreamButton && (
+          <div className="absolute top-2 right-2">{addStreamButton}</div>
+        )}
         <RadioTowerIcon className="w-8 h-8 opacity-30" />
         <p className="text-sm">No active streams</p>
         <p className="text-xs opacity-60">Start a task to see agent output here</p>
-        {onAddTask && (
-          <button
-            onClick={onAddTask}
-            className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
-          >
-            <PlusIcon className="w-3.5 h-3.5" />
-            New Task
-          </button>
-        )}
+        <div className="flex gap-2 mt-2">
+          {onAddTask && (
+            <button
+              onClick={onAddTask}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+            >
+              <PlusIcon className="w-3.5 h-3.5" />
+              New Task
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -129,6 +282,7 @@ export function StreamsView({
           task={task}
           projectId={projectId}
           onCollapse={() => setExpandedTaskId(null)}
+          onRemove={() => handleRemoveStream(task.id)}
           onComplete={onComplete}
           onResumeEditing={onResumeEditing}
           followUpDraft={followUpDraftsRef?.current.get(task.id)}
@@ -140,23 +294,32 @@ export function StreamsView({
 
   // Grid: all streams visible at once, each with its own StructuredPane
   return (
-    <div
-      className="h-full grid gap-px bg-border-default overflow-hidden"
-      style={getGridStyle(streamTasks.length)}
-    >
-      {streamTasks.map((task) => (
-        <StreamCellFull
-          key={task.id}
-          task={task}
-          projectId={projectId}
-          compact
-          onExpand={() => setExpandedTaskId(task.id)}
-          onComplete={onComplete}
-          onResumeEditing={onResumeEditing}
-          followUpDraft={followUpDraftsRef?.current.get(task.id)}
-          onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
-        />
-      ))}
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
+      {/* Toolbar */}
+      {addStreamButton && (
+        <div className="flex justify-end px-2 py-1 shrink-0">
+          {addStreamButton}
+        </div>
+      )}
+      <div
+        className="flex-1 grid gap-px bg-border-default overflow-hidden min-h-0"
+        style={getGridStyle(streamTasks.length)}
+      >
+        {streamTasks.map((task) => (
+          <StreamCellFull
+            key={task.id}
+            task={task}
+            projectId={projectId}
+            compact
+            onExpand={() => setExpandedTaskId(task.id)}
+            onRemove={() => handleRemoveStream(task.id)}
+            onComplete={onComplete}
+            onResumeEditing={onResumeEditing}
+            followUpDraft={followUpDraftsRef?.current.get(task.id)}
+            onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -169,6 +332,7 @@ interface StreamCellFullProps {
   compact?: boolean;
   onExpand?: () => void;
   onCollapse?: () => void;
+  onRemove?: () => void;
   onComplete?: (taskId: string) => void;
   onResumeEditing?: (taskId: string) => void;
   followUpDraft?: FollowUpDraft;
@@ -181,6 +345,7 @@ function StreamCellFull({
   compact,
   onExpand,
   onCollapse,
+  onRemove,
   onComplete,
   onResumeEditing,
   followUpDraft,
@@ -224,6 +389,15 @@ function StreamCellFull({
             title="Back to grid"
           >
             <MinimizeIcon className="w-3 h-3" />
+          </button>
+        )}
+        {onRemove && (
+          <button
+            onClick={onRemove}
+            className="p-1 rounded text-text-placeholder hover:text-red-400 hover:bg-red-500/10"
+            title="Remove from streams"
+          >
+            <XIcon className="w-3 h-3" />
           </button>
         )}
       </div>
