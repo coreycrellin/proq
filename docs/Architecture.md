@@ -245,6 +245,21 @@ A persistent Claude Code instance accessible at `/supervisor`. Unlike task agent
 
 The supervisor session is a singleton on `globalThis` (survives HMR). Conversation history is stored via `setSupervisorAgentBlocks()` and restored on reconnect.
 
+## Desktop Shell
+
+The optional Electron desktop app (`desktop/`) is a thin process manager that wraps the web UI. It does **not** embed or modify the Next.js server — it spawns it as a child process using the system's Node.js runtime.
+
+```
+Electron App
+  ├── Setup Wizard (first run) → clones repo, checks deps, npm install + build
+  ├── Splash Screen → starts server, polls until ready
+  └── BrowserWindow → loads localhost:{port}
+```
+
+Key design: the server runs via `npm run start` (or `dev`), not inside Electron's Node. This avoids native module (node-pty) rebuild issues entirely. Config is stored separately in the OS app data directory (`~/Library/Application Support/proq-desktop/config.json` on macOS).
+
+For full details, see the [desktop README](../desktop/README.md).
+
 ## Git Integration
 
 ### Branch API (`/api/projects/[id]/git`)

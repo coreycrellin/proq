@@ -34,6 +34,10 @@ npm run dev
 
 Open [localhost:1337](http://localhost:1337).
 
+### Desktop App
+
+Prefer a native app? The [desktop shell](desktop/) is an Electron wrapper that handles cloning, setup, and server management for you — no terminal required. See the [desktop README](desktop/README.md) for details.
+
 ## How It Works
 
 1. **Create tasks** on the board — manually, or from any agent that talks to the API
@@ -75,6 +79,7 @@ All endpoints live under `/api/projects`.
 | [Architecture](docs/Architecture.md) | Data layer, dispatch engine, WebSocket protocol, REST API |
 | [Parallel Worktrees](docs/Parallel-Worktrees.md) | Worktree lifecycle, preview branches, auto-stash, merge conflicts |
 | [Self-Editing](docs/Self-Editing.md) | How to develop proq using proq |
+| [Desktop Shell](desktop/README.md) | Electron desktop app setup and packaging |
 
 ## License
 
