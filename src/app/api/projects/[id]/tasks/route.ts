@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllTasks, createTask, getProject } from "@/lib/db";
+import { emitTaskCreated } from "@/lib/task-events";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -25,5 +26,6 @@ export async function POST(request: Request, { params }: Params) {
   const description = body.description ?? "";
 
   const task = await createTask(id, { title, description });
+  emitTaskCreated(id, task as unknown as Record<string, unknown>);
   return NextResponse.json(task, { status: 201 });
 }

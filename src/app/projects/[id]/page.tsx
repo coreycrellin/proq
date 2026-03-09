@@ -19,7 +19,7 @@ import { useProjects } from '@/components/ProjectsProvider';
 import { emptyColumns } from '@/components/ProjectsProvider';
 import type { Task, TaskStatus, TaskColumns, ExecutionMode, FollowUpDraft, TaskAttachment, ViewType } from '@/lib/types';
 import { uploadFiles } from '@/lib/upload';
-import { useTaskEvents, type TaskUpdateEvent } from '@/hooks/useTaskEvents';
+import { useTaskEvents, type TaskUpdateEvent, type TaskCreatedEvent } from '@/hooks/useTaskEvents';
 
 export default function ProjectPage() {
   const params = useParams();
@@ -206,7 +206,21 @@ export default function ProjectPage() {
     }
   }, [projectId, setTasksByProject, fetchBranchState, dismissAttention]);
 
-  useTaskEvents(projectId, handleTaskUpdate);
+  // Handle externally-created tasks (e.g. supervisor) — insert into todo column
+  const handleTaskCreated = useCallback((event: TaskCreatedEvent) => {
+    const task = event.task as unknown as Task;
+    if (!task.id) return;
+    setTasksByProject((prev) => {
+      const cols = prev[projectId] || emptyColumns();
+      // Skip if task already exists (e.g. we created it locally)
+      for (const status of ['todo', 'in-progress', 'verify', 'done'] as TaskStatus[]) {
+        if (cols[status].some((t) => t.id === task.id)) return prev;
+      }
+      return { ...prev, [projectId]: { ...cols, todo: [task, ...cols.todo] } };
+    });
+  }, [projectId, setTasksByProject]);
+
+  useTaskEvents(projectId, handleTaskUpdate, handleTaskCreated);
 
   // 30s task poll as consistency backstop — SSE handles real-time updates.
   // Skips during active drags.
@@ -218,13 +232,14 @@ export default function ProjectPage() {
     return () => clearInterval(interval);
   }, [projectId, refreshTasks]);
 
-  // 15s poll for branch state (local dirty count, branch list, preview fast-forward)
+  // 5s poll for branch state (local dirty count, branch list, preview fast-forward)
+  // Git changes are true externalities that don't pass through our API.
   useEffect(() => {
     if (!projectId) return;
     const interval = setInterval(() => {
       fetchBranchState();
       refreshDetachedHead();
-    }, 15_000);
+    }, 5_000);
     return () => clearInterval(interval);
   }, [projectId, fetchBranchState, refreshDetachedHead]);
 
