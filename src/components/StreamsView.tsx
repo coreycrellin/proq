@@ -132,7 +132,7 @@ function ResizeHandle({
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="h-[1.5px] shrink-0 bg-zinc-700 hover:bg-zinc-500 cursor-row-resize transition-colors relative group"
+      className="h-[2px] shrink-0 bg-zinc-700 hover:bg-zinc-500 cursor-row-resize transition-colors relative group"
       title="Drag to resize"
     />
   );
@@ -640,7 +640,7 @@ export function StreamsView({
                 ))}
               </div>
               {/* Horizontal divider */}
-              <div className="h-[1.5px] shrink-0 bg-zinc-700" />
+              <div className="h-[2px] shrink-0 bg-zinc-700" />
               {/* Bottom row */}
               <div className="flex flex-1 min-h-0">
                 {bottomRow.map((task, i) => (
