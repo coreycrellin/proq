@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "PORT=${PORT:-1337} next dev",
+    "dev:mobile": "node scripts/gen-cert.js && PORT=${PORT:-1337} next dev --experimental-https --experimental-https-key certs/key.pem --experimental-https-cert certs/cert.pem",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

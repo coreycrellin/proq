@@ -79,8 +79,8 @@ export function MobileChat({ projectId }: MobileChatProps) {
     const w = window as any;
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!SR) {
-      setRecordError('Speech recognition requires HTTPS');
-      setTimeout(() => setRecordError(null), 3000);
+      setRecordError('Requires HTTPS — use npm run dev:mobile');
+      setTimeout(() => setRecordError(null), 4000);
       return;
     }
 

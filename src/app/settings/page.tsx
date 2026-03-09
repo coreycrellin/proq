@@ -55,6 +55,7 @@ export default function SettingsPage() {
   const [detectingBin, setDetectingBin] = useState(false);
   const [detectMessage, setDetectMessage] = useState<string | null>(null);
   const [mobileUrl, setMobileUrl] = useState<string | null>(null);
+  const [mobileHttps, setMobileHttps] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const isScrollingTo = useRef(false);
@@ -66,7 +67,7 @@ export default function SettingsPage() {
       .catch(console.error);
     fetch("/api/network-info")
       .then((res) => res.json())
-      .then((data) => setMobileUrl(data.url))
+      .then((data) => { setMobileUrl(data.url); setMobileHttps(!!data.https); })
       .catch(console.error);
   }, []);
 
@@ -440,6 +441,23 @@ export default function SettingsPage() {
                       {mobileUrl}
                     </code>
                   </div>
+                  {!mobileHttps && (
+                    <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 max-w-md">
+                      <p className="text-xs text-amber-400 font-medium mb-1">Voice dictation requires HTTPS</p>
+                      <p className="text-xs text-text-tertiary leading-relaxed">
+                        Start the server with <code className="font-mono text-text-secondary bg-surface-inset px-1 rounded">npm run dev:mobile</code> to
+                        enable HTTPS with a self-signed certificate. Your phone will show a certificate warning — tap &quot;Advanced&quot; then &quot;Proceed&quot; to continue.
+                      </p>
+                    </div>
+                  )}
+                  {mobileHttps && (
+                    <div className="mt-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 max-w-md">
+                      <p className="text-xs text-green-400 font-medium">HTTPS enabled — voice dictation ready</p>
+                      <p className="text-xs text-text-tertiary leading-relaxed mt-1">
+                        Your phone may show a certificate warning on first visit. Tap &quot;Advanced&quot; then &quot;Proceed&quot; to accept.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-text-tertiary">Detecting network address...</p>

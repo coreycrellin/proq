@@ -93,8 +93,8 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
     const w = window as any;
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!SR) {
-      setError('Speech recognition requires HTTPS');
-      setTimeout(() => setError(null), 3000);
+      setError('Requires HTTPS — use npm run dev:mobile');
+      setTimeout(() => setError(null), 4000);
       return;
     }
 
