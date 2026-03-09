@@ -49,9 +49,11 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     await refreshProjects();
   }, [refreshProjects]);
 
+  const isMobile = pathname.startsWith('/mobile');
+
   if (isStandalone) {
     return (
-      <div className="h-screen w-full overflow-y-auto font-sans">
+      <div className={`h-screen w-full font-sans ${isMobile ? 'overflow-hidden' : 'overflow-y-auto'} overflow-x-hidden`}>
         {children}
       </div>
     );
