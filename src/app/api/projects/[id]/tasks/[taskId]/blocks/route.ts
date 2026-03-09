@@ -22,10 +22,11 @@ export async function GET(request: Request, { params }: Params) {
   const session = getSession(taskId);
   if (session) {
     const blocks = after > 0 ? session.blocks.slice(after) : session.blocks;
+    const isDone = session.status === "done" || session.status === "error";
     return NextResponse.json({
       blocks,
       total: session.blocks.length,
-      done: false,
+      done: isDone,
     });
   }
 
