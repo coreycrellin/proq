@@ -197,12 +197,15 @@ export function MobileChat({ projectId }: MobileChatProps) {
         {/* Full-width record button */}
         <button
           type="button"
-          onTouchStart={(e) => { e.preventDefault(); startRecording(); }}
-          onTouchEnd={(e) => { e.preventDefault(); stopRecording(); }}
-          onMouseDown={startRecording}
-          onMouseUp={stopRecording}
+          disabled={!supported}
+          onTouchStart={(e) => { e.preventDefault(); if (supported) startRecording(); }}
+          onTouchEnd={(e) => { e.preventDefault(); if (supported) stopRecording(); }}
+          onMouseDown={() => { if (supported) startRecording(); }}
+          onMouseUp={() => { if (supported) stopRecording(); }}
           className={`w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none ${
-            recording
+            !supported
+              ? 'bg-surface-hover border border-border-default text-text-tertiary opacity-60 cursor-not-allowed'
+              : recording
               ? 'bg-red-500 text-white'
               : recordError
               ? 'bg-surface-hover border border-red-500/50 text-red-400'
@@ -211,7 +214,7 @@ export function MobileChat({ projectId }: MobileChatProps) {
         >
           <MicIcon className={`w-5 h-5 ${recording ? 'animate-pulse' : ''}`} />
           <span className="text-sm font-medium">
-            {recording ? 'Recording... release to send' : recordError ? recordError : 'Hold to dictate'}
+            {!supported ? (unsupportedMsg || 'Dictation not available') : recording ? 'Recording... release to send' : recordError ? recordError : 'Hold to dictate'}
           </span>
         </button>
       </div>
