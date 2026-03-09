@@ -90,6 +90,7 @@ export interface Task {
     branch: string;
     diff?: string; // unified diff showing what conflicts
   };
+  startCommit?: string;
   renderMode?: AgentRenderMode;
   agentBlocks?: AgentBlock[];
   sessionId?: string;
