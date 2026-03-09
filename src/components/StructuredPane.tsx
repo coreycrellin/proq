@@ -36,9 +36,10 @@ interface StructuredPaneProps {
   compact?: boolean;
   readOnly?: boolean;
   sendRef?: React.MutableRefObject<((text: string) => void) | null>;
+  attachRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly, sendRef }: StructuredPaneProps) {
+export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly, sendRef, attachRef }: StructuredPaneProps) {
   const { blocks, connected, sessionDone, sendFollowUp, approvePlan, stop } = useAgentSession(taskId, projectId, agentBlocks);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -198,6 +199,14 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     }
     return () => { if (sendRef) sendRef.current = null; };
   }, [sendRef, taskId, projectId, taskStatus, connected, sendFollowUp]);
+
+  // Expose imperative attach for external callers (e.g. mobile plus button)
+  useEffect(() => {
+    if (attachRef) {
+      attachRef.current = () => fileInputRef.current?.click();
+    }
+    return () => { if (attachRef) attachRef.current = null; };
+  }, [attachRef]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -587,14 +596,6 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
           {compact ? (
             /* Compact: single-line input with inline buttons */
             <div className="flex items-center gap-1 px-1 py-1">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-tertiary hover:text-text-chrome-hover"
-                title="Attach file"
-              >
-                <PaperclipIcon className="w-3 h-3" />
-              </button>
               <textarea
                 ref={textareaRef}
                 value={inputValue}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon, PlusIcon, CheckIcon } from 'lucide-react';
+import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon, PlusIcon, CheckIcon, SendIcon } from 'lucide-react';
 import type { Task, TaskColumns } from '@/lib/types';
 import { StructuredPane } from '../StructuredPane';
 
@@ -13,18 +13,32 @@ interface MobileStreamViewProps {
   projectId: string;
   onTaskCreated?: () => void;
   focusTaskId?: string | null;
+  isNewTask?: boolean;
 }
 
-function getStreamTasks(columns: TaskColumns): Task[] {
+function getStreamTasks(columns: TaskColumns, focusTaskId?: string | null): Task[] {
   const allTasks = [
     ...columns['in-progress'],
     ...columns['verify'],
     ...(columns['done'] || []).slice(0, 3),
   ];
 
+  // Include the focused todo task if it's not already in the stream
+  if (focusTaskId) {
+    const alreadyIncluded = allTasks.some((t) => t.id === focusTaskId);
+    if (!alreadyIncluded) {
+      const todoTask = columns['todo']?.find((t) => t.id === focusTaskId);
+      if (todoTask) {
+        allTasks.unshift(todoTask);
+      }
+    }
+  }
+
   return allTasks.sort((a, b) => {
     const score = (t: Task) =>
-      t.agentStatus === 'running' ? 0
+      // Focused todo task sorts first
+      t.id === focusTaskId && t.status === 'todo' ? -1
+      : t.agentStatus === 'running' ? 0
       : t.agentStatus === 'starting' ? 1
       : t.agentStatus === 'queued' ? 2
       : t.status === 'verify' ? 3
@@ -164,17 +178,23 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
   );
 }
 
-export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId }: MobileStreamViewProps) {
-  const streamTasks = getStreamTasks(tasks);
+export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId, isNewTask }: MobileStreamViewProps) {
+  const streamTasks = getStreamTasks(tasks, focusTaskId);
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const sendRef = useRef<((text: string) => void) | null>(null);
+  const attachRef = useRef<(() => void) | null>(null);
   const [showNewTask, setShowNewTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [creating, setCreating] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [taskDescription, setTaskDescription] = useState('');
+  const [submittingDescription, setSubmittingDescription] = useState(false);
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleCreateTask = useCallback(async () => {
     if (!newTaskTitle.trim() || creating) return;
@@ -196,6 +216,39 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId 
       setCreating(false);
     }
   }, [newTaskTitle, creating, projectId, onTaskCreated]);
+
+  // Auto-generate title from description (first meaningful chunk)
+  const generateTitle = useCallback((description: string): string => {
+    const trimmed = description.trim();
+    const firstLine = trimmed.split('\n')[0].trim();
+    if (firstLine.length <= 80) return firstLine;
+    // Truncate at word boundary
+    const truncated = firstLine.slice(0, 80);
+    const lastSpace = truncated.lastIndexOf(' ');
+    return (lastSpace > 40 ? truncated.slice(0, lastSpace) : truncated) ;
+  }, []);
+
+  const handleSubmitDescription = useCallback(async (task: Task) => {
+    if (!taskDescription.trim() || submittingDescription) return;
+    setSubmittingDescription(true);
+    try {
+      const title = generateTitle(taskDescription);
+      await fetch(`/api/projects/${projectId}/tasks/${task.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          description: taskDescription.trim(),
+        }),
+      });
+      setTaskDescription('');
+      onTaskCreated?.(); // triggers refetch
+    } catch {
+      // best effort
+    } finally {
+      setSubmittingDescription(false);
+    }
+  }, [taskDescription, submittingDescription, projectId, generateTitle, onTaskCreated]);
 
   const handleMarkDone = useCallback(async (task: Task) => {
     if (completing) return;
@@ -348,49 +401,83 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId 
       >
         {currentTask && (
           <div className="h-full flex flex-col min-h-0">
-            {/* Task header */}
-            <div className="flex-shrink-0 px-4 py-3 border-b border-border-default bg-surface-topbar">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-medium text-text-primary truncate flex-1">
-                  {currentTask.title || currentTask.description?.slice(0, 60)}
-                </h2>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {currentTask.status === 'verify' && (
-                    <button
-                      onClick={() => handleMarkDone(currentTask)}
-                      disabled={completing}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-emerald bg-emerald/10 border border-emerald/20 active:bg-emerald/20 disabled:opacity-50"
-                    >
-                      <CheckIcon className="w-3 h-3" />
-                      {completing ? '...' : 'Done'}
-                    </button>
-                  )}
-                  {statusBadge(currentTask)}
+            {/* Task header — hide for blank new tasks */}
+            {(currentTask.title || currentTask.description) && (
+              <div className="flex-shrink-0 px-4 py-3 border-b border-border-default bg-surface-topbar">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-medium text-text-primary truncate flex-1">
+                    {currentTask.title || currentTask.description?.slice(0, 60)}
+                  </h2>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {currentTask.status === 'verify' && (
+                      <button
+                        onClick={() => handleMarkDone(currentTask)}
+                        disabled={completing}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-emerald bg-emerald/10 border border-emerald/20 active:bg-emerald/20 disabled:opacity-50"
+                      >
+                        <CheckIcon className="w-3 h-3" />
+                        {completing ? '...' : 'Done'}
+                      </button>
+                    )}
+                    {statusBadge(currentTask)}
+                  </div>
+                </div>
+                {currentTask.branch && (
+                  <p className="text-xs text-text-tertiary mt-0.5 font-mono truncate">
+                    {currentTask.branch}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* New task compose UI */}
+            {currentTask.status === 'todo' && !currentTask.title && !currentTask.description ? (
+              <div className="flex-1 flex flex-col min-h-0 p-4">
+                <div className="flex-1 flex flex-col justify-center max-w-lg mx-auto w-full gap-3">
+                  <p className="text-text-tertiary text-sm text-center">Describe what you want done</p>
+                  <textarea
+                    ref={descriptionInputRef}
+                    autoFocus
+                    value={taskDescription}
+                    onChange={(e) => setTaskDescription(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmitDescription(currentTask);
+                      }
+                    }}
+                    placeholder="e.g. Add a dark mode toggle to the settings page..."
+                    className="w-full rounded-xl bg-surface-hover border border-border-default text-text-primary text-sm p-4 min-h-[120px] resize-none placeholder:text-text-tertiary/50 outline-none focus:border-bronze-400/50"
+                  />
+                  <button
+                    onClick={() => handleSubmitDescription(currentTask)}
+                    disabled={!taskDescription.trim() || submittingDescription}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-medium disabled:opacity-40 active:bg-blue-700 transition-colors"
+                  >
+                    <SendIcon className="w-4 h-4" />
+                    {submittingDescription ? 'Sending...' : 'Send'}
+                  </button>
                 </div>
               </div>
-              {currentTask.branch && (
-                <p className="text-xs text-text-tertiary mt-0.5 font-mono truncate">
-                  {currentTask.branch}
-                </p>
-              )}
-            </div>
-
-            {/* Agent output — must be flex col so StructuredPane's flex-1 works */}
-            <div className="flex-1 min-h-0 flex flex-col overflow-x-hidden max-w-[100vw]">
-              <StructuredPane
-                taskId={currentTask.id}
-                projectId={projectId}
-                visible={true}
-                taskStatus={currentTask.status}
-                agentBlocks={
-                  !(currentTask.agentStatus === 'running' || currentTask.agentStatus === 'starting') && currentTask.status === 'done' && currentTask.agentBlocks
-                    ? currentTask.agentBlocks
-                    : undefined
-                }
-                compact={true}
-                sendRef={sendRef}
-              />
-            </div>
+            ) : (
+              /* Agent output — must be flex col so StructuredPane's flex-1 works */
+              <div className="flex-1 min-h-0 flex flex-col overflow-x-hidden max-w-[100vw]">
+                <StructuredPane
+                  taskId={currentTask.id}
+                  projectId={projectId}
+                  visible={true}
+                  taskStatus={currentTask.status}
+                  agentBlocks={
+                    !(currentTask.agentStatus === 'running' || currentTask.agentStatus === 'starting') && currentTask.status === 'done' && currentTask.agentBlocks
+                      ? currentTask.agentBlocks
+                      : undefined
+                  }
+                  compact={true}
+                  sendRef={sendRef}
+                  attachRef={attachRef}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -401,8 +488,8 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId 
           <RecordButton onTranscript={handleTranscript} />
         </div>
         <button
-          onClick={() => setShowNewTask(true)}
-          className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-blue-600 text-white active:bg-blue-700"
+          onClick={() => attachRef.current?.()}
+          className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80"
         >
           <PlusIcon className="w-5 h-5" />
         </button>
