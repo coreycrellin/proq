@@ -600,7 +600,7 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
                   onClick={() => setShowAllCommits(true)}
                   className="mt-2 w-full text-center text-[11px] font-medium text-text-chrome hover:text-text-chrome-hover"
                 >
-                  See all diffs
+                  See all
                 </button>
               </>
             )}
