@@ -260,6 +260,7 @@ function LogoAnimation({
               d={d}
               stroke={STROKE_COLOR}
               strokeWidth={config.strokeWidth}
+              {...(d.includes('Z') ? { strokeLinecap: "square" } : {})}
             />
           ))
         ) : (
