@@ -246,6 +246,17 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
     autosave(title, description, updated);
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const imageFiles = Array.from(e.clipboardData.items)
+      .filter((item) => item.type.startsWith('image/'))
+      .map((item) => item.getAsFile())
+      .filter((f): f is File => f !== null);
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      addFiles(imageFiles);
+    }
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
@@ -329,6 +340,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
                 descriptionRef.current?.focus();
               }
             }}
+            onPaste={handlePaste}
             className="w-full bg-transparent text-xl font-semibold text-text-primary placeholder-text-placeholder focus:outline-none mb-1 pr-8"
             placeholder={titleGenerating ? 'Generating title...' : '(Auto title)'}
           />
@@ -353,6 +365,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
                 }
               }
             }}
+            onPaste={handlePaste}
             className="block w-full h-full bg-transparent text-sm text-text-secondary placeholder-text-placeholder focus:outline-none focus-visible:ring-0 resize-none leading-relaxed overflow-hidden"
             placeholder="Write something..."
           />
