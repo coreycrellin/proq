@@ -134,14 +134,12 @@ const LOGOTYPE_SINGLE_PATH_2 =
 const LOGOTYPE_SEPARATE_PATH =
   "M55 317.501V80.5006H238.237V237.911H108.241V134.152H184.126V185.736H147.152M291.5 253.501V80.5006H474.737V237.911H344.741V134.152H420.626V185.736H383.652M949.5 317.501V80.5007H766.5V237.911H896.328V134.152H820.541V185.736H857.467M529 237.911V80.5006H712.237V237.911H529ZM582.241 134.152H658.126V185.736H582.241V134.152Z";
 
-// Split into individual letter paths for independent animation.
-// The "o" keeps both sub-paths combined (outer+inner rectangle) and uses
-// opacity animation instead of strokeDasharray to avoid multi-subpath issues.
 const LOGOTYPE_SEPARATE_PATHS = [
-  { d: "M55 317.501V80.5006H238.237V237.911H108.241V134.152H184.126V185.736H147.152", useDash: true },
-  { d: "M291.5 253.501V80.5006H474.737V237.911H344.741V134.152H420.626V185.736H383.652", useDash: true },
-  { d: "M529 237.911V80.5006H712.237V237.911H529ZM582.241 134.152H658.126V185.736H582.241V134.152Z", useDash: false },
-  { d: "M949.5 317.501V80.5007H766.5V237.911H896.328V134.152H820.541V185.736H857.467", useDash: true },
+  "M55 317.501V80.5006H238.237V237.911H108.241V134.152H184.126V185.736H147.152",
+  "M291.5 253.501V80.5006H474.737V237.911H344.741V134.152H420.626V185.736H383.652",
+  "M529 237.911V80.5006H712.237V237.911H529Z",
+  "M582.241 134.152H658.126V185.736H582.241V134.152Z",
+  "M949.5 317.501V80.5007H766.5V237.911H896.328V134.152H820.541V185.736H857.467",
 ];
 
 function LogoAnimation({
@@ -159,7 +157,7 @@ function LogoAnimation({
   onClick: () => void;
   label: string;
   svgPath?: string;
-  svgPaths?: { d: string; useDash: boolean }[];
+  svgPaths?: string[];
   viewBox?: string;
   aspectRatio?: number;
 }) {
@@ -213,47 +211,14 @@ function LogoAnimation({
       });
     }
 
-    // For paths with multiple sub-paths (like the "o"), use opacity animation
-    // instead of strokeDasharray to avoid rendering artifacts
-    function animatePathOpacity(path: SVGPathElement): Animation {
-      path.style.strokeDasharray = "";
-      path.style.strokeDashoffset = "";
-
-      const fromOpacity = config.startRetracted ? "0" : "1";
-      const toOpacity = config.startRetracted ? "1" : "0";
-
-      const keyframes: Keyframe[] = [
-        { opacity: fromOpacity, offset: 0, easing: config.easing },
-        ...(holdFirstFrac > 0
-          ? [{ opacity: fromOpacity, offset: s1, easing: config.easing }]
-          : []),
-        { opacity: toOpacity, offset: s2, easing: config.easing },
-        ...(holdSecondFrac > 0
-          ? [{ opacity: toOpacity, offset: s3, easing: config.easing }]
-          : []),
-        { opacity: fromOpacity, offset: 1 },
-      ];
-
-      return path.animate(keyframes, {
-        duration: totalTime,
-        iterations: Infinity,
-      });
-    }
-
     if (isMulti) {
       animRefs.current.forEach((a) => a.cancel());
       animRefs.current = [];
 
       const anims: Animation[] = [];
-      pathRefs.current.forEach((p, i) => {
-        if (!p) return;
-        const spec = svgPaths![i];
-        if (spec.useDash) {
-          anims.push(animatePathDash(p));
-        } else {
-          anims.push(animatePathOpacity(p));
-        }
-      });
+      for (const p of pathRefs.current) {
+        if (p) anims.push(animatePathDash(p));
+      }
       animRefs.current = anims;
 
       return () => anims.forEach((a) => a.cancel());
@@ -288,11 +253,11 @@ function LogoAnimation({
         xmlns="http://www.w3.org/2000/svg"
       >
         {isMulti ? (
-          svgPaths!.map((spec, i) => (
+          svgPaths!.map((d, i) => (
             <path
               key={i}
               ref={(el) => { pathRefs.current[i] = el; }}
-              d={spec.d}
+              d={d}
               stroke={STROKE_COLOR}
               strokeWidth={config.strokeWidth}
             />
