@@ -145,8 +145,8 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
               )}
             </div>
 
-            {/* Agent output — needs min-h-0 for flex child with absolute positioned scroll */}
-            <div className="flex-1 min-h-0">
+            {/* Agent output — must be flex col so StructuredPane's flex-1 works */}
+            <div className="flex-1 min-h-0 flex flex-col">
               <StructuredPane
                 taskId={currentTask.id}
                 projectId={projectId}
