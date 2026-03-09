@@ -443,7 +443,8 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
     };
-  }, []); // Uses refs for all mutable values — no deps needed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streamTasks.length > 0]); // Re-run when container appears/disappears
 
   const handleTranscript = useCallback((text: string) => {
     sendRef.current?.(text);

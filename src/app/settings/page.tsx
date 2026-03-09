@@ -56,9 +56,22 @@ export default function SettingsPage() {
   const [detectMessage, setDetectMessage] = useState<string | null>(null);
   const [mobileUrl, setMobileUrl] = useState<string | null>(null);
   const [mobileHttps, setMobileHttps] = useState(false);
+  const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
+  const [tunnelStarting, setTunnelStarting] = useState(false);
+  const [tunnelError, setTunnelError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const isScrollingTo = useRef(false);
+
+  const checkTunnel = useCallback(() => {
+    fetch("/api/tunnel")
+      .then((res) => res.json())
+      .then((data) => {
+        setTunnelUrl(data.active ? data.url : null);
+        setTunnelStarting(!!data.starting);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -69,7 +82,8 @@ export default function SettingsPage() {
       .then((res) => res.json())
       .then((data) => { setMobileUrl(data.url); setMobileHttps(!!data.https); })
       .catch(console.error);
-  }, []);
+    checkTunnel();
+  }, [checkTunnel]);
 
   // Track which section is visible on scroll
   useEffect(() => {
@@ -424,44 +438,116 @@ export default function SettingsPage() {
                 Scan this QR code with your phone to open the mobile companion.
                 Make sure your phone and computer are on the same WiFi network.
               </p>
-              {mobileUrl ? (
-                <div className="flex flex-col items-center gap-4 py-4">
-                  <div className="bg-white p-4 rounded-xl">
-                    <QRCodeSVG
-                      value={mobileUrl}
-                      size={180}
-                      level="M"
-                      bgColor="#ffffff"
-                      fgColor="#000000"
-                    />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-text-tertiary mb-1">Or open manually:</p>
-                    <code className="text-xs text-bronze-400 font-mono bg-surface-inset px-2.5 py-1 rounded-md border border-border-default select-all">
-                      {mobileUrl}
-                    </code>
-                  </div>
-                  {!mobileHttps && (
-                    <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 max-w-md">
-                      <p className="text-xs text-amber-400 font-medium mb-1">Voice dictation requires HTTPS</p>
-                      <p className="text-xs text-text-tertiary leading-relaxed">
-                        To enable voice dictation: run <code className="font-mono text-text-secondary bg-surface-inset px-1 rounded">npm run dev:mobile</code>, then
-                        install the certificate on your iOS device via the dictate button setup wizard on the mobile page.
-                      </p>
+
+              {/* Tunnel controls for voice dictation */}
+              <Field
+                label="Voice dictation"
+                hint="Start a secure tunnel to enable voice dictation on your phone. No certificates or server restart needed."
+              >
+                {tunnelUrl ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
+                      <span className="text-sm text-emerald font-medium">Tunnel running</span>
                     </div>
-                  )}
-                  {mobileHttps && (
-                    <div className="mt-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 max-w-md">
-                      <p className="text-xs text-green-400 font-medium">HTTPS enabled — voice dictation ready</p>
-                      <p className="text-xs text-text-tertiary leading-relaxed mt-1">
-                        Your phone may show a certificate warning on first visit. Tap &quot;Advanced&quot; then &quot;Proceed&quot; to accept.
-                      </p>
+                    <div className="flex flex-col items-center gap-3 py-3">
+                      <div className="bg-white p-3 rounded-xl">
+                        <QRCodeSVG
+                          value={tunnelUrl}
+                          size={160}
+                          level="M"
+                          bgColor="#ffffff"
+                          fgColor="#000000"
+                        />
+                      </div>
+                      <code className="text-xs text-bronze-400 font-mono bg-surface-inset px-2.5 py-1.5 rounded-md border border-border-default select-all break-all text-center max-w-full">
+                        {tunnelUrl}
+                      </code>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-text-tertiary">Detecting network address...</p>
-              )}
+                    <button
+                      onClick={async () => {
+                        await fetch("/api/tunnel", { method: "DELETE" });
+                        setTunnelUrl(null);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs bg-surface-base border border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-hover"
+                    >
+                      <XIcon className="w-3.5 h-3.5" />
+                      Stop Tunnel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <button
+                      onClick={async () => {
+                        setTunnelStarting(true);
+                        setTunnelError(null);
+                        try {
+                          const res = await fetch("/api/tunnel", { method: "POST" });
+                          const data = await res.json();
+                          if (res.ok && data.url) {
+                            setTunnelUrl(data.url);
+                          } else {
+                            setTunnelError(data.error || "Failed to start tunnel");
+                          }
+                        } catch {
+                          setTunnelError("Network error");
+                        } finally {
+                          setTunnelStarting(false);
+                        }
+                      }}
+                      disabled={tunnelStarting}
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {tunnelStarting ? (
+                        <><LoaderIcon className="w-3.5 h-3.5 animate-spin" /> Starting tunnel...</>
+                      ) : (
+                        'Start Tunnel'
+                      )}
+                    </button>
+                    {tunnelError && (
+                      <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                        <p className="text-xs text-red-400">{tunnelError}</p>
+                        {tunnelError.includes("not found") && (
+                          <p className="text-xs text-text-tertiary mt-1">
+                            Install it with: <code className="font-mono text-text-secondary bg-surface-inset px-1 rounded">brew install cloudflared</code>
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Field>
+
+              {/* QR code for local network access */}
+              <div className="mt-6">
+                <p className="text-xs text-text-tertiary mb-3 font-medium uppercase tracking-wider">Local Network</p>
+                {mobileUrl ? (
+                  <div className="flex flex-col items-center gap-4 py-4">
+                    <div className="bg-white p-4 rounded-xl">
+                      <QRCodeSVG
+                        value={mobileUrl}
+                        size={180}
+                        level="M"
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                      />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-text-tertiary mb-1">Local URL (no voice dictation):</p>
+                      <code className="text-xs text-bronze-400 font-mono bg-surface-inset px-2.5 py-1 rounded-md border border-border-default select-all">
+                        {mobileUrl}
+                      </code>
+                    </div>
+                    {mobileHttps && (
+                      <div className="mt-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 max-w-md">
+                        <p className="text-xs text-green-400 font-medium">HTTPS enabled — voice dictation ready</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-tertiary">Detecting network address...</p>
+                )}
+              </div>
             </section>
           </div>
         </div>

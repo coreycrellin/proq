@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { ShieldCheckIcon, DownloadIcon, RefreshCwIcon, XIcon, CheckCircle2Icon, LoaderIcon } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { GlobeIcon, XIcon, CheckCircle2Icon, LoaderIcon, ExternalLinkIcon } from 'lucide-react';
 
 interface HttpsSetupSheetProps {
   open: boolean;
@@ -9,25 +9,38 @@ interface HttpsSetupSheetProps {
 }
 
 export function HttpsSetupSheet({ open, onClose }: HttpsSetupSheetProps) {
-  const [generating, setGenerating] = useState(false);
-  const [generated, setGenerated] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = useCallback(async () => {
-    setGenerating(true);
+  // Check if tunnel is already running when sheet opens
+  useEffect(() => {
+    if (!open) return;
+    fetch('/api/tunnel')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.active && data.url) {
+          setTunnelUrl(data.url);
+        }
+      })
+      .catch(() => {});
+  }, [open]);
+
+  const handleStartTunnel = useCallback(async () => {
+    setStarting(true);
     setError(null);
     try {
-      const res = await fetch('/api/https-setup', { method: 'POST' });
+      const res = await fetch('/api/tunnel', { method: 'POST' });
       const data = await res.json();
-      if (res.ok && data.success) {
-        setGenerated(true);
+      if (res.ok && data.url) {
+        setTunnelUrl(data.url);
       } else {
-        setError(data.error || 'Failed to generate certificates');
+        setError(data.error || 'Failed to start tunnel');
       }
     } catch {
       setError('Network error');
     } finally {
-      setGenerating(false);
+      setStarting(false);
     }
   }, []);
 
@@ -50,7 +63,7 @@ export function HttpsSetupSheet({ open, onClose }: HttpsSetupSheetProps) {
 
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <ShieldCheckIcon className="w-5 h-5 text-amber-400" />
+            <GlobeIcon className="w-5 h-5 text-blue-400" />
             <h3 className="text-base font-semibold text-text-primary">Enable Voice Dictation</h3>
           </div>
           <button onClick={onClose} className="p-1 text-text-tertiary">
@@ -59,96 +72,62 @@ export function HttpsSetupSheet({ open, onClose }: HttpsSetupSheetProps) {
         </div>
 
         <p className="text-sm text-text-secondary mb-5">
-          Speech recognition requires HTTPS. Follow these steps to enable it:
+          Voice dictation needs a secure connection. Start a tunnel to get an HTTPS link — no certificates or server restart needed.
         </p>
 
-        <div className="space-y-4">
-          {/* Step 1: Generate certs */}
-          <div className="flex gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">
-              1
+        {tunnelUrl ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald/10 border border-emerald/20">
+              <CheckCircle2Icon className="w-5 h-5 text-emerald flex-shrink-0" />
+              <p className="text-sm text-emerald font-medium">Tunnel is running</p>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-text-primary mb-2">Generate HTTPS certificates</p>
-              <button
-                onClick={handleGenerate}
-                disabled={generating || generated}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center ${
-                  generated
-                    ? 'bg-emerald/10 border border-emerald/30 text-emerald'
-                    : 'bg-blue-600 text-white active:bg-blue-700 disabled:opacity-50'
-                }`}
-              >
-                {generating ? (
-                  <><LoaderIcon className="w-4 h-4 animate-spin" /> Generating...</>
-                ) : generated ? (
-                  <><CheckCircle2Icon className="w-4 h-4" /> Certificates Ready</>
-                ) : (
-                  'Generate Certificates'
+            <p className="text-sm text-text-secondary">
+              Open this link on your phone to use voice dictation:
+            </p>
+            <a
+              href={tunnelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium bg-blue-600 text-white active:bg-blue-700 w-full"
+            >
+              <ExternalLinkIcon className="w-4 h-4" />
+              Open Tunnel Link
+            </a>
+            <code className="block text-xs font-mono bg-surface-inset text-bronze-400 px-3 py-2 rounded-lg border border-border-default select-all text-center break-all">
+              {tunnelUrl}
+            </code>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <button
+              onClick={handleStartTunnel}
+              disabled={starting}
+              className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors w-full justify-center bg-blue-600 text-white active:bg-blue-700 disabled:opacity-50"
+            >
+              {starting ? (
+                <><LoaderIcon className="w-4 h-4 animate-spin" /> Starting tunnel...</>
+              ) : (
+                'Start Tunnel'
+              )}
+            </button>
+            {error && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                <p className="text-xs text-red-400">{error}</p>
+                {error.includes('cloudflared not found') && (
+                  <div className="mt-2">
+                    <p className="text-xs text-text-tertiary mb-1">Install cloudflared first:</p>
+                    <code className="block text-xs font-mono bg-surface-inset text-bronze-400 px-3 py-2 rounded-lg border border-border-default select-all">
+                      brew install cloudflared
+                    </code>
+                  </div>
                 )}
-              </button>
-              {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-            </div>
-          </div>
-
-          {/* Step 2: Restart server */}
-          <div className="flex gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">
-              2
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-text-primary mb-1">Restart proq with HTTPS</p>
-              <p className="text-xs text-text-tertiary mb-2">On your computer, stop the server and run:</p>
-              <code className="block text-xs font-mono bg-surface-inset text-bronze-400 px-3 py-2 rounded-lg border border-border-default select-all">
-                npm run dev:mobile
-              </code>
-            </div>
-          </div>
-
-          {/* Step 3: iOS cert trust */}
-          <div className="flex gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">
-              3
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-text-primary mb-1">Trust the certificate (iOS)</p>
-              <p className="text-xs text-text-tertiary mb-2">
-                Download and install the certificate, then trust it in Settings.
-              </p>
-              <a
-                href="/api/https-setup?action=download-cert"
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80 w-full justify-center"
-              >
-                <DownloadIcon className="w-4 h-4" />
-                Download Certificate
-              </a>
-              <div className="mt-2 text-xs text-text-tertiary space-y-1">
-                <p>After downloading:</p>
-                <p className="pl-2">1. Open <strong>Settings &gt; General &gt; VPN & Device Management</strong></p>
-                <p className="pl-2">2. Tap the &quot;proq-mobile&quot; profile and install it</p>
-                <p className="pl-2">3. Go to <strong>Settings &gt; General &gt; About &gt; Certificate Trust Settings</strong></p>
-                <p className="pl-2">4. Enable trust for &quot;proq-mobile&quot;</p>
               </div>
-            </div>
+            )}
+            <p className="text-xs text-text-tertiary text-center leading-relaxed">
+              This starts a free Cloudflare tunnel — no account needed. You can also start it from Settings on desktop.
+            </p>
           </div>
-
-          {/* Step 4: Reload */}
-          <div className="flex gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">
-              4
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-text-primary mb-2">Reload this page</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80 w-full justify-center"
-              >
-                <RefreshCwIcon className="w-4 h-4" />
-                Reload Page
-              </button>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
