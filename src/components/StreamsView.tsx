@@ -123,7 +123,7 @@ function ResizeHandle({
     return (
       <div
         onMouseDown={handleMouseDown}
-        className="w-[3px] shrink-0 bg-zinc-700 hover:bg-zinc-500 cursor-col-resize transition-colors relative group"
+        className="w-px shrink-0 bg-[rgb(var(--border-default))] hover:bg-zinc-500 cursor-col-resize transition-colors relative group"
         title="Drag to resize"
       />
     );
@@ -132,7 +132,7 @@ function ResizeHandle({
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="h-[3px] shrink-0 bg-zinc-700 hover:bg-zinc-500 cursor-row-resize transition-colors relative group"
+      className="h-px shrink-0 bg-[rgb(var(--border-default))] hover:bg-zinc-500 cursor-row-resize transition-colors relative group"
       title="Drag to resize"
     />
   );
@@ -621,7 +621,7 @@ export function StreamsView({
                 {topRow.map((task, i) => (
                   <React.Fragment key={task.id}>
                     {i > 0 && (
-                      <div className="w-[3px] shrink-0 bg-zinc-700" />
+                      <div className="w-px shrink-0 bg-[rgb(var(--border-default))]" />
                     )}
                     <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
                       <StreamCellFull
@@ -640,13 +640,13 @@ export function StreamsView({
                 ))}
               </div>
               {/* Horizontal divider */}
-              <div className="h-[3px] shrink-0 bg-zinc-700" />
+              <div className="h-px shrink-0 bg-[rgb(var(--border-default))]" />
               {/* Bottom row */}
               <div className="flex flex-1 min-h-0">
                 {bottomRow.map((task, i) => (
                   <React.Fragment key={task.id}>
                     {i > 0 && (
-                      <div className="w-[3px] shrink-0 bg-zinc-700" />
+                      <div className="w-px shrink-0 bg-[rgb(var(--border-default))]" />
                     )}
                     <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
                       <StreamCellFull
@@ -755,7 +755,7 @@ function StreamCellFull({
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0">
         {statusIcon(task)}
-        <span className="text-xs font-medium text-text-secondary truncate flex-1">
+        <span className="text-sm font-medium text-text-secondary truncate flex-1">
           {task.title || task.description?.slice(0, 50) || 'Untitled'}
         </span>
         {task.status === 'verify' && onComplete && (
