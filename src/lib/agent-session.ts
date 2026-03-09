@@ -601,7 +601,7 @@ export async function continueSession(
     if (task?.description)
       contextParts.push(`Description: ${task.description}`);
     if (task?.summary)
-      contextParts.push(`Previous findings:\n${task.summary}`);
+      contextParts.push(`Previous summary:\n${task.summary}`);
     if (task?.humanSteps)
       contextParts.push(`Previous action items:\n${task.humanSteps}`);
     if (contextParts.length > 0) {
