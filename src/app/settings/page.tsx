@@ -445,8 +445,8 @@ export default function SettingsPage() {
                     <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 max-w-md">
                       <p className="text-xs text-amber-400 font-medium mb-1">Voice dictation requires HTTPS</p>
                       <p className="text-xs text-text-tertiary leading-relaxed">
-                        Speech recognition requires a secure context. On iOS Safari, self-signed certificates are not accepted.
-                        To use voice dictation, access proq over a tunnel (e.g. ngrok) or a trusted HTTPS connection.
+                        To enable voice dictation: run <code className="font-mono text-text-secondary bg-surface-inset px-1 rounded">npm run dev:mobile</code>, then
+                        install the certificate on your iOS device via the dictate button setup wizard on the mobile page.
                       </p>
                     </div>
                   )}

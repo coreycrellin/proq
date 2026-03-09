@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon, PlusIcon, CheckIcon, SendIcon, PaperclipIcon, XIcon, FileIcon } from 'lucide-react';
+import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon, PlusIcon, CheckIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, ShieldAlertIcon } from 'lucide-react';
 import type { Task, TaskColumns, TaskAttachment } from '@/lib/types';
 import { StructuredPane } from '../StructuredPane';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
+import { HttpsSetupSheet } from './HttpsSetupSheet';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRef = any;
@@ -95,8 +96,10 @@ function statusBadge(task: Task) {
 function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }) {
   const [recording, setRecording] = useState(false);
   const [supported, setSupported] = useState(false);
+  const [needsHttps, setNeedsHttps] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  const [showSetup, setShowSetup] = useState(false);
   const recognitionRef = useRef<AnyRef>(null);
 
   useEffect(() => {
@@ -106,7 +109,11 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
     setSupported(hasSR);
     if (!hasSR) {
       const isSecure = w.location?.protocol === 'https:' || w.location?.hostname === 'localhost';
-      setError(isSecure ? 'Not supported in this browser' : 'Speech requires secure connection');
+      if (!isSecure) {
+        setNeedsHttps(true);
+      } else {
+        setError('Not supported in this browser');
+      }
     }
   }, []);
 
@@ -157,6 +164,23 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
     recognitionRef.current?.stop();
     setRecording(false);
   }, []);
+
+  // If needs HTTPS, show a tappable setup button instead of disabled
+  if (needsHttps) {
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowSetup(true)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none bg-amber-500/10 border border-amber-500/30 text-amber-400 active:bg-amber-500/20"
+        >
+          <ShieldAlertIcon className="w-5 h-5" />
+          <span className="text-sm font-medium">Tap to enable voice dictation</span>
+        </button>
+        <HttpsSetupSheet open={showSetup} onClose={() => setShowSetup(false)} />
+      </div>
+    );
+  }
 
   return (
     <div>

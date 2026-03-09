@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { SendIcon, MicIcon, LoaderIcon } from 'lucide-react';
+import { SendIcon, MicIcon, LoaderIcon, ShieldAlertIcon } from 'lucide-react';
+import { HttpsSetupSheet } from './HttpsSetupSheet';
 import type { ChatLogEntry } from '@/lib/types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,7 +19,9 @@ export function MobileChat({ projectId }: MobileChatProps) {
   const [recording, setRecording] = useState(false);
   const [recordError, setRecordError] = useState<string | null>(null);
   const [supported, setSupported] = useState(false);
+  const [needsHttps, setNeedsHttps] = useState(false);
   const [unsupportedMsg, setUnsupportedMsg] = useState<string | null>(null);
+  const [showSetup, setShowSetup] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<AnyRef>(null);
 
@@ -29,7 +32,11 @@ export function MobileChat({ projectId }: MobileChatProps) {
     setSupported(hasSR);
     if (!hasSR) {
       const isSecure = w.location?.protocol === 'https:' || w.location?.hostname === 'localhost';
-      setUnsupportedMsg(isSecure ? 'Not supported in this browser' : 'Speech requires secure connection');
+      if (!isSecure) {
+        setNeedsHttps(true);
+      } else {
+        setUnsupportedMsg('Not supported in this browser');
+      }
     }
   }, []);
 
@@ -195,28 +202,40 @@ export function MobileChat({ projectId }: MobileChatProps) {
         </form>
 
         {/* Full-width record button */}
-        <button
-          type="button"
-          disabled={!supported}
-          onTouchStart={(e) => { e.preventDefault(); if (supported) startRecording(); }}
-          onTouchEnd={(e) => { e.preventDefault(); if (supported) stopRecording(); }}
-          onMouseDown={() => { if (supported) startRecording(); }}
-          onMouseUp={() => { if (supported) stopRecording(); }}
-          className={`w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none ${
-            !supported
-              ? 'bg-surface-hover border border-border-default text-text-tertiary opacity-60 cursor-not-allowed'
-              : recording
-              ? 'bg-red-500 text-white'
-              : recordError
-              ? 'bg-surface-hover border border-red-500/50 text-red-400'
-              : 'bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80'
-          }`}
-        >
-          <MicIcon className={`w-5 h-5 ${recording ? 'animate-pulse' : ''}`} />
-          <span className="text-sm font-medium">
-            {!supported ? (unsupportedMsg || 'Dictation not available') : recording ? 'Recording... release to send' : recordError ? recordError : 'Hold to dictate'}
-          </span>
-        </button>
+        {needsHttps ? (
+          <button
+            type="button"
+            onClick={() => setShowSetup(true)}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none bg-amber-500/10 border border-amber-500/30 text-amber-400 active:bg-amber-500/20"
+          >
+            <ShieldAlertIcon className="w-5 h-5" />
+            <span className="text-sm font-medium">Tap to enable voice dictation</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!supported}
+            onTouchStart={(e) => { e.preventDefault(); if (supported) startRecording(); }}
+            onTouchEnd={(e) => { e.preventDefault(); if (supported) stopRecording(); }}
+            onMouseDown={() => { if (supported) startRecording(); }}
+            onMouseUp={() => { if (supported) stopRecording(); }}
+            className={`w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none ${
+              !supported
+                ? 'bg-surface-hover border border-border-default text-text-tertiary opacity-60 cursor-not-allowed'
+                : recording
+                ? 'bg-red-500 text-white'
+                : recordError
+                ? 'bg-surface-hover border border-red-500/50 text-red-400'
+                : 'bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80'
+            }`}
+          >
+            <MicIcon className={`w-5 h-5 ${recording ? 'animate-pulse' : ''}`} />
+            <span className="text-sm font-medium">
+              {!supported ? (unsupportedMsg || 'Dictation not available') : recording ? 'Recording... release to send' : recordError ? recordError : 'Hold to dictate'}
+            </span>
+          </button>
+        )}
+        <HttpsSetupSheet open={showSetup} onClose={() => setShowSetup(false)} />
       </div>
     </div>
   );
