@@ -115,7 +115,7 @@ function ResizeHandle({
     return (
       <div
         onMouseDown={handleMouseDown}
-        className="w-[1.5px] shrink-0 bg-zinc-700 hover:bg-zinc-500 cursor-col-resize transition-colors relative group"
+        className="w-[1.5px] shrink-0 bg-zinc-700 hover:bg-zinc-400 cursor-col-resize transition-colors relative group"
         title="Drag to resize"
       />
     );
