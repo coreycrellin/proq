@@ -34,9 +34,10 @@ interface StructuredPaneProps {
   onFollowUpDraftChange?: (draft: FollowUpDraft | null) => void;
   onTaskStatusChange?: (status: string) => void;
   compact?: boolean;
+  readOnly?: boolean;
 }
 
-export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact }: StructuredPaneProps) {
+export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly }: StructuredPaneProps) {
   const { blocks, sessionDone, sendFollowUp, approvePlan, stop } = useAgentSession(taskId, projectId, agentBlocks);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -512,7 +513,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
       </div>
 
       {/* Input area */}
-      <div className={`shrink-0 ${compact ? 'px-1.5 py-1' : 'px-3 py-2.5'}`}>
+      {!readOnly && <div className={`shrink-0 ${compact ? 'px-1.5 py-1' : 'px-3 py-2.5'}`}>
         <div className={`${compact ? 'rounded-lg' : 'rounded-xl'} border border-border-strong/40 focus-within:border-border-strong bg-surface-topbar overflow-hidden transition-colors`}>
           {/* Attachment previews inside container */}
           {attachments.length > 0 && (
@@ -661,7 +662,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
             }
           }}
         />
-      </div>
+      </div>}
     </div>
   );
 }

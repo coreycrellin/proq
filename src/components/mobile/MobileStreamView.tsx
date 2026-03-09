@@ -154,6 +154,7 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
                 taskStatus={currentTask.status}
                 agentBlocks={currentTask.agentBlocks}
                 compact={true}
+                readOnly={true}
               />
             </div>
           </div>
