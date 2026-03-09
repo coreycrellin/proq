@@ -147,47 +147,53 @@ export function MobileChat({ projectId }: MobileChatProps) {
         ))}
       </div>
 
-      {/* Input bar */}
-      <form
-        onSubmit={handleSubmit}
-        className="flex-shrink-0 border-t border-border-default bg-surface-topbar px-3 py-2 flex items-end gap-2"
-      >
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Message..."
-          className="flex-1 bg-surface-inset border border-border-default rounded-full px-4 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-bronze-600"
-          disabled={sending}
-        />
+      {/* Input area */}
+      <div className="flex-shrink-0 border-t border-border-default bg-surface-topbar px-3 py-2 space-y-2">
+        {/* Text input + send */}
+        <form onSubmit={handleSubmit} className="flex items-end gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Message..."
+            style={{ fontSize: '16px' }}
+            className="flex-1 bg-surface-inset border border-border-default rounded-full px-4 py-2.5 text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-bronze-600"
+            disabled={sending}
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || sending}
+            className="p-2.5 rounded-full bg-bronze-700 dark:bg-bronze-600 text-white flex-shrink-0 disabled:opacity-40 active:opacity-80"
+          >
+            {sending ? (
+              <LoaderIcon className="w-5 h-5 animate-spin" />
+            ) : (
+              <SendIcon className="w-5 h-5" />
+            )}
+          </button>
+        </form>
+
+        {/* Full-width record button */}
         {recognitionSupported && (
           <button
             type="button"
-            onTouchStart={startRecording}
-            onTouchEnd={stopRecording}
+            onTouchStart={(e) => { e.preventDefault(); startRecording(); }}
+            onTouchEnd={(e) => { e.preventDefault(); stopRecording(); }}
             onMouseDown={startRecording}
             onMouseUp={stopRecording}
-            className={`p-2.5 rounded-full flex-shrink-0 transition-colors ${
+            className={`w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none ${
               recording
-                ? 'bg-red-500 text-white animate-pulse'
-                : 'bg-surface-hover text-text-secondary active:bg-surface-hover/80'
+                ? 'bg-red-500 text-white'
+                : 'bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80'
             }`}
           >
-            <MicIcon className="w-5 h-5" />
+            <MicIcon className={`w-5 h-5 ${recording ? 'animate-pulse' : ''}`} />
+            <span className="text-sm font-medium">
+              {recording ? 'Recording... release to send' : 'Hold to dictate'}
+            </span>
           </button>
         )}
-        <button
-          type="submit"
-          disabled={!input.trim() || sending}
-          className="p-2.5 rounded-full bg-bronze-700 dark:bg-bronze-600 text-white flex-shrink-0 disabled:opacity-40 active:opacity-80"
-        >
-          {sending ? (
-            <LoaderIcon className="w-5 h-5 animate-spin" />
-          ) : (
-            <SendIcon className="w-5 h-5" />
-          )}
-        </button>
-      </form>
+      </div>
     </div>
   );
 }
