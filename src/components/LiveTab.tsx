@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { GlobeIcon, MonitorIcon, TabletSmartphoneIcon, SmartphoneIcon, RotateCwIcon, TerminalIcon, SparklesIcon, XIcon } from 'lucide-react';
+import { GlobeIcon, MonitorIcon, TabletSmartphoneIcon, SmartphoneIcon, RotateCwIcon, TerminalIcon, SquareChevronUpIcon, XIcon } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { useProjects } from '@/components/ProjectsProvider';
 import WorkbenchPanel from '@/components/WorkbenchPanel';
@@ -164,6 +164,19 @@ export function LiveTab({ project, workbenchCollapsed, workbenchHeight, isDraggi
             {/* Big buttons */}
             <div className="flex gap-4 w-full max-w-sm">
               <button
+                onClick={() => activateTab('agent')}
+                className="flex-1 flex flex-col items-center gap-3 p-6 rounded-xl border border-border-default bg-surface-base hover:bg-surface-hover hover:border-border-strong transition-colors group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-surface-deep flex items-center justify-center border border-border-default group-hover:border-bronze-500/40 transition-colors">
+                  <SquareChevronUpIcon className="w-6 h-6 text-text-tertiary group-hover:text-bronze-400 transition-colors" />
+                </div>
+                <div className="text-center">
+                  <div className="text-sm font-medium text-text-primary mb-0.5">Agent</div>
+                  <div className="text-xs text-text-tertiary">Let AI start it</div>
+                </div>
+              </button>
+
+              <button
                 onClick={() => activateTab('shell')}
                 className="flex-1 flex flex-col items-center gap-3 p-6 rounded-xl border border-border-default bg-surface-base hover:bg-surface-hover hover:border-border-strong transition-colors group"
               >
@@ -173,19 +186,6 @@ export function LiveTab({ project, workbenchCollapsed, workbenchHeight, isDraggi
                 <div className="text-center">
                   <div className="text-sm font-medium text-text-primary mb-0.5">Terminal</div>
                   <div className="text-xs text-text-tertiary">Run it yourself</div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => activateTab('agent')}
-                className="flex-1 flex flex-col items-center gap-3 p-6 rounded-xl border border-border-default bg-surface-base hover:bg-surface-hover hover:border-border-strong transition-colors group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-surface-deep flex items-center justify-center border border-border-default group-hover:border-bronze-500/40 transition-colors">
-                  <SparklesIcon className="w-6 h-6 text-text-tertiary group-hover:text-bronze-400 transition-colors" />
-                </div>
-                <div className="text-center">
-                  <div className="text-sm font-medium text-text-primary mb-0.5">Agent</div>
-                  <div className="text-xs text-text-tertiary">Let AI start it</div>
                 </div>
               </button>
             </div>
