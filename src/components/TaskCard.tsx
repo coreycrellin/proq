@@ -133,7 +133,16 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, colum
           </p>
         )}
 
-        {steps.length > 0 && task.status !== 'done' && (
+        {task.mergeConflict && (
+          <div className="mt-2 flex items-center gap-1.5">
+            <AlertTriangleIcon className="w-3 h-3 text-red-400 flex-shrink-0" />
+            <span className="text-[10px] text-red-400 font-medium uppercase tracking-wide">
+              Merge conflict
+            </span>
+          </div>
+        )}
+
+        {steps.length > 0 && task.status !== 'done' && !task.mergeConflict && (
           <div className="mt-2 flex items-center gap-1.5">
             <AlertTriangleIcon className="w-3 h-3 text-gold flex-shrink-0" />
             <span className="text-[10px] text-gold font-medium uppercase tracking-wide">
