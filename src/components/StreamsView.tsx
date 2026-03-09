@@ -508,6 +508,12 @@ export function StreamsView({
     </div>
   );
 
+  // Clear expanded task if it's no longer in the stream
+  const expandedTask = expandedTaskId ? streamTasks.find((t) => t.id === expandedTaskId) : null;
+  useEffect(() => {
+    if (expandedTaskId && !expandedTask) setExpandedTaskId(null);
+  }, [expandedTaskId, expandedTask]);
+
   if (streamTasks.length === 0) {
     return (
       <div className="h-full flex flex-col text-text-tertiary relative">
@@ -522,24 +528,20 @@ export function StreamsView({
   }
 
   // Single expanded cell
-  if (expandedTaskId) {
-    const task = streamTasks.find((t) => t.id === expandedTaskId);
-    if (!task) {
-      setExpandedTaskId(null);
-      return null;
-    }
+  if (expandedTask) {
     return (
       <div className="h-full flex flex-col min-h-0 overflow-hidden">
+        {toolbar()}
         <StreamCellFull
-          task={task}
+          task={expandedTask}
           projectId={projectId}
           hideLeftBorder
           onCollapse={() => setExpandedTaskId(null)}
-          onRemove={() => handleRemoveStream(task.id)}
+          onRemove={() => handleRemoveStream(expandedTask.id)}
           onComplete={onComplete}
           onResumeEditing={onResumeEditing}
-          followUpDraft={followUpDraftsRef?.current.get(task.id)}
-          onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
+          followUpDraft={followUpDraftsRef?.current.get(expandedTask.id)}
+          onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(expandedTask.id, draft)}
         />
       </div>
     );
