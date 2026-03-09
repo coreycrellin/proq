@@ -4,6 +4,7 @@ import { Splash } from './Splash'
 
 export function App(): React.JSX.Element {
   const [view, setView] = useState<'loading' | 'wizard' | 'splash'>('loading')
+  const [wizardStartStep, setWizardStartStep] = useState<string | undefined>()
 
   useEffect(() => {
     const hash = window.location.hash.replace('#', '')
@@ -27,8 +28,23 @@ export function App(): React.JSX.Element {
   }
 
   if (view === 'wizard') {
-    return <Wizard onComplete={() => setView('splash')} />
+    return (
+      <Wizard
+        startStep={wizardStartStep}
+        onComplete={() => {
+          setWizardStartStep(undefined)
+          setView('splash')
+        }}
+      />
+    )
   }
 
-  return <Splash />
+  return (
+    <Splash
+      onSettings={() => {
+        setWizardStartStep('preferences')
+        setView('wizard')
+      }}
+    />
+  )
 }

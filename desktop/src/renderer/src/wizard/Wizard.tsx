@@ -9,11 +9,14 @@ const STEPS = ['welcome', 'location', 'dependencies', 'preferences', 'installing
 type Step = (typeof STEPS)[number]
 
 interface WizardProps {
+  startStep?: string
   onComplete: () => void
 }
 
-export function Wizard({ onComplete }: WizardProps): React.JSX.Element {
-  const [step, setStep] = useState<Step>('welcome')
+export function Wizard({ startStep, onComplete }: WizardProps): React.JSX.Element {
+  const [step, setStep] = useState<Step>(
+    STEPS.includes(startStep as Step) ? (startStep as Step) : 'welcome'
+  )
   const [proqPath, setProqPath] = useState('')
   const [claudePath, setClaudePath] = useState('')
 
@@ -46,7 +49,12 @@ export function Wizard({ onComplete }: WizardProps): React.JSX.Element {
           onBack={back}
         />
       )}
-      {step === 'preferences' && <Preferences onNext={next} onBack={back} />}
+      {step === 'preferences' && (
+        <Preferences
+          onNext={startStep === 'preferences' ? onComplete : next}
+          onBack={startStep === 'preferences' ? onComplete : back}
+        />
+      )}
       {step === 'installing' && (
         <Installing
           proqPath={proqPath}

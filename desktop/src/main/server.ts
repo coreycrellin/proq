@@ -8,10 +8,10 @@ export function startServer(
   onLog?: (line: string) => void
 ): Promise<{ ok: boolean; error?: string }> {
   const config = getConfig()
-  const { proqPath, port, devMode } = config
+  const { proqPath, port, wsPort, devMode } = config
   const command = devMode ? 'dev' : 'start'
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (serverProcess) {
       resolve({ ok: true })
       return
@@ -19,33 +19,60 @@ export function startServer(
 
     const child = spawn('npm', ['run', command], {
       cwd: proqPath,
-      env: { ...process.env, PORT: String(port) },
+      env: {
+        ...process.env,
+        PORT: String(port),
+        NEXT_PUBLIC_WS_PORT: String(wsPort)
+      },
       stdio: ['ignore', 'pipe', 'pipe']
     })
 
     serverProcess = child
+    let earlyError: string | null = null
 
     child.stdout?.on('data', (data: Buffer) => {
-      onLog?.(data.toString())
+      const text = data.toString()
+      onLog?.(text)
+      // Detect port-in-use errors from Next.js output
+      if (text.includes('EADDRINUSE') || text.includes('address already in use')) {
+        earlyError = `Port ${port} is already in use. Change the port in Settings or stop the other process.`
+      }
     })
 
     child.stderr?.on('data', (data: Buffer) => {
-      onLog?.(data.toString())
+      const text = data.toString()
+      onLog?.(text)
+      if (text.includes('EADDRINUSE') || text.includes('address already in use')) {
+        earlyError = `Port ${port} is already in use. Change the port in Settings or stop the other process.`
+      }
     })
 
     child.on('error', (err) => {
       serverProcess = null
-      reject({ ok: false, error: err.message })
+      resolve({ ok: false, error: err.message })
     })
 
     child.on('close', (code) => {
       serverProcess = null
-      onLog?.(`Server process exited with code ${code}`)
+      if (earlyError) {
+        resolve({ ok: false, error: earlyError })
+      } else if (code !== null && code !== 0) {
+        onLog?.(`Server process exited with code ${code}`)
+      }
     })
 
     pollUntilReady(port, 60_000)
       .then(() => resolve({ ok: true }))
-      .catch((err) => resolve({ ok: false, error: err.message }))
+      .catch(() => {
+        // If the process already exited with an error, use that message
+        if (earlyError) {
+          resolve({ ok: false, error: earlyError })
+        } else if (!serverProcess || serverProcess.killed) {
+          resolve({ ok: false, error: 'Server process exited unexpectedly' })
+        } else {
+          resolve({ ok: false, error: `Server did not respond on port ${port} within 60s` })
+        }
+      })
   })
 }
 

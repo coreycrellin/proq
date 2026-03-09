@@ -6,6 +6,7 @@ import os from 'os'
 export interface DesktopConfig {
   proqPath: string
   port: number
+  wsPort: number
   devMode: boolean
   setupComplete: boolean
   claudeBinPath: string
@@ -16,6 +17,7 @@ export interface DesktopConfig {
 const defaults: DesktopConfig = {
   proqPath: path.join(os.homedir(), 'proq'),
   port: 1337,
+  wsPort: 42069,
   devMode: false,
   setupComplete: false,
   claudeBinPath: '',

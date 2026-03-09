@@ -10,6 +10,7 @@ interface CheckResult {
 interface DesktopConfig {
   proqPath: string
   port: number
+  wsPort: number
   devMode: boolean
   setupComplete: boolean
   claudeBinPath: string

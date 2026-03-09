@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 
-export function Splash(): React.JSX.Element {
+interface SplashProps {
+  onSettings?: () => void
+}
+
+export function Splash({ onSettings }: SplashProps): React.JSX.Element {
   const [status, setStatus] = useState('Starting server...')
   const [error, setError] = useState<string | null>(null)
+  const isPortError =
+    error?.includes('already in use') || error?.includes('EADDRINUSE') || false
 
   useEffect(() => {
     const cleanupLog = window.proqDesktop.onServerLog((_e, line) => {
@@ -43,17 +49,29 @@ export function Splash(): React.JSX.Element {
 
       {error ? (
         <>
-          <p style={{ color: 'var(--error)', fontSize: 14, marginBottom: 16 }}>{error}</p>
-          <button
-            className="btn-primary"
-            onClick={(): void => {
-              setError(null)
-              setStatus('Restarting...')
-              window.proqDesktop.startServer()
-            }}
-          >
-            Retry
-          </button>
+          <p style={{ color: 'var(--error)', fontSize: 14, marginBottom: 16, textAlign: 'center', padding: '0 24px' }}>
+            {error}
+          </p>
+          <div style={{ display: 'flex', gap: 12 }}>
+            {isPortError && onSettings && (
+              <button
+                className="btn-primary titlebar-no-drag"
+                onClick={onSettings}
+              >
+                Change Port
+              </button>
+            )}
+            <button
+              className="btn-primary titlebar-no-drag"
+              onClick={(): void => {
+                setError(null)
+                setStatus('Restarting...')
+                window.proqDesktop.startServer()
+              }}
+            >
+              Retry
+            </button>
+          </div>
         </>
       ) : (
         <>

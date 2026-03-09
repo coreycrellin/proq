@@ -74,8 +74,6 @@ function createWindow(mode: 'wizard' | 'splash' | 'app'): BrowserWindow {
         y: bounds?.y,
         minWidth: 800,
         minHeight: 600,
-        titleBarStyle: 'hiddenInset' as const,
-        trafficLightPosition: { x: 16, y: 16 }
       })
       break
     }

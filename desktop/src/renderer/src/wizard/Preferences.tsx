@@ -20,7 +20,7 @@ export function Preferences({ onNext, onBack }: PreferencesProps): React.JSX.Ele
   }, [])
 
   const handleNext = async (): Promise<void> => {
-    await window.proqDesktop.setConfig({ port, devMode })
+    await window.proqDesktop.setConfig({ port, wsPort, devMode })
     onNext()
   }
 
