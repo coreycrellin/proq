@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon, PlusIcon, CheckIcon, SendIcon } from 'lucide-react';
-import type { Task, TaskColumns } from '@/lib/types';
+import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon, PlusIcon, CheckIcon, SendIcon, PaperclipIcon, XIcon, FileIcon } from 'lucide-react';
+import type { Task, TaskColumns, TaskAttachment } from '@/lib/types';
 import { StructuredPane } from '../StructuredPane';
+import { uploadFiles, attachmentUrl } from '@/lib/upload';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRef = any;
@@ -195,6 +196,33 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
   const [taskDescription, setTaskDescription] = useState('');
   const [submittingDescription, setSubmittingDescription] = useState(false);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
+  const [composeAttachments, setComposeAttachments] = useState<TaskAttachment[]>([]);
+  const composeFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Track whether current task is in compose mode (new blank task)
+  const currentTask = streamTasks[currentIndex];
+  const isComposeMode = currentTask && currentTask.status === 'todo' && !currentTask.title && !currentTask.description;
+
+  // Wire up attachRef for compose mode so the plus button triggers file picker
+  useEffect(() => {
+    if (isComposeMode && attachRef) {
+      attachRef.current = () => composeFileInputRef.current?.click();
+      return () => { attachRef.current = null; };
+    }
+  }, [isComposeMode, attachRef]);
+
+  const handleComposeFiles = useCallback(async (files: FileList | File[]) => {
+    try {
+      const uploaded = await uploadFiles(files);
+      setComposeAttachments((prev) => [...prev, ...uploaded]);
+    } catch {
+      // best effort
+    }
+  }, []);
+
+  const removeComposeAttachment = useCallback((id: string) => {
+    setComposeAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
 
   const handleCreateTask = useCallback(async () => {
     if (!newTaskTitle.trim() || creating) return;
@@ -229,26 +257,30 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
   }, []);
 
   const handleSubmitDescription = useCallback(async (task: Task) => {
-    if (!taskDescription.trim() || submittingDescription) return;
+    if (!taskDescription.trim() && composeAttachments.length === 0) return;
+    if (submittingDescription) return;
     setSubmittingDescription(true);
     try {
-      const title = generateTitle(taskDescription);
+      const desc = taskDescription.trim();
+      const title = desc ? generateTitle(desc) : (composeAttachments.length > 0 ? `Task with ${composeAttachments.length} attachment(s)` : '');
+      const body: Record<string, unknown> = { title, description: desc };
+      if (composeAttachments.length > 0) {
+        body.attachments = composeAttachments;
+      }
       await fetch(`/api/projects/${projectId}/tasks/${task.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          description: taskDescription.trim(),
-        }),
+        body: JSON.stringify(body),
       });
       setTaskDescription('');
+      setComposeAttachments([]);
       onTaskCreated?.(); // triggers refetch
     } catch {
       // best effort
     } finally {
       setSubmittingDescription(false);
     }
-  }, [taskDescription, submittingDescription, projectId, generateTitle, onTaskCreated]);
+  }, [taskDescription, submittingDescription, projectId, generateTitle, onTaskCreated, composeAttachments]);
 
   const handleMarkDone = useCallback(async (task: Task) => {
     if (completing) return;
@@ -449,6 +481,18 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
               {/* New task compose UI */}
               {task.status === 'todo' && !task.title && !task.description ? (
                 <div className="flex-1 flex flex-col min-h-0 p-4">
+                  <input
+                    ref={i === currentIndex ? composeFileInputRef : undefined}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.length) {
+                        handleComposeFiles(e.target.files);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
                   <div className="flex-1 flex flex-col justify-center max-w-lg mx-auto w-full gap-3">
                     <p className="text-text-tertiary text-sm text-center">Describe what you want done</p>
                     <textarea
@@ -465,14 +509,49 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
                       placeholder="e.g. Add a dark mode toggle to the settings page..."
                       className="w-full rounded-xl bg-surface-hover border border-border-default text-text-primary text-sm p-4 min-h-[120px] resize-none placeholder:text-text-tertiary/50 outline-none focus:border-bronze-400/50"
                     />
-                    <button
-                      onClick={() => handleSubmitDescription(task)}
-                      disabled={!taskDescription.trim() || submittingDescription}
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-medium disabled:opacity-40 active:bg-blue-700 transition-colors"
-                    >
-                      <SendIcon className="w-4 h-4" />
-                      {submittingDescription ? 'Sending...' : 'Send'}
-                    </button>
+                    {/* Attachment previews */}
+                    {composeAttachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {composeAttachments.map((att) => {
+                          const url = att.filePath ? attachmentUrl(att.filePath) : undefined;
+                          const isImage = att.type?.startsWith('image/');
+                          return (
+                            <div key={att.id} className="relative group">
+                              {isImage && url ? (
+                                <img src={url} alt={att.name} className="h-16 rounded-lg border border-border-default object-cover" />
+                              ) : (
+                                <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-surface-hover border border-border-default text-xs text-text-secondary">
+                                  <FileIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span className="truncate max-w-[120px]">{att.name}</span>
+                                </div>
+                              )}
+                              <button
+                                onClick={() => removeComposeAttachment(att.id)}
+                                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-zinc-700 border border-border-default flex items-center justify-center text-text-tertiary hover:text-white"
+                              >
+                                <XIcon className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => composeFileInputRef.current?.click()}
+                        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-surface-hover border border-border-default text-text-secondary text-sm active:bg-surface-hover/80 transition-colors"
+                      >
+                        <PaperclipIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleSubmitDescription(task)}
+                        disabled={(!taskDescription.trim() && composeAttachments.length === 0) || submittingDescription}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 text-white text-sm font-medium disabled:opacity-40 active:bg-blue-700 transition-colors"
+                      >
+                        <SendIcon className="w-4 h-4" />
+                        {submittingDescription ? 'Sending...' : 'Send'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
