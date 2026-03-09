@@ -32,22 +32,15 @@ export function Splash() {
     <div className="splash-container titlebar-drag">
       <svg
         className="splash-logo"
-        viewBox="0 0 100 100"
+        viewBox="0 0 256 256"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <rect width="100" height="100" rx="20" fill="#18181b" />
-        <text
-          x="50"
-          y="62"
-          textAnchor="middle"
-          fill="#60a5fa"
-          fontSize="36"
-          fontWeight="700"
-          fontFamily="-apple-system, sans-serif"
-        >
-          pq
-        </text>
+        <path
+          d="M36.3813 253V16H219.618V173.41H89.6223V69.6509H165.507V121.235H128.533"
+          stroke="#E4BD89"
+          strokeWidth="27"
+        />
       </svg>
 
       {error ? (

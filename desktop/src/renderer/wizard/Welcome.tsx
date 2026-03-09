@@ -9,26 +9,21 @@ export function Welcome({ onNext }: WelcomeProps) {
     <>
       <div className="wizard-content" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <svg
-          viewBox="0 0 100 100"
+          viewBox="0 0 256 256"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
           style={{ width: 80, height: 80, marginBottom: 28 }}
         >
-          <rect width="100" height="100" rx="20" fill="#18181b" />
-          <text
-            x="50"
-            y="62"
-            textAnchor="middle"
-            fill="#60a5fa"
-            fontSize="36"
-            fontWeight="700"
-            fontFamily="-apple-system, sans-serif"
-          >
-            pq
-          </text>
+          <path
+            d="M36.3813 253V16H219.618V173.41H89.6223V69.6509H165.507V121.235H128.533"
+            stroke="#E4BD89"
+            strokeWidth="27"
+          />
         </svg>
 
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>Welcome to proq</h1>
+        <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 12, fontFamily: "var(--font-display)", textTransform: "lowercase" }}>
+          Welcome to proq
+        </h1>
         <p style={{ color: "var(--text-secondary)", fontSize: 15, textAlign: "center", maxWidth: 380, lineHeight: 1.6 }}>
           The command center for AI-assisted development. Create tasks, let agents code autonomously, review and approve.
         </p>
