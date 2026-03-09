@@ -565,22 +565,22 @@ export function StreamsView({
       <div className="h-full flex flex-col min-h-0 overflow-hidden">
         {/* Toolbar */}
         <div className="flex items-center px-2 py-1 shrink-0 gap-2">
+          {onAddTask && (
+            <button
+              onClick={onAddTask}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 transition-colors"
+              title="New Task"
+            >
+              <PlusIcon className="w-3 h-3" />
+              New Task
+            </button>
+          )}
           {modeDropdown}
           <span className="text-[10px] text-text-placeholder">
             {streamTasks.length} streams
           </span>
           <div className="flex-1 min-w-0">{todoQueue}</div>
           <div className="flex items-center gap-1 shrink-0">
-            {onAddTask && (
-              <button
-                onClick={onAddTask}
-                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 transition-colors"
-                title="New Task"
-              >
-                <PlusIcon className="w-3 h-3" />
-                New Task
-              </button>
-            )}
             {addStreamButton}
           </div>
         </div>
