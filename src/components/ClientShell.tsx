@@ -51,6 +51,27 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
   const isMobile = pathname.startsWith('/mobile');
 
+  // Lock body scroll on mobile routes to prevent iOS elastic scroll
+  React.useEffect(() => {
+    if (!isMobile) return;
+    const html = document.documentElement;
+    const body = document.body;
+    html.style.overflow = 'hidden';
+    html.style.height = '100%';
+    body.style.overflow = 'hidden';
+    body.style.height = '100%';
+    body.style.position = 'fixed';
+    body.style.width = '100%';
+    return () => {
+      html.style.overflow = '';
+      html.style.height = '';
+      body.style.overflow = '';
+      body.style.height = '';
+      body.style.position = '';
+      body.style.width = '';
+    };
+  }, [isMobile]);
+
   if (isStandalone) {
     return (
       <div className={`h-screen w-full font-sans ${isMobile ? 'overflow-hidden' : 'overflow-y-auto'} overflow-x-hidden`}>
