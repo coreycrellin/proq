@@ -123,7 +123,7 @@ function ResizeHandle({
     return (
       <div
         onMouseDown={handleMouseDown}
-        className="w-px shrink-0 bg-[rgb(var(--border-default))] hover:bg-zinc-500 cursor-col-resize transition-colors relative group"
+        className="w-[1.5px] shrink-0 bg-zinc-700 hover:bg-zinc-500 cursor-col-resize transition-colors relative group"
         title="Drag to resize"
       />
     );
@@ -132,7 +132,7 @@ function ResizeHandle({
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="h-px shrink-0 bg-[rgb(var(--border-default))] hover:bg-zinc-500 cursor-row-resize transition-colors relative group"
+      className="h-[1.5px] shrink-0 bg-zinc-700 hover:bg-zinc-500 cursor-row-resize transition-colors relative group"
       title="Drag to resize"
     />
   );
@@ -621,7 +621,7 @@ export function StreamsView({
                 {topRow.map((task, i) => (
                   <React.Fragment key={task.id}>
                     {i > 0 && (
-                      <div className="w-px shrink-0 bg-[rgb(var(--border-default))]" />
+                      <div className="w-[1.5px] shrink-0 bg-zinc-700" />
                     )}
                     <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
                       <StreamCellFull
@@ -640,13 +640,13 @@ export function StreamsView({
                 ))}
               </div>
               {/* Horizontal divider */}
-              <div className="h-px shrink-0 bg-[rgb(var(--border-default))]" />
+              <div className="h-[1.5px] shrink-0 bg-zinc-700" />
               {/* Bottom row */}
               <div className="flex flex-1 min-h-0">
                 {bottomRow.map((task, i) => (
                   <React.Fragment key={task.id}>
                     {i > 0 && (
-                      <div className="w-px shrink-0 bg-[rgb(var(--border-default))]" />
+                      <div className="w-[1.5px] shrink-0 bg-zinc-700" />
                     )}
                     <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
                       <StreamCellFull
