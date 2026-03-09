@@ -119,11 +119,11 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
   const currentTask = streamTasks[currentIndex];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-x-hidden">
       {/* Swipe area */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 flex flex-col"
+        className="flex-1 min-h-0 flex flex-col overflow-x-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -146,7 +146,7 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
             </div>
 
             {/* Agent output — must be flex col so StructuredPane's flex-1 works */}
-            <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 flex flex-col overflow-x-hidden max-w-[100vw]">
               <StructuredPane
                 taskId={currentTask.id}
                 projectId={projectId}

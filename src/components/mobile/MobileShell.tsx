@@ -16,7 +16,7 @@ export function MobileShell({ title, showBack, connected = true, children, botto
   const router = useRouter();
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-surface-base text-text-primary overflow-hidden">
+    <div className="h-[100dvh] flex flex-col bg-surface-base text-text-primary overflow-hidden max-w-[100vw]">
       {/* Header */}
       <header className="h-12 flex-shrink-0 bg-surface-topbar border-b border-border-default flex items-center px-3 gap-2">
         {showBack && (
