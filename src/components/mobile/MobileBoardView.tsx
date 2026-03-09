@@ -18,7 +18,7 @@ const COLUMNS: { key: TaskStatus; label: string; color: string }[] = [
   { key: 'done', label: 'Done', color: 'text-green-400' },
 ];
 
-export function MobileBoardView({ tasks, projectId, onTaskCreated }: MobileBoardViewProps) {
+export function MobileBoardView({ tasks, projectId, onTaskCreated, onTaskClick }: MobileBoardViewProps) {
   const [showNewTask, setShowNewTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [creating, setCreating] = useState(false);
@@ -92,7 +92,8 @@ export function MobileBoardView({ tasks, projectId, onTaskCreated }: MobileBoard
                 {items.map((task) => (
                   <div
                     key={task.id}
-                    className="bg-surface-hover/50 rounded-lg px-3 py-2.5 border border-border-default"
+                    onClick={() => onTaskClick?.(task.id)}
+                    className="bg-surface-hover/50 rounded-lg px-3 py-2.5 border border-border-default active:bg-surface-hover/80 cursor-pointer"
                   >
                     <p className="text-sm text-text-primary truncate">
                       {task.title || task.description?.slice(0, 60)}

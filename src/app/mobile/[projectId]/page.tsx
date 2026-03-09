@@ -29,6 +29,12 @@ export default function MobileProjectView() {
   });
   const [activeTab, setActiveTab] = useState<MobileTab>('streams');
   const [connected, setConnected] = useState(true);
+  const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
+
+  const handleTaskClick = useCallback((taskId: string) => {
+    setFocusTaskId(taskId);
+    setActiveTab('streams');
+  }, []);
 
   // Fetch project info
   useEffect(() => {
@@ -131,7 +137,7 @@ export default function MobileProjectView() {
           {TABS.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); setFocusTaskId(null); }}
               className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${
                 activeTab === tab.id
                   ? 'text-bronze-400'
@@ -146,10 +152,10 @@ export default function MobileProjectView() {
       }
     >
       {activeTab === 'streams' && (
-        <MobileStreamView tasks={tasks} projectId={projectId} onTaskCreated={fetchTasks} />
+        <MobileStreamView tasks={tasks} projectId={projectId} onTaskCreated={fetchTasks} focusTaskId={focusTaskId} />
       )}
       {activeTab === 'board' && (
-        <MobileBoardView tasks={tasks} projectId={projectId} onTaskCreated={fetchTasks} />
+        <MobileBoardView tasks={tasks} projectId={projectId} onTaskCreated={fetchTasks} onTaskClick={handleTaskClick} />
       )}
       {activeTab === 'chat' && (
         <MobileChat projectId={projectId} />

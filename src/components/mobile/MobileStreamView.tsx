@@ -12,6 +12,7 @@ interface MobileStreamViewProps {
   tasks: TaskColumns;
   projectId: string;
   onTaskCreated?: () => void;
+  focusTaskId?: string | null;
 }
 
 function getStreamTasks(columns: TaskColumns): Task[] {
@@ -163,7 +164,7 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
   );
 }
 
-export function MobileStreamView({ tasks, projectId, onTaskCreated }: MobileStreamViewProps) {
+export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId }: MobileStreamViewProps) {
   const streamTasks = getStreamTasks(tasks);
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef(0);
@@ -212,6 +213,16 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated }: MobileStre
       setCompleting(false);
     }
   }, [completing, projectId, onTaskCreated]);
+
+  // Focus on a specific task when requested from board view
+  useEffect(() => {
+    if (focusTaskId) {
+      const idx = streamTasks.findIndex((t) => t.id === focusTaskId);
+      if (idx !== -1) {
+        setCurrentIndex(idx);
+      }
+    }
+  }, [focusTaskId, streamTasks]);
 
   // Clamp index when tasks change
   useEffect(() => {
@@ -371,7 +382,11 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated }: MobileStre
                 projectId={projectId}
                 visible={true}
                 taskStatus={currentTask.status}
-                agentBlocks={currentTask.agentBlocks}
+                agentBlocks={
+                  !(currentTask.agentStatus === 'running' || currentTask.agentStatus === 'starting') && currentTask.status === 'done' && currentTask.agentBlocks
+                    ? currentTask.agentBlocks
+                    : undefined
+                }
                 compact={true}
                 sendRef={sendRef}
               />
