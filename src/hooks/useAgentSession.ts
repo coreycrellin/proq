@@ -97,6 +97,9 @@ export function useAgentSession(
               retryCount++;
               ws.close();
               retryTimer = setTimeout(connect, RETRY_DELAY_MS);
+            } else {
+              // Max retries exhausted — no active session, allow input
+              setSessionDone(true);
             }
           }
         } catch {
