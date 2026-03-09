@@ -563,7 +563,7 @@ function ConfigPanel({
         value={config.duration}
         onChange={(v) => onChange("duration", v)}
         min={200}
-        max={8000}
+        max={20000}
         step={100}
         unit="ms"
       />
@@ -583,7 +583,7 @@ function ConfigPanel({
         value={config.holdFullMs}
         onChange={(v) => onChange("holdFullMs", v)}
         min={0}
-        max={3000}
+        max={10000}
         step={50}
         unit="ms"
       />
@@ -593,7 +593,7 @@ function ConfigPanel({
         value={config.holdRetractedMs}
         onChange={(v) => onChange("holdRetractedMs", v)}
         min={0}
-        max={3000}
+        max={10000}
         step={50}
         unit="ms"
       />
