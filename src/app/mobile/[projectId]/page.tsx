@@ -149,7 +149,7 @@ export default function MobileProjectView() {
         <MobileStreamView tasks={tasks} projectId={projectId} onTaskCreated={fetchTasks} />
       )}
       {activeTab === 'board' && (
-        <MobileBoardView tasks={tasks} />
+        <MobileBoardView tasks={tasks} projectId={projectId} onTaskCreated={fetchTasks} />
       )}
       {activeTab === 'chat' && (
         <MobileChat projectId={projectId} />
