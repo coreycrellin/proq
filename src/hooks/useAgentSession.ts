@@ -64,7 +64,8 @@ export function useAgentSession(
               if (lastTotal === 0) return data.blocks;
               return [...prev, ...data.blocks];
             });
-            setConnected(true);
+            // Don't set connected=true here — connected means WebSocket is open.
+            // StructuredPane's sendRef uses connected to decide WS vs HTTP fallback.
           }
           lastTotal = data.total || lastTotal;
 
