@@ -19,6 +19,7 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
   const [connected, setConnected] = useState(false);
   const [sessionDone, setSessionDone] = useState(true);
   const wsRef = useRef<WebSocket | null>(null);
+  const optimisticUserRef = useRef<string | null>(null);
 
   useEffect(() => {
     const wsHost = window.location.hostname;
@@ -46,7 +47,12 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
           const isDone = !lastStatus || (lastStatus.type === 'status' && lastStatus.subtype !== 'init' && !hasUserAfter);
           setSessionDone(isDone);
         } else if (msg.type === 'block') {
-          setBlocks((prev) => [...prev, msg.block]);
+          // Skip server echo of optimistically added user block
+          if (msg.block.type === 'user' && optimisticUserRef.current !== null && msg.block.text === optimisticUserRef.current) {
+            optimisticUserRef.current = null;
+          } else {
+            setBlocks((prev) => [...prev, msg.block]);
+          }
           if (msg.block.type === 'status' && msg.block.subtype === 'init' || msg.block.type === 'user') {
             setSessionDone(false);
           } else if (msg.block.type === 'status' && (msg.block.subtype === 'complete' || msg.block.subtype === 'error' || msg.block.subtype === 'abort')) {
@@ -77,6 +83,11 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
   const sendMessage = useCallback((text: string, attachments?: TaskAttachment[]) => {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
+      // Optimistically add user block so message appears immediately
+      const userBlock: AgentBlock = { type: 'user', text, attachments };
+      optimisticUserRef.current = text;
+      setBlocks((prev) => [...prev, userBlock]);
+      setSessionDone(false);
       ws.send(JSON.stringify({ type: 'followup', text, attachments }));
     }
   }, []);
