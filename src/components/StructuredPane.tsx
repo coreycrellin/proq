@@ -247,6 +247,11 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
   }, []);
 
   // Notify parent of new text blocks for TTS — only after agent finishes
+  // Use a ref to capture onNewText so it survives task-list reorder races
+  // (on mobile, the task moves from "running" to "verify" sort order right as
+  // sessionDone becomes true, which can make the prop undefined before the effect fires)
+  const onNewTextRef = useRef(onNewText);
+  if (onNewText) onNewTextRef.current = onNewText;
   const ttsReadRef = useRef(false);
   useEffect(() => {
     // Reset when a new session starts
@@ -254,14 +259,15 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
       ttsReadRef.current = false;
       return;
     }
-    if (!onNewText || !visible || ttsReadRef.current) return;
+    const ttsCallback = onNewTextRef.current;
+    if (!ttsCallback || ttsReadRef.current) return;
     ttsReadRef.current = true;
     for (const block of blocks) {
       if (block.type === 'text' && block.text) {
-        onNewText(block.text);
+        ttsCallback(block.text);
       }
     }
-  }, [sessionDone, blocks, onNewText, visible]);
+  }, [sessionDone, blocks]);
 
   if (!visible) return null;
 

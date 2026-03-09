@@ -131,6 +131,16 @@ export function HttpsSetupSheet({ open, onClose }: HttpsSetupSheetProps) {
             <code className="block text-xs font-mono bg-surface-inset text-bronze-400 px-3 py-2 rounded-lg border border-border-default select-all text-center break-all">
               {tunnelUrl}
             </code>
+            <button
+              onClick={async () => {
+                await fetch('/api/tunnel', { method: 'DELETE' });
+                setTunnelUrl(null);
+              }}
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium w-full bg-surface-base border border-border-default text-text-secondary active:bg-surface-hover"
+            >
+              <XIcon className="w-4 h-4" />
+              Stop Tunnel
+            </button>
           </div>
         ) : (
           <div className="space-y-4">
