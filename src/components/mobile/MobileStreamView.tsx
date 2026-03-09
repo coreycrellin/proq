@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon } from 'lucide-react';
-import type { Task, TaskColumns, AgentBlock } from '@/lib/types';
+import type { Task, TaskColumns } from '@/lib/types';
 import { StructuredPane } from '../StructuredPane';
 
 interface MobileStreamViewProps {
@@ -14,7 +14,7 @@ function getStreamTasks(columns: TaskColumns): Task[] {
   const allTasks = [
     ...columns['in-progress'],
     ...columns['verify'],
-    ...(columns['done'] || []).slice(0, 3), // show last 3 done tasks
+    ...(columns['done'] || []).slice(0, 3),
   ];
 
   return allTasks.sort((a, b) => {
@@ -123,13 +123,13 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
       {/* Swipe area */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-hidden"
+        className="flex-1 min-h-0 flex flex-col"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         {currentTask && (
-          <div className="h-full flex flex-col">
+          <div className="h-full flex flex-col min-h-0">
             {/* Task header */}
             <div className="flex-shrink-0 px-4 py-3 border-b border-border-default bg-surface-topbar">
               <div className="flex items-center justify-between gap-2">
@@ -145,8 +145,8 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
               )}
             </div>
 
-            {/* Agent output */}
-            <div className="flex-1 overflow-y-auto">
+            {/* Agent output — needs min-h-0 for flex child with absolute positioned scroll */}
+            <div className="flex-1 min-h-0">
               <StructuredPane
                 taskId={currentTask.id}
                 projectId={projectId}
@@ -154,7 +154,6 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
                 taskStatus={currentTask.status}
                 agentBlocks={currentTask.agentBlocks}
                 compact={true}
-                readOnly={true}
               />
             </div>
           </div>
