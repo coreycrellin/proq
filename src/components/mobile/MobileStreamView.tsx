@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon } from 'lucide-react';
+import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon, PlusIcon, CheckIcon } from 'lucide-react';
 import type { Task, TaskColumns } from '@/lib/types';
 import { StructuredPane } from '../StructuredPane';
 
@@ -11,6 +11,7 @@ type AnyRef = any;
 interface MobileStreamViewProps {
   tasks: TaskColumns;
   projectId: string;
+  onTaskCreated?: () => void;
 }
 
 function getStreamTasks(columns: TaskColumns): Task[] {
@@ -138,7 +139,7 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
   }, []);
 
   return (
-    <div className="flex-shrink-0 px-3 pb-2">
+    <div>
       <button
         type="button"
         onTouchStart={(e) => { e.preventDefault(); start(); }}
@@ -162,13 +163,55 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
   );
 }
 
-export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
+export function MobileStreamView({ tasks, projectId, onTaskCreated }: MobileStreamViewProps) {
   const streamTasks = getStreamTasks(tasks);
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const sendRef = useRef<((text: string) => void) | null>(null);
+  const [showNewTask, setShowNewTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [completing, setCompleting] = useState(false);
+
+  const handleCreateTask = useCallback(async () => {
+    if (!newTaskTitle.trim() || creating) return;
+    setCreating(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTaskTitle.trim(), description: '' }),
+      });
+      if (res.ok) {
+        setNewTaskTitle('');
+        setShowNewTask(false);
+        onTaskCreated?.();
+      }
+    } catch {
+      // best effort
+    } finally {
+      setCreating(false);
+    }
+  }, [newTaskTitle, creating, projectId, onTaskCreated]);
+
+  const handleMarkDone = useCallback(async (task: Task) => {
+    if (completing) return;
+    setCompleting(true);
+    try {
+      await fetch(`/api/projects/${projectId}/tasks/${task.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'done' }),
+      });
+      onTaskCreated?.(); // triggers refetch
+    } catch {
+      // best effort
+    } finally {
+      setCompleting(false);
+    }
+  }, [completing, projectId, onTaskCreated]);
 
   // Clamp index when tasks change
   useEffect(() => {
@@ -202,11 +245,47 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
 
   if (streamTasks.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center h-full p-6">
+      <div className="flex-1 flex flex-col items-center justify-center h-full p-6 gap-4">
         <div className="text-center">
           <p className="text-text-tertiary text-sm">No active tasks</p>
           <p className="text-text-tertiary/60 text-xs mt-1">Tasks will appear here when agents are running</p>
         </div>
+        {showNewTask ? (
+          <div className="w-full max-w-xs flex flex-col gap-2">
+            <input
+              autoFocus
+              type="text"
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateTask()}
+              placeholder="Task title..."
+              className="w-full px-3 py-2 rounded-lg bg-surface-hover border border-border-default text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-blue-500"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowNewTask(false); setNewTaskTitle(''); }}
+                className="flex-1 py-2 rounded-lg text-sm text-text-tertiary bg-surface-hover border border-border-default"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateTask}
+                disabled={!newTaskTitle.trim() || creating}
+                className="flex-1 py-2 rounded-lg text-sm text-white bg-blue-600 disabled:opacity-50"
+              >
+                {creating ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowNewTask(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface-hover border border-border-default text-text-secondary text-sm active:bg-surface-hover/80"
+          >
+            <PlusIcon className="w-4 h-4" />
+            New Task
+          </button>
+        )}
       </div>
     );
   }
@@ -215,6 +294,39 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
 
   return (
     <div className="flex flex-col h-full overflow-x-hidden">
+      {/* New task inline form */}
+      {showNewTask && (
+        <div className="flex-shrink-0 px-3 py-2 border-b border-border-default bg-surface-topbar">
+          <div className="flex gap-2">
+            <input
+              autoFocus
+              type="text"
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreateTask();
+                if (e.key === 'Escape') { setShowNewTask(false); setNewTaskTitle(''); }
+              }}
+              placeholder="New task title..."
+              className="flex-1 px-3 py-2 rounded-lg bg-surface-hover border border-border-default text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-blue-500"
+            />
+            <button
+              onClick={handleCreateTask}
+              disabled={!newTaskTitle.trim() || creating}
+              className="px-3 py-2 rounded-lg text-sm text-white bg-blue-600 disabled:opacity-50"
+            >
+              {creating ? '...' : 'Add'}
+            </button>
+            <button
+              onClick={() => { setShowNewTask(false); setNewTaskTitle(''); }}
+              className="px-2 py-2 rounded-lg text-sm text-text-tertiary"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Swipe area */}
       <div
         ref={containerRef}
@@ -231,7 +343,19 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
                 <h2 className="text-sm font-medium text-text-primary truncate flex-1">
                   {currentTask.title || currentTask.description?.slice(0, 60)}
                 </h2>
-                {statusBadge(currentTask)}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {currentTask.status === 'verify' && (
+                    <button
+                      onClick={() => handleMarkDone(currentTask)}
+                      disabled={completing}
+                      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-green-600 text-white active:bg-green-700 disabled:opacity-50"
+                    >
+                      <CheckIcon className="w-3 h-3" />
+                      {completing ? '...' : 'Done'}
+                    </button>
+                  )}
+                  {statusBadge(currentTask)}
+                </div>
               </div>
               {currentTask.branch && (
                 <p className="text-xs text-text-tertiary mt-0.5 font-mono truncate">
@@ -256,8 +380,18 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
         )}
       </div>
 
-      {/* Record button */}
-      <RecordButton onTranscript={handleTranscript} />
+      {/* Action bar: record + new task */}
+      <div className="flex-shrink-0 flex items-center gap-2 px-3 pb-2">
+        <div className="flex-1">
+          <RecordButton onTranscript={handleTranscript} />
+        </div>
+        <button
+          onClick={() => setShowNewTask(true)}
+          className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-blue-600 text-white active:bg-blue-700"
+        >
+          <PlusIcon className="w-5 h-5" />
+        </button>
+      </div>
 
       {/* Dot indicators */}
       {streamTasks.length > 1 && (

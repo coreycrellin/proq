@@ -8,6 +8,7 @@ import {
   EyeIcon,
   BellDotIcon,
   AlertTriangleIcon,
+  CheckIcon,
 } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { parseLines } from '@/lib/utils';
@@ -19,11 +20,12 @@ interface TaskCardProps {
   isPreviewActive?: boolean;
   columnStatus?: string;
   onDelete?: (taskId: string) => void;
+  onComplete?: (taskId: string) => void;
   onClick?: (task: Task) => void;
   onUpdateTitle?: (taskId: string, title: string) => void;
 }
 
-export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, columnStatus, onDelete, onClick, onUpdateTitle }: TaskCardProps) {
+export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, columnStatus, onDelete, onComplete, onClick, onUpdateTitle }: TaskCardProps) {
   const steps = parseLines(task.humanSteps);
   const isRunning = task.agentStatus === 'running';
   const isStarting = task.agentStatus === 'starting';
@@ -84,17 +86,32 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, colum
       `}
       onClick={() => !isDragOverlay && onClick?.(task)}
     >
-      {/* Delete button */}
-      {onDelete && !isDragOverlay && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(task.id);
-          }}
-          className="absolute top-2 right-2 p-1 rounded text-text-chrome hover:text-crimson hover:bg-surface-hover opacity-0 group-hover:opacity-100 transition-opacity z-10"
-        >
-          <Trash2Icon className="w-3.5 h-3.5" />
-        </button>
+      {/* Action buttons */}
+      {!isDragOverlay && (onDelete || onComplete) && (
+        <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          {onComplete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onComplete(task.id);
+              }}
+              className="p-1 rounded text-text-chrome hover:text-emerald hover:bg-surface-hover"
+            >
+              <CheckIcon className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(task.id);
+              }}
+              className="p-1 rounded text-text-chrome hover:text-crimson hover:bg-surface-hover"
+            >
+              <Trash2Icon className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       )}
 
       <div className="p-3 min-h-[80px]">
