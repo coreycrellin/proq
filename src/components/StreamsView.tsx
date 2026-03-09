@@ -347,6 +347,16 @@ export function StreamsView({
               {streamTasks.length} streams
             </span>
           )}
+          {onAddTask && (
+            <button
+              onClick={onAddTask}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 transition-colors"
+              title="New Task"
+            >
+              <PlusIcon className="w-3 h-3" />
+              New Task
+            </button>
+          )}
           {addStreamButton}
         </div>
         {/* Scrollable area with navigation arrows */}
@@ -422,8 +432,18 @@ export function StreamsView({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Toolbar */}
-      {addStreamButton && (
-        <div className="flex justify-end px-2 py-1 shrink-0">
+      {(onAddTask || addStreamButton) && (
+        <div className="flex items-center justify-end px-2 py-1 shrink-0 gap-1">
+          {onAddTask && (
+            <button
+              onClick={onAddTask}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 transition-colors"
+              title="New Task"
+            >
+              <PlusIcon className="w-3 h-3" />
+              New Task
+            </button>
+          )}
           {addStreamButton}
         </div>
       )}
