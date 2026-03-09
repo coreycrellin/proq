@@ -221,11 +221,11 @@ function ResizableGrid({
 }
 
 function statusBorderColor(task: Task): string {
-  if (task.agentStatus === 'running') return 'border-l-blue-500';
-  if (task.agentStatus === 'starting') return 'border-l-amber-500';
-  if (task.agentStatus === 'queued') return 'border-l-amber-500/60';
-  if (task.status === 'verify') return 'border-l-lazuli';
-  if (task.status === 'done') return 'border-l-emerald';
+  if (task.agentStatus === 'running') return 'border-l-zinc-500';
+  if (task.agentStatus === 'starting') return 'border-l-zinc-500';
+  if (task.agentStatus === 'queued') return 'border-l-zinc-600';
+  if (task.status === 'verify') return 'border-l-zinc-500';
+  if (task.status === 'done') return 'border-l-zinc-600';
   return 'border-l-zinc-600';
 }
 
