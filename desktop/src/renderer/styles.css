@@ -240,16 +240,16 @@ input:focus {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--bg-elevated);
+  background: rgba(155, 148, 138, 0.25);
   transition: background 0.2s;
 }
 
 .step-dot.active {
-  background: var(--accent);
+  background: #E4BD89;
 }
 
 .step-dot.completed {
-  background: var(--success);
+  background: #9B948A;
 }
 
 /* Radio group */
