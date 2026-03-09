@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
-import { XIcon } from 'lucide-react';
+import { XIcon, Loader2Icon, ClockIcon, CheckCircle2Icon } from 'lucide-react';
 import type { Task, FollowUpDraft } from '@/lib/types';
 import { TaskAgentDetail } from './TaskAgentDetail';
 
@@ -79,10 +79,23 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal header bar */}
-        <div className="shrink-0 flex items-center justify-end px-2 py-1.5 border-b border-border-default bg-surface-topbar">
+        <div className="shrink-0 flex items-center gap-3 px-4 py-2 border-b border-border-default bg-surface-topbar">
+          {/* Status indicator */}
+          {(() => {
+            const isDispatched = task.agentStatus === 'running' || task.agentStatus === 'starting';
+            const isQ = isQueued || task.agentStatus === 'queued';
+            if (isQ) return <ClockIcon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />;
+            if (isDispatched) return <Loader2Icon className="w-3.5 h-3.5 text-bronze-500 animate-spin shrink-0" />;
+            if (task.status === 'verify') return <ClockIcon className="w-3.5 h-3.5 text-lazuli shrink-0" />;
+            if (task.status === 'done') return <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald shrink-0" />;
+            return null;
+          })()}
+          <h2 className="text-sm font-semibold text-text-primary truncate flex-1">
+            {task.title || 'Untitled task'}
+          </h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover"
+            className="p-1 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover shrink-0"
           >
             <XIcon className="w-4 h-4" />
           </button>

@@ -15,6 +15,8 @@ import {
   PlayIcon,
   GitBranchIcon,
   ArrowRightIcon,
+  PanelRightOpenIcon,
+  PanelRightCloseIcon,
 } from 'lucide-react';
 import type { Task, FollowUpDraft } from '@/lib/types';
 import { attachmentUrl } from '@/lib/upload';
@@ -60,6 +62,7 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [topPanelPercent, setTopPanelPercent] = useState(30);
   const [rightPanelPercent, setRightPanelPercent] = useState(33);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const bottomPanelRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -323,22 +326,43 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
         ) : null}
       </div>
 
-      {/* Horizontal resize handle */}
+      {/* Right panel toggle + panel */}
       {(showTerminal || showStructuredPane || isQueued) && (
-        <div
-          onMouseDown={handleHorizontalResizeMouseDown}
-          className="shrink-0 w-px cursor-col-resize bg-border-default hover:bg-border-hover transition-colors relative"
-        >
-          <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
-        </div>
-      )}
+        <>
+          {/* Collapsed: just a toggle tab on the right edge */}
+          {rightPanelCollapsed ? (
+            <div className="shrink-0 flex flex-col border-l border-border-default bg-surface-topbar">
+              <button
+                onClick={() => setRightPanelCollapsed(false)}
+                className="flex items-center justify-center w-8 h-full text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover transition-colors"
+                title="Show details"
+              >
+                <PanelRightOpenIcon className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Horizontal resize handle */}
+              <div
+                onMouseDown={handleHorizontalResizeMouseDown}
+                className="shrink-0 w-px cursor-col-resize bg-border-default hover:bg-border-hover transition-colors relative"
+              >
+                <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
+              </div>
 
-      {/* Right panel: task details */}
-      <div ref={rightPanelRef} className={`${showTerminal || showStructuredPane || isQueued ? '' : 'w-full'} shrink-0 flex flex-col overflow-hidden bg-surface-topbar`} style={(showTerminal || showStructuredPane || isQueued) ? { width: `${rightPanelPercent}%` } : undefined}>
+              {/* Right panel: task details */}
+              <div ref={rightPanelRef} className="shrink-0 flex flex-col overflow-hidden bg-surface-topbar" style={{ width: `${rightPanelPercent}%` }}>
         {/* Top half: title, status, description */}
         <div className="overflow-y-auto p-5 pt-5 space-y-4 shrink-0" style={{ height: `${topPanelPercent}%` }}>
-          {/* Status badge */}
+          {/* Collapse button + Status badge */}
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setRightPanelCollapsed(true)}
+              className="p-0.5 rounded text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover mr-1"
+              title="Hide details"
+            >
+              <PanelRightCloseIcon className="w-3.5 h-3.5" />
+            </button>
             {isQueued ? (
               <span className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium uppercase tracking-wide">
                 <ClockIcon className="w-3 h-3" />
@@ -623,6 +647,175 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
           </div>
         )}
       </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* Right panel when no terminal (fallback full-width mode) */}
+      {!(showTerminal || showStructuredPane || isQueued) && (
+        <div ref={rightPanelRef} className="w-full shrink-0 flex flex-col overflow-hidden bg-surface-topbar">
+          {/* Top half: title, status, description */}
+          <div className="overflow-y-auto p-5 pt-5 space-y-4 shrink-0" style={{ height: `${topPanelPercent}%` }}>
+            {/* Status badge */}
+            <div className="flex items-center gap-1.5">
+              {isQueued ? (
+                <span className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium uppercase tracking-wide">
+                  <ClockIcon className="w-3 h-3" />
+                  Queued
+                </span>
+              ) : isDispatched ? (
+                <span className="flex items-center gap-1.5 text-xs text-bronze-500 font-medium uppercase tracking-wide">
+                  <Loader2Icon className="w-3 h-3 animate-spin" />
+                  Agent working
+                </span>
+              ) : task.status === 'verify' ? (
+                <span className="flex items-center gap-1.5 text-xs text-lazuli-dark dark:text-lazuli font-medium uppercase tracking-wide">
+                  <ClockIcon className="w-3 h-3" />
+                  Awaiting review
+                </span>
+              ) : task.status === 'done' ? (
+                <span className="flex items-center gap-1.5 text-xs text-emerald-dark dark:text-emerald font-medium uppercase tracking-wide">
+                  <CheckCircle2Icon className="w-3 h-3" />
+                  Completed
+                </span>
+              ) : (
+                <span className="text-xs text-text-tertiary font-medium uppercase tracking-wide">
+                  {task.status}
+                </span>
+              )}
+              <span className="ml-auto text-[10px] text-text-placeholder font-mono">{shortId}</span>
+            </div>
+
+            {/* Title */}
+            <h2
+              ref={titleRef}
+              contentEditable={canEditTitle}
+              suppressContentEditableWarning
+              onBlur={canEditTitle ? commitTitle : undefined}
+              onKeyDown={canEditTitle ? (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur(); }
+              } : undefined}
+              className={`relative text-base font-semibold text-text-primary leading-snug outline-none ${canEditTitle ? 'cursor-text after:absolute after:left-0 after:right-0 after:bottom-[-3px] after:h-px after:bg-transparent focus:after:bg-bronze-500/40' : ''}`}
+            >
+              {task.title || 'Untitled task'}
+            </h2>
+
+            {/* Description */}
+            {task.description && (
+              <div className="text-sm leading-relaxed text-text-secondary">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                    strong: ({ children }) => <strong className="font-semibold text-text-secondary">{children}</strong>,
+                    em: ({ children }) => <em className="text-text-tertiary">{children}</em>,
+                    code: ({ children, className: cn }) => {
+                      const isBlock = cn?.includes('language-');
+                      if (isBlock) {
+                        return <code className={`${cn} block bg-surface-base rounded px-3 py-2 text-xs font-mono text-text-secondary overflow-x-auto my-2`}>{children}</code>;
+                      }
+                      return <code className="bg-border-default/70 text-text-secondary rounded px-1 py-0.5 text-xs font-mono">{children}</code>;
+                    },
+                    pre: ({ children }) => <pre className="bg-surface-base rounded-md overflow-x-auto my-2">{children}</pre>,
+                    ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
+                    li: ({ children }) => <li>{children}</li>,
+                    a: ({ href, children }) => <a href={href} className="text-lazuli hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                    h1: ({ children }) => <h1 className="text-sm font-semibold text-text-secondary mt-3 mb-1.5 first:mt-0">{children}</h1>,
+                    h2: ({ children }) => <h2 className="text-sm font-semibold text-text-secondary mt-2.5 mb-1 first:mt-0">{children}</h2>,
+                    h3: ({ children }) => <h3 className="text-xs font-semibold text-text-secondary mt-2 mb-1 first:mt-0">{children}</h3>,
+                  }}
+                >
+                  {task.description}
+                </ReactMarkdown>
+              </div>
+            )}
+
+            {/* Attachments */}
+            {task.attachments && task.attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {task.attachments.map((att) => {
+                  const url = att.filePath ? attachmentUrl(att.filePath) : undefined;
+                  const isImage = att.type?.startsWith('image/') || false;
+                  return isImage && url ? (
+                    <div
+                      key={att.id}
+                      className="relative group rounded-md overflow-hidden border border-border-default/50 bg-surface-hover/60 cursor-pointer"
+                      onClick={() => window.open(url, '_blank')}
+                    >
+                      <img
+                        src={url}
+                        alt={att.name}
+                        className="h-20 w-auto max-w-[120px] object-cover block"
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-2 bg-surface-hover/60 border border-border-default/50 rounded-md px-3 py-2.5"
+                    >
+                      <FileIcon className="w-4 h-4 text-zinc-500 shrink-0" />
+                      <span className="text-[11px] text-text-secondary truncate max-w-[140px]">
+                        {att.name}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Resize handle */}
+          <div
+            onMouseDown={handleResizeMouseDown}
+            className="shrink-0 h-px cursor-row-resize bg-border-default hover:bg-border-hover transition-colors relative"
+          >
+            <div className="absolute inset-x-0 -top-1.5 -bottom-1.5" />
+          </div>
+
+          {/* Bottom half: agent findings */}
+          <div ref={bottomPanelRef} className={`flex-1 min-h-0 overflow-y-auto p-5 space-y-4`}>
+            {findings.length > 0 && (
+              <div className="text-sm leading-relaxed text-text-secondary">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {task.findings || ''}
+                </ReactMarkdown>
+              </div>
+            )}
+            {steps.length > 0 && (
+              <div className="bg-gold/8 border border-gold/20 rounded-md p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangleIcon className="w-3.5 h-3.5 text-gold" />
+                  <span className="text-xs font-medium text-gold uppercase tracking-wide">Steps for you</span>
+                </div>
+                <ul className="space-y-1">
+                  {steps.map((step, idx) => (
+                    <li key={idx} className="text-xs text-text-secondary flex items-start">
+                      <span className="mr-2 text-text-placeholder">&bull;</span>
+                      {step}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Complete button */}
+          {task.status === 'verify' && onComplete && (
+            <div className="shrink-0 group/complete">
+              <div className="h-px bg-border-default group-hover/complete:bg-emerald/40" />
+              <button
+                onClick={() => onComplete(task.id)}
+                className="flex items-center justify-center gap-1.5 w-full px-3 py-5 text-xs font-medium text-emerald/80 hover:text-emerald hover:bg-emerald/10"
+              >
+                <CheckCircle2Icon className="w-3.5 h-3.5" />
+                {task.branch ? 'Merge & Complete' : 'Complete'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {showConflictModal && task.mergeConflict && (
         <ConflictModal
