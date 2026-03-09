@@ -753,6 +753,7 @@ export default function ProjectPage() {
                   onDeleteTask={deleteTask}
                   executionMode={executionMode}
                   onExecutionModeChange={handleExecutionModeChange}
+                  onStartTask={(taskId) => moveTask(taskId, 'in-progress', 0)}
                   cleanupTimes={cleanupTimes}
                   followUpDraftsRef={followUpDraftsRef}
                   onFollowUpDraftChange={(taskId, draft) => {

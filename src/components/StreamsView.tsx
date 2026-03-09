@@ -14,9 +14,18 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ListOrderedIcon,
+  LayersIcon,
+  PlayIcon,
 } from 'lucide-react';
 import type { Task, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { StructuredPane } from './StructuredPane';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 
 interface StreamsViewProps {
   tasks: TaskColumns;
@@ -36,6 +45,7 @@ interface StreamsViewProps {
   onSwitchBranch?: (branch: string) => void;
   defaultBranch?: string;
   onAddTask?: () => void;
+  onStartTask?: (taskId: string) => void;
 }
 
 function getStreamTasks(
@@ -253,6 +263,9 @@ export function StreamsView({
   followUpDraftsRef,
   onFollowUpDraftChange,
   onAddTask,
+  executionMode = 'sequential',
+  onExecutionModeChange,
+  onStartTask,
 }: StreamsViewProps) {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [pinnedDoneIds, setPinnedDoneIds] = useState<Set<string>>(new Set());
@@ -429,25 +442,86 @@ export function StreamsView({
     </div>
   ) : null;
 
+  const todoTasks = tasks['todo'];
+
+  // Execution mode dropdown element
+  const modeDropdown = onExecutionModeChange ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-medium text-text-tertiary hover:text-text-secondary hover:bg-surface-hover"
+        >
+          {executionMode === 'sequential' ? (
+            <ListOrderedIcon className="w-3 h-3" />
+          ) : (
+            <LayersIcon className="w-3 h-3" />
+          )}
+          <span>{executionMode === 'sequential' ? 'Sequential' : 'Parallel'}</span>
+          <ChevronDownIcon className="w-3 h-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="exec-mode-dropdown min-w-[140px]">
+        <DropdownMenuItem
+          onSelect={() => onExecutionModeChange('sequential')}
+          className={`gap-2 text-xs ${executionMode === 'sequential' ? 'exec-mode-selected' : ''}`}
+        >
+          <ListOrderedIcon className="w-3.5 h-3.5" />
+          Sequential
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => onExecutionModeChange('parallel')}
+          className={`gap-2 text-xs ${executionMode === 'parallel' ? 'exec-mode-selected' : ''}`}
+        >
+          <LayersIcon className="w-3.5 h-3.5" />
+          Parallel
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null;
+
+  // Todo task queue - shows tasks waiting to be started
+  const todoQueue = todoTasks.length > 0 && onStartTask ? (
+    <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin">
+      <span className="text-[10px] text-text-placeholder shrink-0">Queue:</span>
+      {todoTasks.map((task) => (
+        <button
+          key={task.id}
+          onClick={() => onStartTask(task.id)}
+          className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium text-text-tertiary hover:text-text-secondary bg-surface-secondary hover:bg-surface-hover border border-border-default transition-colors shrink-0 max-w-[180px] group"
+          title={`Start: ${task.title || task.description?.slice(0, 50) || 'Untitled'}`}
+        >
+          <PlayIcon className="w-2.5 h-2.5 text-emerald shrink-0 opacity-60 group-hover:opacity-100" />
+          <span className="truncate">{task.title || task.description?.slice(0, 30) || 'Untitled'}</span>
+        </button>
+      ))}
+    </div>
+  ) : null;
+
   if (streamTasks.length === 0) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-text-tertiary gap-3 relative">
-        {addStreamButton && (
-          <div className="absolute top-2 right-2">{addStreamButton}</div>
-        )}
-        <RadioTowerIcon className="w-8 h-8 opacity-30" />
-        <p className="text-sm">No active streams</p>
-        <p className="text-xs opacity-60">Start a task to see agent output here</p>
-        <div className="flex gap-2 mt-2">
-          {onAddTask && (
-            <button
-              onClick={onAddTask}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
-            >
-              <PlusIcon className="w-3.5 h-3.5" />
-              New Task
-            </button>
-          )}
+      <div className="h-full flex flex-col text-text-tertiary relative">
+        {/* Toolbar even when empty */}
+        <div className="flex items-center px-2 py-1 shrink-0 gap-2">
+          {modeDropdown}
+          <div className="flex-1 min-w-0">{todoQueue}</div>
+          <div className="flex items-center gap-1 shrink-0">
+            {onAddTask && (
+              <button
+                onClick={onAddTask}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 transition-colors"
+                title="New Task"
+              >
+                <PlusIcon className="w-3 h-3" />
+                New Task
+              </button>
+            )}
+            {addStreamButton}
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3">
+          <RadioTowerIcon className="w-8 h-8 opacity-30" />
+          <p className="text-sm">No active streams</p>
+          <p className="text-xs opacity-60">Start a task to see agent output here</p>
         </div>
       </div>
     );
@@ -490,23 +564,25 @@ export function StreamsView({
     return (
       <div className="h-full flex flex-col min-h-0 overflow-hidden">
         {/* Toolbar */}
-        <div className="flex items-center justify-end px-2 py-1 shrink-0 gap-1">
-          {streamTasks.length > 6 && (
-            <span className="text-[10px] text-text-placeholder mr-auto">
-              {streamTasks.length} streams
-            </span>
-          )}
-          {onAddTask && (
-            <button
-              onClick={onAddTask}
-              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 transition-colors"
-              title="New Task"
-            >
-              <PlusIcon className="w-3 h-3" />
-              New Task
-            </button>
-          )}
-          {addStreamButton}
+        <div className="flex items-center px-2 py-1 shrink-0 gap-2">
+          {modeDropdown}
+          <span className="text-[10px] text-text-placeholder">
+            {streamTasks.length} streams
+          </span>
+          <div className="flex-1 min-w-0">{todoQueue}</div>
+          <div className="flex items-center gap-1 shrink-0">
+            {onAddTask && (
+              <button
+                onClick={onAddTask}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 transition-colors"
+                title="New Task"
+              >
+                <PlusIcon className="w-3 h-3" />
+                New Task
+              </button>
+            )}
+            {addStreamButton}
+          </div>
         </div>
         {/* Scrollable area with navigation arrows */}
         <div className="flex-1 relative min-h-0">
@@ -601,8 +677,10 @@ export function StreamsView({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Toolbar */}
-      {(onAddTask || addStreamButton) && (
-        <div className="flex items-center justify-end px-2 py-1 shrink-0 gap-1">
+      <div className="flex items-center px-2 py-1 shrink-0 gap-2">
+        {modeDropdown}
+        <div className="flex-1 min-w-0">{todoQueue}</div>
+        <div className="flex items-center gap-1 shrink-0">
           {onAddTask && (
             <button
               onClick={onAddTask}
@@ -615,7 +693,7 @@ export function StreamsView({
           )}
           {addStreamButton}
         </div>
-      )}
+      </div>
       <div className="flex-1 overflow-hidden min-h-0">
         <ResizableGrid rows={gridRows} cols={gridCols}>
           {streamTasks.map((task) => (
