@@ -290,7 +290,7 @@ export async function dispatchTask(
       { timeout: 5_000, encoding: "utf-8" },
     ).trim();
     if (headHash) {
-      await updateTask(projectId, taskId, { startCommit: headHash, endCommit: undefined });
+      await updateTask(projectId, taskId, { startCommit: headHash });
     }
   } catch {
     // Not a git repo or no commits yet — skip

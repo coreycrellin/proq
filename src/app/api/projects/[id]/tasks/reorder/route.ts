@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { moveTask, getProject, getTask, updateTask, getSettings, getProjectDefaultBranch } from "@/lib/db";
 import { abortTask, processQueue, getInitialAgentStatus, scheduleCleanup, cancelCleanup } from "@/lib/agent-dispatch";
-import { mergeWorktree, removeWorktree, ensureNotOnTaskBranch, ensureOnMainForMerge, popAutoStash, getHeadCommit } from "@/lib/worktree";
+import { mergeWorktree, removeWorktree, ensureNotOnTaskBranch, ensureOnMainForMerge, popAutoStash } from "@/lib/worktree";
 import type { TaskStatus } from "@/lib/types";
 
 type Params = { params: Promise<{ id: string }> };
@@ -63,21 +63,9 @@ export async function PUT(request: Request, { params }: Params) {
         await abortTask(id, taskId);
       }
     } else if (toColumn === "verify" && prevStatus === "in-progress") {
-      // Capture endCommit for sequential mode commit tracking
-      if (prevTask?.startCommit && !prevTask?.branch) {
-        const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
-        const head = getHeadCommit(projectPath);
-        if (head) await updateTask(id, taskId, { endCommit: head });
-      }
       // Deferred merge: keep worktree alive for branch preview
       // No merge here — branch stays available for preview until "done"
     } else if (toColumn === "done" && prevStatus === "in-progress") {
-      // Capture endCommit for sequential mode commit tracking
-      if (prevTask?.startCommit && !prevTask?.branch) {
-        const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");
-        const head = getHeadCommit(projectPath);
-        if (head) await updateTask(id, taskId, { endCommit: head });
-      }
       // Merge worktree when skipping verify
       if (prevTask?.worktreePath || prevTask?.branch) {
         const projectPath = project!.path.replace(/^~/, process.env.HOME || "~");

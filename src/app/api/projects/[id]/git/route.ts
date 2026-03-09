@@ -20,6 +20,7 @@ import {
   gitShowCommit,
   gitLogPaginated,
   gitTaskCommits,
+  gitCommitsByHash,
 } from "@/lib/worktree";
 import { getTask } from "@/lib/db";
 
@@ -255,18 +256,20 @@ ${diff.slice(0, 12000)}`;
         return NextResponse.json({ error: "Task not found" }, { status: 404 });
       }
 
-      // Determine the git path and ref range
-      let gitPath = projectPath;
+      // Prefer explicit commitHashes (recorded by MCP commit_changes tool)
+      if (task.commitHashes?.length) {
+        const commits = gitCommitsByHash(projectPath, task.commitHashes);
+        return NextResponse.json({ commits });
+      }
+
+      // Fallback: range-based lookup (parallel mode branch range, or legacy startCommit)
       let fromRef: string | null = null;
       let toRef = "HEAD";
 
       if (task.branch) {
-        // Parallel mode: commits between baseBranch and task branch
         fromRef = task.baseBranch || "main";
         toRef = task.branch;
-        // Use main project path (worktree branches are visible from main repo)
       } else if (task.startCommit) {
-        // Sequential mode: commits from startCommit to endCommit (or HEAD if still running)
         fromRef = task.startCommit;
         toRef = task.endCommit || "HEAD";
       }
@@ -275,7 +278,7 @@ ${diff.slice(0, 12000)}`;
         return NextResponse.json({ commits: [] });
       }
 
-      const commits = gitTaskCommits(gitPath, fromRef, toRef);
+      const commits = gitTaskCommits(projectPath, fromRef, toRef);
       return NextResponse.json({ commits });
     }
 
