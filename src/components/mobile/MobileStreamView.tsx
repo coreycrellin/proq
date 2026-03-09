@@ -364,8 +364,6 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
     );
   }
 
-  const currentTask = streamTasks[currentIndex];
-
   return (
     <div className="flex flex-col h-full overflow-x-hidden">
       {/* New task inline form */}
@@ -401,95 +399,104 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
         </div>
       )}
 
-      {/* Swipe area */}
+      {/* Swipe area — horizontal carousel */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 flex flex-col overflow-x-hidden"
+        className="flex-1 min-h-0 overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {currentTask && (
-          <div className="h-full flex flex-col min-h-0">
-            {/* Task header — hide for blank new tasks */}
-            {(currentTask.title || currentTask.description) && (
-              <div className="flex-shrink-0 px-4 py-3 border-b border-border-default bg-surface-topbar">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-medium text-text-primary truncate flex-1">
-                    {currentTask.title || currentTask.description?.slice(0, 60)}
-                  </h2>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {currentTask.status === 'verify' && (
-                      <button
-                        onClick={() => handleMarkDone(currentTask)}
-                        disabled={completing}
-                        className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-emerald bg-emerald/10 border border-emerald/20 active:bg-emerald/20 disabled:opacity-50"
-                      >
-                        <CheckIcon className="w-3 h-3" />
-                        {completing ? '...' : 'Done'}
-                      </button>
-                    )}
-                    {statusBadge(currentTask)}
+        <div
+          className="flex h-full"
+          style={{
+            transform: `translateX(calc(-${currentIndex * 100}% + ${swipeOffset}px))`,
+            transition: isAnimating ? 'transform 300ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
+          }}
+          onTransitionEnd={() => setIsAnimating(false)}
+        >
+          {streamTasks.map((task, i) => (
+            <div key={task.id} className="w-full h-full flex-shrink-0 flex flex-col min-h-0" style={{ width: '100%' }}>
+              {/* Task header — hide for blank new tasks */}
+              {(task.title || task.description) && (
+                <div className="flex-shrink-0 px-4 py-3 border-b border-border-default bg-surface-topbar">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-sm font-medium text-text-primary truncate flex-1">
+                      {task.title || task.description?.slice(0, 60)}
+                    </h2>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {task.status === 'verify' && (
+                        <button
+                          onClick={() => handleMarkDone(task)}
+                          disabled={completing}
+                          className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-emerald bg-emerald/10 border border-emerald/20 active:bg-emerald/20 disabled:opacity-50"
+                        >
+                          <CheckIcon className="w-3 h-3" />
+                          {completing ? '...' : 'Done'}
+                        </button>
+                      )}
+                      {statusBadge(task)}
+                    </div>
+                  </div>
+                  {task.branch && (
+                    <p className="text-xs text-text-tertiary mt-0.5 font-mono truncate">
+                      {task.branch}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* New task compose UI */}
+              {task.status === 'todo' && !task.title && !task.description ? (
+                <div className="flex-1 flex flex-col min-h-0 p-4">
+                  <div className="flex-1 flex flex-col justify-center max-w-lg mx-auto w-full gap-3">
+                    <p className="text-text-tertiary text-sm text-center">Describe what you want done</p>
+                    <textarea
+                      ref={i === currentIndex ? descriptionInputRef : undefined}
+                      autoFocus={i === currentIndex}
+                      value={taskDescription}
+                      onChange={(e) => setTaskDescription(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSubmitDescription(task);
+                        }
+                      }}
+                      placeholder="e.g. Add a dark mode toggle to the settings page..."
+                      className="w-full rounded-xl bg-surface-hover border border-border-default text-text-primary text-sm p-4 min-h-[120px] resize-none placeholder:text-text-tertiary/50 outline-none focus:border-bronze-400/50"
+                    />
+                    <button
+                      onClick={() => handleSubmitDescription(task)}
+                      disabled={!taskDescription.trim() || submittingDescription}
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-medium disabled:opacity-40 active:bg-blue-700 transition-colors"
+                    >
+                      <SendIcon className="w-4 h-4" />
+                      {submittingDescription ? 'Sending...' : 'Send'}
+                    </button>
                   </div>
                 </div>
-                {currentTask.branch && (
-                  <p className="text-xs text-text-tertiary mt-0.5 font-mono truncate">
-                    {currentTask.branch}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* New task compose UI */}
-            {currentTask.status === 'todo' && !currentTask.title && !currentTask.description ? (
-              <div className="flex-1 flex flex-col min-h-0 p-4">
-                <div className="flex-1 flex flex-col justify-center max-w-lg mx-auto w-full gap-3">
-                  <p className="text-text-tertiary text-sm text-center">Describe what you want done</p>
-                  <textarea
-                    ref={descriptionInputRef}
-                    autoFocus
-                    value={taskDescription}
-                    onChange={(e) => setTaskDescription(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSubmitDescription(currentTask);
-                      }
-                    }}
-                    placeholder="e.g. Add a dark mode toggle to the settings page..."
-                    className="w-full rounded-xl bg-surface-hover border border-border-default text-text-primary text-sm p-4 min-h-[120px] resize-none placeholder:text-text-tertiary/50 outline-none focus:border-bronze-400/50"
+              ) : (
+                /* Agent output — must be flex col so StructuredPane's flex-1 works */
+                <div className="flex-1 min-h-0 flex flex-col overflow-x-hidden max-w-[100vw]">
+                  <StructuredPane
+                    taskId={task.id}
+                    projectId={projectId}
+                    visible={i === currentIndex}
+                    taskStatus={task.status}
+                    agentBlocks={
+                      !(task.agentStatus === 'running' || task.agentStatus === 'starting') && task.status === 'done' && task.agentBlocks
+                        ? task.agentBlocks
+                        : undefined
+                    }
+                    compact={true}
+                    sendRef={i === currentIndex ? sendRef : undefined}
+                    attachRef={i === currentIndex ? attachRef : undefined}
                   />
-                  <button
-                    onClick={() => handleSubmitDescription(currentTask)}
-                    disabled={!taskDescription.trim() || submittingDescription}
-                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-medium disabled:opacity-40 active:bg-blue-700 transition-colors"
-                  >
-                    <SendIcon className="w-4 h-4" />
-                    {submittingDescription ? 'Sending...' : 'Send'}
-                  </button>
                 </div>
-              </div>
-            ) : (
-              /* Agent output — must be flex col so StructuredPane's flex-1 works */
-              <div className="flex-1 min-h-0 flex flex-col overflow-x-hidden max-w-[100vw]">
-                <StructuredPane
-                  taskId={currentTask.id}
-                  projectId={projectId}
-                  visible={true}
-                  taskStatus={currentTask.status}
-                  agentBlocks={
-                    !(currentTask.agentStatus === 'running' || currentTask.agentStatus === 'starting') && currentTask.status === 'done' && currentTask.agentBlocks
-                      ? currentTask.agentBlocks
-                      : undefined
-                  }
-                  compact={true}
-                  sendRef={sendRef}
-                  attachRef={attachRef}
-                />
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Action bar: record + new task */}
