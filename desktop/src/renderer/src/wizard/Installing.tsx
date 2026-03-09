@@ -19,6 +19,7 @@ export function Installing({
   const [logs, setLogs] = useState('')
   const [error, setError] = useState<string | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
+  const startedRef = useRef(false)
 
   const appendLog = (line: string): void => {
     setLogs((prev) => prev + line)
@@ -34,7 +35,10 @@ export function Installing({
       appendLog(line)
     })
 
-    runInstall()
+    if (!startedRef.current) {
+      startedRef.current = true
+      runInstall()
+    }
     return cleanup
   }, [])
 
