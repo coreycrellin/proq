@@ -73,8 +73,9 @@ export function useAgentSession(
               // Dedup: if a tool_use block with the same toolId already exists, replace it
               // (e.g. server may re-broadcast an enriched ExitPlanMode block)
               if (msg.block.type === 'tool_use' && msg.block.toolId) {
+                const blockToolId = msg.block.toolId;
                 const existingIdx = prev.findIndex(
-                  (b) => b.type === 'tool_use' && b.toolId === msg.block.toolId
+                  (b) => b.type === 'tool_use' && 'toolId' in b && b.toolId === blockToolId
                 );
                 if (existingIdx !== -1) {
                   const updated = [...prev];

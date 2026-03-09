@@ -27,10 +27,13 @@ export interface AgentRuntimeSession {
 // ── Singleton attached to globalThis to survive HMR ──
 const g = globalThis as unknown as {
   __proqAgentRuntimeSessions?: Map<string, AgentRuntimeSession>;
+  __proqBlockFlushTimers?: Map<string, ReturnType<typeof setTimeout>>;
 };
 if (!g.__proqAgentRuntimeSessions) g.__proqAgentRuntimeSessions = new Map();
+if (!g.__proqBlockFlushTimers) g.__proqBlockFlushTimers = new Map();
 
 const sessions = g.__proqAgentRuntimeSessions;
+const flushTimers = g.__proqBlockFlushTimers;
 
 function broadcast(session: AgentRuntimeSession, msg: object) {
   const data = JSON.stringify(msg);
@@ -43,9 +46,33 @@ function broadcast(session: AgentRuntimeSession, msg: object) {
   }
 }
 
+/**
+ * Debounced persistence of blocks to DB.
+ * Ensures blocks survive HMR / server restarts so the WS fallback
+ * path (reading agentBlocks from DB) has data.
+ */
+function scheduleBlockFlush(session: AgentRuntimeSession) {
+  const key = session.taskId;
+  if (flushTimers.has(key)) return; // already scheduled
+  flushTimers.set(
+    key,
+    setTimeout(async () => {
+      flushTimers.delete(key);
+      try {
+        await updateTask(session.projectId, session.taskId, {
+          agentBlocks: session.blocks,
+        });
+      } catch {
+        // DB write failed — will retry on next append
+      }
+    }, 2000),
+  );
+}
+
 function appendBlock(session: AgentRuntimeSession, block: AgentBlock) {
   session.blocks.push(block);
   broadcast(session, { type: "block", block });
+  scheduleBlockFlush(session);
 }
 
 // ── Shared process wiring ──

@@ -89,8 +89,9 @@ export function MobileChat({ projectId }: MobileChatProps) {
     recognition.interimResults = false;
     recognition.lang = 'en-US';
 
-    recognition.onresult = (event: { results: { 0: { 0: { transcript: string } } }[] }) => {
-      const transcript = event.results[0]?.[0]?.transcript;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      const transcript = event.results?.[0]?.[0]?.transcript;
       if (transcript) {
         sendMessage(transcript);
       }
