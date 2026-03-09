@@ -2,11 +2,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  AlertTriangleIcon,
   Trash2Icon,
   Loader2Icon,
   ClockIcon,
   EyeIcon,
+  BellDotIcon,
+  AlertTriangleIcon,
 } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { parseLines } from '@/lib/utils';
@@ -16,30 +17,31 @@ interface TaskCardProps {
   isDragOverlay?: boolean;
   isQueued?: boolean;
   isPreviewActive?: boolean;
+  columnStatus?: string;
   onDelete?: (taskId: string) => void;
   onClick?: (task: Task) => void;
   onUpdateTitle?: (taskId: string, title: string) => void;
 }
 
-export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDelete, onClick, onUpdateTitle }: TaskCardProps) {
+export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, columnStatus, onDelete, onClick, onUpdateTitle }: TaskCardProps) {
   const steps = parseLines(task.humanSteps);
   const isRunning = task.agentStatus === 'running';
   const isStarting = task.agentStatus === 'starting';
   const isActive = isRunning || isStarting;
   const canEditTitle = !!onUpdateTitle;
 
-  // Track findings changes to trigger flash animation
+  // Track summary changes to trigger flash animation
   const [flash, setFlash] = useState(false);
-  const prevFindingsRef = useRef(task.findings);
+  const prevSummaryRef = useRef(task.summary);
   useEffect(() => {
-    if (task.findings && task.findings !== prevFindingsRef.current) {
+    if (task.summary && task.summary !== prevSummaryRef.current) {
       setFlash(true);
       const timer = setTimeout(() => setFlash(false), 2000);
-      prevFindingsRef.current = task.findings;
+      prevSummaryRef.current = task.summary;
       return () => clearTimeout(timer);
     }
-    prevFindingsRef.current = task.findings;
-  }, [task.findings]);
+    prevSummaryRef.current = task.summary;
+  }, [task.summary]);
 
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(task.title || '');
@@ -77,7 +79,7 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDel
           ? 'border-zinc-500/30'
           : 'border-border-default'}
         ${flash ? 'ring-1 ring-lazuli/50 shadow-[0_0_12px_rgba(91,131,176,0.2)]' : ''}
-        ${isDragOverlay ? 'ring-1 ring-bronze-600 shadow-lg shadow-black/30' : `hover:bg-surface-hover/40 cursor-pointer ${isRunning ? '' : 'hover:border-border-hover/50'}`}
+        ${isDragOverlay ? 'ring-1 ring-bronze-600 shadow-lg shadow-black/30' : `hover:bg-surface-hover/40 cursor-pointer ${isRunning ? '' : columnStatus === 'in-progress' ? 'hover:border-bronze-500/30' : columnStatus === 'verify' ? 'hover:border-lazuli/30' : columnStatus === 'done' ? 'hover:border-emerald/30' : 'hover:border-border-hover/50'}`}
         transition-shadow duration-700
       `}
       onClick={() => !isDragOverlay && onClick?.(task)}
@@ -132,7 +134,16 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDel
           </p>
         )}
 
-        {steps.length > 0 && task.status !== 'done' && (
+        {task.mergeConflict && (
+          <div className="mt-2 flex items-center gap-1.5">
+            <AlertTriangleIcon className="w-3 h-3 text-red-400 flex-shrink-0" />
+            <span className="text-[10px] text-red-400 font-medium uppercase tracking-wide">
+              Merge conflict
+            </span>
+          </div>
+        )}
+
+        {steps.length > 0 && task.status !== 'done' && !task.mergeConflict && (
           <div className="mt-2 flex items-center gap-1.5">
             <AlertTriangleIcon className="w-3 h-3 text-gold flex-shrink-0" />
             <span className="text-[10px] text-gold font-medium uppercase tracking-wide">
@@ -141,7 +152,7 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDel
           </div>
         )}
 
-        {(isPreviewActive || isActive || isQueued) && (
+        {(isPreviewActive || isActive || isQueued || task.needsAttention) && (
           <div className="mt-3 pt-2 border-t border-border-subtle/60">
             {isPreviewActive && !isActive && !isQueued ? (
               <div className="flex items-center gap-1.5">
@@ -169,6 +180,13 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDel
                 <Loader2Icon className="w-3 h-3 text-text-secondary animate-spin" />
                 <span className="text-[10px] text-text-secondary font-medium uppercase tracking-wide">
                   Starting...
+                </span>
+              </div>
+            ) : task.needsAttention ? (
+              <div className="flex items-center gap-1.5">
+                <BellDotIcon className="w-3 h-3 text-lazuli" />
+                <span className="text-[10px] text-lazuli font-medium uppercase tracking-wide">
+                  Task updated
                 </span>
               </div>
             ) : null}

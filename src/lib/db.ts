@@ -156,6 +156,11 @@ function getProjectData(projectId: string): ProjectState {
           t.renderMode = 'cli';
           migrated = true;
         }
+        if ('findings' in t && !('summary' in t)) {
+          t.summary = t.findings as string;
+          delete t.findings;
+          migrated = true;
+        }
       }
     }
   }
@@ -374,7 +379,7 @@ export async function moveTask(
 export async function updateTask(
   projectId: string,
   taskId: string,
-  data: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "findings" | "humanSteps" | "agentLog" | "agentStatus" | "attachments" | "mode" | "worktreePath" | "branch" | "baseBranch" | "mergeConflict" | "renderMode" | "agentBlocks" | "sessionId" | "followUpMessage">>
+  data: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "summary" | "humanSteps" | "needsAttention" | "agentLog" | "agentStatus" | "attachments" | "mode" | "worktreePath" | "branch" | "baseBranch" | "mergeConflict" | "renderMode" | "agentBlocks" | "sessionId" | "followUpMessage">>
 ): Promise<Task | null> {
   return withWriteLock(`project:${projectId}`, async () => {
     const state = getProjectData(projectId);
@@ -506,16 +511,24 @@ export async function setWorkbenchState(projectId: string, state: { open?: boole
   });
 }
 
-export async function getWorkbenchTabs(projectId: string): Promise<{ tabs: import("./types").WorkbenchTabInfo[]; activeTabId?: string }> {
+export async function getWorkbenchTabs(projectId: string, scope?: string): Promise<{ tabs: import("./types").WorkbenchTabInfo[]; activeTabId?: string }> {
   const data = getProjectData(projectId);
+  if (scope === 'live') {
+    return { tabs: data.liveWorkbenchTabs ?? [], activeTabId: data.liveWorkbenchActiveTabId };
+  }
   return { tabs: data.workbenchTabs ?? [], activeTabId: data.workbenchActiveTabId };
 }
 
-export async function setWorkbenchTabs(projectId: string, tabs: import("./types").WorkbenchTabInfo[], activeTabId?: string): Promise<void> {
+export async function setWorkbenchTabs(projectId: string, tabs: import("./types").WorkbenchTabInfo[], activeTabId?: string, scope?: string): Promise<void> {
   return withWriteLock(`project:${projectId}`, async () => {
     const data = getProjectData(projectId);
-    data.workbenchTabs = tabs;
-    data.workbenchActiveTabId = activeTabId;
+    if (scope === 'live') {
+      data.liveWorkbenchTabs = tabs;
+      data.liveWorkbenchActiveTabId = activeTabId;
+    } else {
+      data.workbenchTabs = tabs;
+      data.workbenchActiveTabId = activeTabId;
+    }
     writeProject(projectId, data);
   });
 }

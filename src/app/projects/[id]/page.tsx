@@ -31,6 +31,9 @@ export default function ProjectPage() {
   const [chatPercent, setChatPercent] = useState(60);
   const [isDragging, setIsDragging] = useState(false);
   const [workbenchCollapsed, setTerminalCollapsed] = useState(true);
+  const [liveWorkbenchCollapsed, setLiveWorkbenchCollapsed] = useState(true);
+  const [liveChatPercent, setLiveChatPercent] = useState(40);
+  const [liveIsDragging, setLiveIsDragging] = useState(false);
   const [modalTask, setModalTask] = useState<Task | null>(null);
   const [agentModalTask, setAgentModalTask] = useState<Task | null>(null);
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('sequential');
@@ -48,6 +51,7 @@ export default function ProjectPage() {
   const [boardDragOver, setBoardDragOver] = useState(false);
   const boardDragCounter = useRef(0);
   const kanbanDraggingRef = useRef(false);
+  const viewingTaskIdRef = useRef<string | null>(null);
 
   const project = projects.find((p) => p.id === projectId);
   const columns: TaskColumns = tasksByProject[projectId] || emptyColumns();
@@ -128,6 +132,29 @@ export default function ProjectPage() {
     }
   }, [projectId, fetchExecutionMode, fetchBranchState]);
 
+  const dismissAttention = useCallback((taskId: string) => {
+    // Optimistically clear needsAttention in local state
+    setTasksByProject((prev) => {
+      const cols = prev[projectId] || emptyColumns();
+      for (const status of ['todo', 'in-progress', 'verify', 'done'] as TaskStatus[]) {
+        const idx = cols[status].findIndex((t) => t.id === taskId);
+        if (idx === -1) continue;
+        if (!cols[status][idx].needsAttention) return prev;
+        const updated = { ...cols };
+        updated[status] = [...cols[status]];
+        updated[status][idx] = { ...cols[status][idx], needsAttention: false };
+        return { ...prev, [projectId]: updated };
+      }
+      return prev;
+    });
+    // Fire-and-forget PATCH
+    fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ needsAttention: false }),
+    }).catch(() => {});
+  }, [projectId, setTasksByProject]);
+
   // SSE delivers targeted {taskId, changes} — merge directly into local state.
   // No fetching. Only server-initiated changes (agentStatus, status) come via SSE.
   const handleTaskUpdate = useCallback((event: TaskUpdateEvent) => {
@@ -170,7 +197,12 @@ export default function ProjectPage() {
       if (!prev || prev.id !== event.taskId) return prev;
       return { ...prev, ...event.changes } as Task;
     });
-  }, [projectId, setTasksByProject, fetchBranchState]);
+
+    // Auto-dismiss needsAttention if the user is already viewing this task
+    if (event.changes.needsAttention && viewingTaskIdRef.current === event.taskId) {
+      dismissAttention(event.taskId);
+    }
+  }, [projectId, setTasksByProject, fetchBranchState, dismissAttention]);
 
   useTaskEvents(projectId, handleTaskUpdate);
 
@@ -325,7 +357,7 @@ export default function ProjectPage() {
         optimistic.agentStatus = 'starting';
       } else if (toColumn === 'todo') {
         optimistic.agentStatus = null;
-        optimistic.findings = '';
+        optimistic.summary = '';
         optimistic.humanSteps = '';
       }
 
@@ -340,6 +372,17 @@ export default function ProjectPage() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ taskId, toColumn, toIndex }),
+    }).then(async (res) => {
+      if (!res.ok) {
+        // Merge conflict or other server error — refresh to get real state
+        refreshTasks(projectId);
+      } else {
+        const data = await res.json();
+        if (data.success === false) {
+          // Reorder returned failure (e.g. merge conflict) — refresh
+          refreshTasks(projectId);
+        }
+      }
     }).catch(() => {
       refreshTasks(projectId);
     });
@@ -386,11 +429,31 @@ export default function ProjectPage() {
         return { ...prev, [projectId]: updated };
       });
     }
-    await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+    const res = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+    // Reconcile local state if server disagreed (e.g. merge conflict bounced task back)
+    if (res.ok) {
+      const serverTask: Task = await res.json();
+      if (data.status && serverTask.status !== data.status) {
+        setTasksByProject((prev) => {
+          const cols = prev[projectId] || emptyColumns();
+          const updated: TaskColumns = { ...cols };
+          // Remove from the optimistic column
+          const optimisticCol = data.status as TaskStatus;
+          updated[optimisticCol] = updated[optimisticCol].filter((t) => t.id !== taskId);
+          // Place in the server's actual column with full server state
+          const serverCol = serverTask.status as TaskStatus;
+          updated[serverCol] = [...updated[serverCol].filter((t) => t.id !== taskId), serverTask];
+          return { ...prev, [projectId]: updated };
+        });
+        // Update modal if it's showing this task
+        setAgentModalTask((prev) => prev && prev.id === taskId ? serverTask : prev);
+        setModalTask((prev) => prev && prev.id === taskId ? serverTask : prev);
+      }
+    }
   };
 
   // Build map of proq/* branch → task title for the branch switcher
@@ -589,6 +652,57 @@ export default function ProjectPage() {
     setChatPercent((prev) => Math.max(prev, 25));
   }, [patchWorkbenchState]);
 
+  // ── Live workbench controls ──
+
+  const toggleLiveWorkbenchCollapsed = useCallback(() => {
+    setLiveWorkbenchCollapsed((prev) => !prev);
+  }, []);
+
+  const expandLiveWorkbench = useCallback(() => {
+    setLiveWorkbenchCollapsed((prev) => {
+      if (!prev) return prev;
+      return false;
+    });
+    setLiveChatPercent((prev) => Math.max(prev, 25));
+  }, []);
+
+  const handleLiveResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setLiveIsDragging(true);
+  }, []);
+
+  useEffect(() => {
+    if (!liveIsDragging) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const percent = ((rect.height - y) / rect.height) * 100;
+      if (liveWorkbenchCollapsed && percent > 5) {
+        toggleLiveWorkbenchCollapsed();
+      }
+      setLiveChatPercent(Math.min(100, Math.max(3, percent)));
+    };
+    const handleMouseUp = (e: MouseEvent) => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const pixelHeight = rect.height - y;
+        if (pixelHeight < 200) {
+          setLiveWorkbenchCollapsed(true);
+          setLiveChatPercent(40);
+        }
+      }
+      setLiveIsDragging(false);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [liveIsDragging, liveWorkbenchCollapsed, toggleLiveWorkbenchCollapsed]);
+
   // Resize handle (tab bar is the drag target)
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -689,9 +803,11 @@ export default function ProjectPage() {
                   onAddTask={handleAddTask}
                   onDeleteTask={deleteTask}
                   onClickTask={(task) => {
+                    if (task.needsAttention) dismissAttention(task.id);
                     if (task.status === 'todo') {
                       setModalTask(task);
                     } else {
+                      viewingTaskIdRef.current = task.id;
                       setAgentModalTask(task);
                     }
                   }}
@@ -733,6 +849,8 @@ export default function ProjectPage() {
                     await updateTask(taskId, { status: 'verify' });
                   }}
                   onUpdateTitle={(taskId, title) => updateTask(taskId, { title })}
+                  onDismissAttention={dismissAttention}
+                  onSelectedTaskChange={(id) => { viewingTaskIdRef.current = id; }}
                   parallelMode={executionMode === 'parallel'}
                   currentBranch={currentBranch}
                   onSwitchBranch={handleSwitchBranch}
@@ -776,11 +894,21 @@ export default function ProjectPage() {
           </>
         )}
 
-        {activeTab === 'live' && project && <LiveTab project={project} />}
+        {activeTab === 'live' && project && (
+          <LiveTab
+            project={project}
+            workbenchCollapsed={liveWorkbenchCollapsed}
+            workbenchHeight={liveChatPercent}
+            isDragging={liveIsDragging}
+            onToggleCollapsed={toggleLiveWorkbenchCollapsed}
+            onExpand={expandLiveWorkbench}
+            onResizeStart={handleLiveResizeStart}
+          />
+        )}
         {activeTab === 'code' && project && <CodeTab project={project} />}
       </main>
 
-      {isDragging && <div className="fixed inset-0 z-50 cursor-grabbing" />}
+      {(isDragging || liveIsDragging) && <div className="fixed inset-0 z-50 cursor-grabbing" />}
 
       {agentModalTask && (
         <TaskAgentModal
@@ -793,12 +921,13 @@ export default function ProjectPage() {
             if (draft) followUpDraftsRef.current.set(agentModalTask.id, draft);
             else followUpDraftsRef.current.delete(agentModalTask.id);
           }}
-          onClose={() => setAgentModalTask(null)}
+          onClose={() => { viewingTaskIdRef.current = null; setAgentModalTask(null); }}
           onUpdateTitle={(taskId, title) => updateTask(taskId, { title })}
           onComplete={async (taskId) => {
             followUpDraftsRef.current.delete(taskId);
             await updateTask(taskId, { status: 'done' });
-            setAgentModalTask(null);
+            // Only close modal if task actually moved to done (not bounced back by merge conflict)
+            setAgentModalTask((prev) => prev && prev.status === 'done' ? null : prev);
             fetchBranchState();
           }}
           onResumeEditing={async (taskId) => {

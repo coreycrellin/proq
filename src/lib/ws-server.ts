@@ -46,8 +46,12 @@ export function startWsServer() {
 
           try {
             const parsed = JSON.parse(msg);
-            if (parsed.type === "resize" && parsed.cols && parsed.rows) {
-              resizePty(tabId, parsed.cols, parsed.rows);
+            if (parsed.type === "resize") {
+              // Always intercept resize messages — never write them to the PTY.
+              // Only actually resize if cols/rows are valid positive numbers.
+              if (typeof parsed.cols === "number" && typeof parsed.rows === "number" && parsed.cols > 0 && parsed.rows > 0) {
+                resizePty(tabId, parsed.cols, parsed.rows);
+              }
               return;
             }
           } catch {
@@ -75,7 +79,8 @@ export function startWsServer() {
       wss.handleUpgrade(req, socket, head, (ws) => {
         const tabId = query.tabId as string;
         const projectId = query.projectId as string;
-        console.log(`[ws] agent-tab connected: tab=${tabId} project=${projectId}`);
+        const context = (query.context as string) || undefined;
+        console.log(`[ws] agent-tab connected: tab=${tabId} project=${projectId}${context ? ` context=${context}` : ''}`);
 
         if (!tabId || !projectId) {
           ws.send(JSON.stringify({ type: "error", error: "tabId and projectId required" }));
@@ -83,7 +88,7 @@ export function startWsServer() {
           return;
         }
 
-        attachAgentTabWs(tabId, projectId, ws);
+        attachAgentTabWs(tabId, projectId, ws, context);
       });
     } else if (pathname === "/ws/supervisor") {
       wss.handleUpgrade(req, socket, head, (ws) => {
