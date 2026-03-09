@@ -62,13 +62,162 @@ function getStreamTasks(
     });
 }
 
-/** For <=6 tasks, use the classic fixed grid */
-function getGridStyle(count: number): React.CSSProperties {
-  if (count <= 1) return { gridTemplateColumns: '1fr', gridTemplateRows: '1fr' };
-  if (count === 2) return { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr' };
-  if (count === 3) return { gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '1fr' };
-  if (count === 4) return { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' };
-  return { gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '1fr 1fr' };
+/** For <=6 tasks, compute rows and cols */
+function getGridDimensions(count: number): { rows: number; cols: number } {
+  if (count <= 1) return { rows: 1, cols: 1 };
+  if (count === 2) return { rows: 1, cols: 2 };
+  if (count === 3) return { rows: 1, cols: 3 };
+  if (count === 4) return { rows: 2, cols: 2 };
+  return { rows: 2, cols: 3 };
+}
+
+// ── Resize Handle ──────────────────────────────────────────
+
+function ResizeHandle({
+  direction,
+  onDrag,
+}: {
+  direction: 'horizontal' | 'vertical';
+  onDrag: (delta: number) => void;
+}) {
+  const startRef = useRef(0);
+  const lastRef = useRef(0);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const pos = direction === 'vertical' ? e.clientX : e.clientY;
+    startRef.current = pos;
+    lastRef.current = pos;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const current = direction === 'vertical' ? moveEvent.clientX : moveEvent.clientY;
+      const delta = current - lastRef.current;
+      lastRef.current = current;
+      onDrag(delta);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = direction === 'vertical' ? 'col-resize' : 'row-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [direction, onDrag]);
+
+  if (direction === 'vertical') {
+    return (
+      <div
+        onMouseDown={handleMouseDown}
+        className="w-[3px] shrink-0 bg-zinc-700 hover:bg-zinc-500 cursor-col-resize transition-colors relative group"
+        title="Drag to resize"
+      />
+    );
+  }
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      className="h-[3px] shrink-0 bg-zinc-700 hover:bg-zinc-500 cursor-row-resize transition-colors relative group"
+      title="Drag to resize"
+    />
+  );
+}
+
+// ── Resizable Grid ─────────────────────────────────────────
+
+function ResizableGrid({
+  children,
+  rows,
+  cols,
+}: {
+  children: React.ReactNode[];
+  rows: number;
+  cols: number;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [colSizes, setColSizes] = useState<number[]>(() => Array(cols).fill(1 / cols));
+  const [rowSizes, setRowSizes] = useState<number[]>(() => Array(rows).fill(1 / rows));
+
+  // Reset sizes when grid dimensions change
+  useEffect(() => {
+    setColSizes(Array(cols).fill(1 / cols));
+  }, [cols]);
+  useEffect(() => {
+    setRowSizes(Array(rows).fill(1 / rows));
+  }, [rows]);
+
+  const handleColResize = useCallback((colIndex: number, deltaPx: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const totalWidth = container.clientWidth;
+    const deltaFrac = deltaPx / totalWidth;
+    setColSizes(prev => {
+      const next = [...prev];
+      const minSize = 0.1;
+      const newLeft = next[colIndex] + deltaFrac;
+      const newRight = next[colIndex + 1] - deltaFrac;
+      if (newLeft < minSize || newRight < minSize) return prev;
+      next[colIndex] = newLeft;
+      next[colIndex + 1] = newRight;
+      return next;
+    });
+  }, []);
+
+  const handleRowResize = useCallback((rowIndex: number, deltaPx: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const totalHeight = container.clientHeight;
+    const deltaFrac = deltaPx / totalHeight;
+    setRowSizes(prev => {
+      const next = [...prev];
+      const minSize = 0.1;
+      const newTop = next[rowIndex] + deltaFrac;
+      const newBottom = next[rowIndex + 1] - deltaFrac;
+      if (newTop < minSize || newBottom < minSize) return prev;
+      next[rowIndex] = newTop;
+      next[rowIndex + 1] = newBottom;
+      return next;
+    });
+  }, []);
+
+  return (
+    <div ref={containerRef} className="flex flex-col h-full w-full overflow-hidden">
+      {Array.from({ length: rows }, (_, rowIdx) => (
+        <React.Fragment key={rowIdx}>
+          {rowIdx > 0 && (
+            <ResizeHandle
+              direction="horizontal"
+              onDrag={(delta) => handleRowResize(rowIdx - 1, delta)}
+            />
+          )}
+          <div className="flex min-h-0 overflow-hidden" style={{ flex: rowSizes[rowIdx] }}>
+            {Array.from({ length: cols }, (_, colIdx) => {
+              const childIndex = rowIdx * cols + colIdx;
+              if (childIndex >= children.length) return null;
+              return (
+                <React.Fragment key={colIdx}>
+                  {colIdx > 0 && (
+                    <ResizeHandle
+                      direction="vertical"
+                      onDrag={(delta) => handleColResize(colIdx - 1, delta)}
+                    />
+                  )}
+                  <div className="min-w-0 min-h-0 overflow-hidden" style={{ flex: colSizes[colIdx] }}>
+                    {children[childIndex]}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </React.Fragment>
+      ))}
+    </div>
+  );
 }
 
 function statusBorderColor(task: Task): string {
@@ -386,41 +535,59 @@ export function StreamsView({
             style={{ scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}
           >
             <div
-              className="h-full grid gap-px bg-border-default"
+              className="h-full flex flex-col"
               style={{
-                gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`,
-                gridTemplateRows: '1fr 1fr',
                 minWidth: `${(colCount / 3) * 100}%`,
               }}
             >
-              {topRow.map((task) => (
-                <StreamCellFull
-                  key={task.id}
-                  task={task}
-                  projectId={projectId}
-                  compact
-                  onExpand={() => setExpandedTaskId(task.id)}
-                  onRemove={() => handleRemoveStream(task.id)}
-                  onComplete={onComplete}
-                  onResumeEditing={onResumeEditing}
-                  followUpDraft={followUpDraftsRef?.current.get(task.id)}
-                  onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
-                />
-              ))}
-              {bottomRow.map((task) => (
-                <StreamCellFull
-                  key={task.id}
-                  task={task}
-                  projectId={projectId}
-                  compact
-                  onExpand={() => setExpandedTaskId(task.id)}
-                  onRemove={() => handleRemoveStream(task.id)}
-                  onComplete={onComplete}
-                  onResumeEditing={onResumeEditing}
-                  followUpDraft={followUpDraftsRef?.current.get(task.id)}
-                  onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
-                />
-              ))}
+              {/* Top row */}
+              <div className="flex flex-1 min-h-0">
+                {topRow.map((task, i) => (
+                  <React.Fragment key={task.id}>
+                    {i > 0 && (
+                      <div className="w-[3px] shrink-0 bg-zinc-700" />
+                    )}
+                    <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
+                      <StreamCellFull
+                        task={task}
+                        projectId={projectId}
+                        compact
+                        onExpand={() => setExpandedTaskId(task.id)}
+                        onRemove={() => handleRemoveStream(task.id)}
+                        onComplete={onComplete}
+                        onResumeEditing={onResumeEditing}
+                        followUpDraft={followUpDraftsRef?.current.get(task.id)}
+                        onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
+                      />
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
+              {/* Horizontal divider */}
+              <div className="h-[3px] shrink-0 bg-zinc-700" />
+              {/* Bottom row */}
+              <div className="flex flex-1 min-h-0">
+                {bottomRow.map((task, i) => (
+                  <React.Fragment key={task.id}>
+                    {i > 0 && (
+                      <div className="w-[3px] shrink-0 bg-zinc-700" />
+                    )}
+                    <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
+                      <StreamCellFull
+                        task={task}
+                        projectId={projectId}
+                        compact
+                        onExpand={() => setExpandedTaskId(task.id)}
+                        onRemove={() => handleRemoveStream(task.id)}
+                        onComplete={onComplete}
+                        onResumeEditing={onResumeEditing}
+                        followUpDraft={followUpDraftsRef?.current.get(task.id)}
+                        onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
+                      />
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -428,7 +595,9 @@ export function StreamsView({
     );
   }
 
-  // <=6 tasks: classic fixed grid
+  // <=6 tasks: resizable grid
+  const { rows: gridRows, cols: gridCols } = getGridDimensions(streamTasks.length);
+
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Toolbar */}
@@ -447,24 +616,23 @@ export function StreamsView({
           {addStreamButton}
         </div>
       )}
-      <div
-        className="flex-1 grid gap-px bg-border-default overflow-hidden min-h-0"
-        style={getGridStyle(streamTasks.length)}
-      >
-        {streamTasks.map((task) => (
-          <StreamCellFull
-            key={task.id}
-            task={task}
-            projectId={projectId}
-            compact
-            onExpand={() => setExpandedTaskId(task.id)}
-            onRemove={() => handleRemoveStream(task.id)}
-            onComplete={onComplete}
-            onResumeEditing={onResumeEditing}
-            followUpDraft={followUpDraftsRef?.current.get(task.id)}
-            onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
-          />
-        ))}
+      <div className="flex-1 overflow-hidden min-h-0">
+        <ResizableGrid rows={gridRows} cols={gridCols}>
+          {streamTasks.map((task) => (
+            <StreamCellFull
+              key={task.id}
+              task={task}
+              projectId={projectId}
+              compact
+              onExpand={() => setExpandedTaskId(task.id)}
+              onRemove={() => handleRemoveStream(task.id)}
+              onComplete={onComplete}
+              onResumeEditing={onResumeEditing}
+              followUpDraft={followUpDraftsRef?.current.get(task.id)}
+              onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
+            />
+          ))}
+        </ResizableGrid>
       </div>
     </div>
   );
