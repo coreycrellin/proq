@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon } from 'lucide-react';
+import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon } from 'lucide-react';
 import type { Task, TaskColumns } from '@/lib/types';
 import { StructuredPane } from '../StructuredPane';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRef = any;
 
 interface MobileStreamViewProps {
   tasks: TaskColumns;
@@ -72,12 +75,81 @@ function statusBadge(task: Task) {
   return null;
 }
 
+function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }) {
+  const [recording, setRecording] = useState(false);
+  const [supported, setSupported] = useState(false);
+  const recognitionRef = useRef<AnyRef>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    setSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
+  }, []);
+
+  const start = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SR) return;
+
+    const recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      const transcript = event.results?.[0]?.[0]?.transcript;
+      if (transcript) {
+        onTranscript(transcript);
+      }
+    };
+
+    recognition.onerror = () => setRecording(false);
+    recognition.onend = () => setRecording(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setRecording(true);
+  }, [onTranscript]);
+
+  const stop = useCallback(() => {
+    recognitionRef.current?.stop();
+    setRecording(false);
+  }, []);
+
+  if (!supported) return null;
+
+  return (
+    <div className="flex-shrink-0 px-3 pb-2">
+      <button
+        type="button"
+        onTouchStart={(e) => { e.preventDefault(); start(); }}
+        onTouchEnd={(e) => { e.preventDefault(); stop(); }}
+        onMouseDown={start}
+        onMouseUp={stop}
+        className={`w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none ${
+          recording
+            ? 'bg-red-500 text-white'
+            : 'bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80'
+        }`}
+      >
+        <MicIcon className={`w-5 h-5 ${recording ? 'animate-pulse' : ''}`} />
+        <span className="text-sm font-medium">
+          {recording ? 'Recording... release to send' : 'Hold to dictate'}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
   const streamTasks = getStreamTasks(tasks);
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const sendRef = useRef<((text: string) => void) | null>(null);
 
   // Clamp index when tasks change
   useEffect(() => {
@@ -104,6 +176,10 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
     }
     touchDeltaX.current = 0;
   }, [currentIndex, streamTasks.length]);
+
+  const handleTranscript = useCallback((text: string) => {
+    sendRef.current?.(text);
+  }, []);
 
   if (streamTasks.length === 0) {
     return (
@@ -154,11 +230,15 @@ export function MobileStreamView({ tasks, projectId }: MobileStreamViewProps) {
                 taskStatus={currentTask.status}
                 agentBlocks={currentTask.agentBlocks}
                 compact={true}
+                sendRef={sendRef}
               />
             </div>
           </div>
         )}
       </div>
+
+      {/* Record button */}
+      <RecordButton onTranscript={handleTranscript} />
 
       {/* Dot indicators */}
       {streamTasks.length > 1 && (

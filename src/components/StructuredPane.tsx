@@ -35,9 +35,10 @@ interface StructuredPaneProps {
   onTaskStatusChange?: (status: string) => void;
   compact?: boolean;
   readOnly?: boolean;
+  sendRef?: React.MutableRefObject<((text: string) => void) | null>;
 }
 
-export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly }: StructuredPaneProps) {
+export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly, sendRef }: StructuredPaneProps) {
   const { blocks, sessionDone, sendFollowUp, approvePlan, stop } = useAgentSession(taskId, projectId, agentBlocks);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -178,6 +179,25 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
       textareaRef.current.style.height = 'auto';
     }
   };
+
+  // Expose imperative send for external callers (e.g. mobile record button)
+  useEffect(() => {
+    if (sendRef) {
+      sendRef.current = (text: string) => {
+        if (!text.trim()) return;
+        if (taskStatus === 'done') {
+          fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'in-progress', followUpMessage: text }),
+          });
+        } else {
+          sendFollowUp(text);
+        }
+      };
+    }
+    return () => { if (sendRef) sendRef.current = null; };
+  }, [sendRef, taskId, projectId, taskStatus, sendFollowUp]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
