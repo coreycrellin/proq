@@ -67,7 +67,7 @@ function statusBadge(task: Task) {
   }
   if (task.status === 'done') {
     return (
-      <span className="flex items-center gap-1 text-xs text-green-400">
+      <span className="flex items-center gap-1 text-xs text-emerald">
         <CheckCircle2Icon className="w-3 h-3" />
         Done
       </span>
@@ -348,7 +348,7 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated }: MobileStre
                     <button
                       onClick={() => handleMarkDone(currentTask)}
                       disabled={completing}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-green-600 text-white active:bg-green-700 disabled:opacity-50"
+                      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-emerald bg-emerald/10 border border-emerald/20 active:bg-emerald/20 disabled:opacity-50"
                     >
                       <CheckIcon className="w-3 h-3" />
                       {completing ? '...' : 'Done'}
