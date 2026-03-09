@@ -4,6 +4,9 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { SendIcon, MicIcon, LoaderIcon } from 'lucide-react';
 import type { ChatLogEntry } from '@/lib/types';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRef = any;
+
 interface MobileChatProps {
   projectId: string;
 }
@@ -15,12 +18,13 @@ export function MobileChat({ projectId }: MobileChatProps) {
   const [recording, setRecording] = useState(false);
   const [recognitionSupported, setRecognitionSupported] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<AnyRef>(null);
 
   // Check for speech recognition support
   useEffect(() => {
-    const SR = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
-    setRecognitionSupported(!!SR);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    setRecognitionSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
   }, []);
 
   // Fetch messages
@@ -59,7 +63,6 @@ export function MobileChat({ projectId }: MobileChatProps) {
         body: JSON.stringify({ role: 'user', message: text.trim() }),
       });
       setInput('');
-      // Fetch updated messages
       const res = await fetch(`/api/projects/${projectId}/chat`);
       const data = await res.json();
       setMessages(Array.isArray(data) ? data : data.chatLog || []);
@@ -76,7 +79,9 @@ export function MobileChat({ projectId }: MobileChatProps) {
   }, [input, sendMessage]);
 
   const startRecording = useCallback(() => {
-    const SR = (window as unknown as Record<string, typeof SpeechRecognition>).SpeechRecognition || (window as unknown as Record<string, typeof SpeechRecognition>).webkitSpeechRecognition;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!SR) return;
 
     const recognition = new SR();
@@ -84,7 +89,7 @@ export function MobileChat({ projectId }: MobileChatProps) {
     recognition.interimResults = false;
     recognition.lang = 'en-US';
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: { results: { 0: { 0: { transcript: string } } }[] }) => {
       const transcript = event.results[0]?.[0]?.transcript;
       if (transcript) {
         sendMessage(transcript);

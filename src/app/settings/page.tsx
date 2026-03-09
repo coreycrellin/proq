@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   BotIcon,
-
   PaletteIcon,
   BellIcon,
   InfoIcon,
@@ -12,7 +11,9 @@ import {
   XIcon,
   SearchIcon,
   LoaderIcon,
+  SmartphoneIcon,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import type { ProqSettings } from "@/lib/types";
 import { Select } from "@/components/ui/select";
 
@@ -20,7 +21,8 @@ type SettingsSection =
   | "about"
   | "appearance"
   | "agent"
-  | "notifications";
+  | "notifications"
+  | "mobile";
 
 const SECTIONS: {
   id: SettingsSection;
@@ -39,6 +41,11 @@ const SECTIONS: {
     label: "Notifications",
     icon: <BellIcon className="w-4 h-4" />,
   },
+  {
+    id: "mobile",
+    label: "Mobile",
+    icon: <SmartphoneIcon className="w-4 h-4" />,
+  },
 ];
 
 export default function SettingsPage() {
@@ -47,6 +54,7 @@ export default function SettingsPage() {
     useState<SettingsSection>("about");
   const [detectingBin, setDetectingBin] = useState(false);
   const [detectMessage, setDetectMessage] = useState<string | null>(null);
+  const [mobileUrl, setMobileUrl] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const isScrollingTo = useRef(false);
@@ -55,6 +63,10 @@ export default function SettingsPage() {
     fetch("/api/settings")
       .then((res) => res.json())
       .then(setSettings)
+      .catch(console.error);
+    fetch("/api/network-info")
+      .then((res) => res.json())
+      .then((data) => setMobileUrl(data.url))
       .catch(console.error);
   }, []);
 
@@ -394,6 +406,44 @@ export default function SettingsPage() {
                   </div>
                 </Field>
               </div>
+            </section>
+
+            {/* Mobile */}
+            <section
+              ref={(el) => {
+                sectionRefs.current.mobile = el;
+              }}
+              id="settings-mobile"
+            >
+              <SectionHeading
+                icon={<SmartphoneIcon className="w-4 h-4" />}
+                label="Mobile Companion"
+              />
+              <p className="text-sm text-text-secondary leading-relaxed mb-4">
+                Scan this QR code with your phone to open the mobile companion.
+                Make sure your phone and computer are on the same WiFi network.
+              </p>
+              {mobileUrl ? (
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <div className="bg-white p-4 rounded-xl">
+                    <QRCodeSVG
+                      value={mobileUrl}
+                      size={180}
+                      level="M"
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-text-tertiary mb-1">Or open manually:</p>
+                    <code className="text-xs text-bronze-400 font-mono bg-surface-inset px-2.5 py-1 rounded-md border border-border-default select-all">
+                      {mobileUrl}
+                    </code>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-text-tertiary">Detecting network address...</p>
+              )}
             </section>
           </div>
         </div>

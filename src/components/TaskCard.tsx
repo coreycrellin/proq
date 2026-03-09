@@ -141,42 +141,39 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, onDel
           </div>
         )}
 
-        <div className="flex items-center justify-between mt-3 pt-2 border-t border-border-subtle/60">
-          {isPreviewActive && !isActive && !isQueued ? (
-            <div className="flex items-center gap-1.5">
-              <EyeIcon className="w-3 h-3 text-lazuli" />
-              <span className="text-[10px] text-lazuli font-medium uppercase tracking-wide">
-                Previewing
-              </span>
-            </div>
-          ) : isQueued ? (
-            <div className="flex items-center gap-1.5">
-              <ClockIcon className="w-3 h-3 text-text-secondary" />
-              <span className="text-[10px] text-text-secondary font-medium uppercase tracking-wide">
-                Queued
-              </span>
-            </div>
-          ) : isRunning ? (
-            <div className="flex items-center gap-1.5">
-              <Loader2Icon className="w-3 h-3 text-bronze-500 animate-spin" />
-              <span className="text-[10px] text-bronze-500 font-medium uppercase tracking-wide">
-                Agent working
-              </span>
-            </div>
-          ) : isStarting ? (
-            <div className="flex items-center gap-1.5">
-              <Loader2Icon className="w-3 h-3 text-text-secondary animate-spin" />
-              <span className="text-[10px] text-text-secondary font-medium uppercase tracking-wide">
-                Starting...
-              </span>
-            </div>
-          ) : (
-            <span />
-          )}
-          <span className="text-[10px] text-text-tertiary font-mono">
-            {task.id.slice(0, 8)}
-          </span>
-        </div>
+        {(isPreviewActive || isActive || isQueued) && (
+          <div className="mt-3 pt-2 border-t border-border-subtle/60">
+            {isPreviewActive && !isActive && !isQueued ? (
+              <div className="flex items-center gap-1.5">
+                <EyeIcon className="w-3 h-3 text-lazuli" />
+                <span className="text-[10px] text-lazuli font-medium uppercase tracking-wide">
+                  Previewing
+                </span>
+              </div>
+            ) : isQueued ? (
+              <div className="flex items-center gap-1.5">
+                <ClockIcon className="w-3 h-3 text-text-secondary" />
+                <span className="text-[10px] text-text-secondary font-medium uppercase tracking-wide">
+                  Queued
+                </span>
+              </div>
+            ) : isRunning ? (
+              <div className="flex items-center gap-1.5">
+                <Loader2Icon className="w-3 h-3 text-bronze-500 animate-spin" />
+                <span className="text-[10px] text-bronze-500 font-medium uppercase tracking-wide">
+                  Agent working
+                </span>
+              </div>
+            ) : isStarting ? (
+              <div className="flex items-center gap-1.5">
+                <Loader2Icon className="w-3 h-3 text-text-secondary animate-spin" />
+                <span className="text-[10px] text-text-secondary font-medium uppercase tracking-wide">
+                  Starting...
+                </span>
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   );
