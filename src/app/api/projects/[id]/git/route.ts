@@ -19,7 +19,9 @@ import {
   gitLogFull,
   gitShowCommit,
   gitLogPaginated,
+  gitTaskCommits,
 } from "@/lib/worktree";
+import { getTask } from "@/lib/db";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -241,6 +243,40 @@ ${diff.slice(0, 12000)}`;
         const msg = err instanceof Error ? err.message : "Failed to create branch";
         return NextResponse.json({ error: msg }, { status: 500 });
       }
+    }
+
+    if (body.action === "task-commits") {
+      const taskId = body.taskId;
+      if (!taskId || typeof taskId !== "string") {
+        return NextResponse.json({ error: "taskId is required" }, { status: 400 });
+      }
+      const task = await getTask(id, taskId);
+      if (!task) {
+        return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      }
+
+      // Determine the git path and ref range
+      let gitPath = projectPath;
+      let fromRef: string | null = null;
+      let toRef = "HEAD";
+
+      if (task.branch) {
+        // Parallel mode: commits between baseBranch and task branch
+        fromRef = task.baseBranch || "main";
+        toRef = task.branch;
+        // Use main project path (worktree branches are visible from main repo)
+      } else if (task.startCommit) {
+        // Sequential mode: commits since startCommit
+        fromRef = task.startCommit;
+        toRef = "HEAD";
+      }
+
+      if (!fromRef) {
+        return NextResponse.json({ commits: [] });
+      }
+
+      const commits = gitTaskCommits(gitPath, fromRef, toRef);
+      return NextResponse.json({ commits });
     }
 
     return NextResponse.json({ error: `Unknown action: ${body.action}` }, { status: 400 });
