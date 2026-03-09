@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { SquareIcon, ArrowDownIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, Loader2Icon, RotateCcwIcon } from 'lucide-react';
+import { SquareIcon, ArrowDownIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, Loader2Icon } from 'lucide-react';
 import type { AgentBlock, TaskAttachment, FollowUpDraft } from '@/lib/types';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
 import { handleChatCommand } from '@/lib/chat-commands';
@@ -155,7 +155,21 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
   const handleSend = () => {
     const text = inputValue.trim();
     if (!text && attachments.length === 0) return;
-    sendFollowUp(text, attachments.length > 0 ? attachments : undefined);
+
+    if (taskStatus === 'done') {
+      // Re-dispatch: move task back to in-progress with follow-up message
+      fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'in-progress',
+          followUpMessage: text,
+        }),
+      });
+    } else {
+      sendFollowUp(text, attachments.length > 0 ? attachments : undefined);
+    }
+
     setInputValue('');
     setAttachments([]);
     onFollowUpDraftChange?.(null);
@@ -499,21 +513,6 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
 
       {/* Input area */}
       <div className={`shrink-0 ${compact ? 'px-1.5 py-1' : 'px-3 py-2.5'}`}>
-        {taskStatus === 'done' ? (
-          compact ? null : (
-          <div className="flex items-center justify-between rounded-xl border border-border-strong bg-surface-detail px-4 py-3">
-            <span className="text-xs text-text-tertiary">This task is read-only. Move back to Verify to resume editing.</span>
-            <button
-              onClick={() => onTaskStatusChange?.('verify')}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface-hover border border-border-strong rounded-lg hover:bg-border-strong"
-            >
-              <RotateCcwIcon className="w-3 h-3" />
-              Resume editing
-            </button>
-          </div>
-          )
-        ) : (
-        <>
         <div className={`${compact ? 'rounded-lg' : 'rounded-xl'} border border-border-strong/40 focus-within:border-border-strong bg-surface-topbar overflow-hidden transition-colors`}>
           {/* Attachment previews inside container */}
           {attachments.length > 0 && (
@@ -580,7 +579,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
                 value={inputValue}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Send a message..."
+                placeholder={taskStatus === 'done' ? "Send a follow-up..." : "Send a message..."}
                 rows={1}
                 style={{ height: '24px' }}
                 className="flex-1 min-h-[24px] max-h-[60px] resize-none overflow-hidden bg-transparent text-xs leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none py-0.5"
@@ -612,7 +611,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Send a message..."
+              placeholder={taskStatus === 'done' ? "Send a follow-up..." : "Send a message..."}
               rows={1}
               style={{ height: '36px' }}
               className="w-full min-h-[36px] max-h-[160px] resize-none overflow-hidden bg-transparent px-3 pt-3 pb-2 text-sm leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none"
@@ -662,8 +661,6 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
             }
           }}
         />
-        </>
-        )}
       </div>
     </div>
   );

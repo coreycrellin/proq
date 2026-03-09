@@ -223,6 +223,7 @@ export async function dispatchTask(
   mode?: TaskMode,
   attachments?: TaskAttachment[],
   renderMode?: AgentRenderMode,
+  followUpMessage?: string,
 ): Promise<string | undefined> {
   // Look up project path
   const projects = await getAllProjects();
@@ -283,9 +284,13 @@ export async function dispatchTask(
     }
   }
 
-  const heading = taskTitle
+  let heading = taskTitle
     ? `# ${taskTitle}\n\n${taskDescription}`
     : taskDescription;
+
+  if (followUpMessage) {
+    heading += `\n\n## Follow-up\n\nThe previous work on this task is complete. The user has sent a follow-up message with additional instructions:\n\n${followUpMessage}\n\nBuild on the existing work — do not redo what was already done. Focus on the follow-up request.`;
+  }
 
   // ── CLI mode: dispatch via tmux ──
   if (renderMode === "cli") {
@@ -541,9 +546,10 @@ export async function processQueue(projectId: string): Promise<void> {
           next.mode,
           next.attachments,
           next.renderMode,
+          next.followUpMessage,
         );
         if (result) {
-          await updateTask(projectId, next.id, { agentStatus: "running" });
+          await updateTask(projectId, next.id, { agentStatus: "running", followUpMessage: undefined });
           emitTaskUpdate(projectId, next.id, { agentStatus: "running" });
         } else {
           console.log(
@@ -575,9 +581,10 @@ export async function processQueue(projectId: string): Promise<void> {
           task.mode,
           task.attachments,
           task.renderMode,
+          task.followUpMessage,
         );
         if (result) {
-          await updateTask(projectId, task.id, { agentStatus: "running" });
+          await updateTask(projectId, task.id, { agentStatus: "running", followUpMessage: undefined });
           emitTaskUpdate(projectId, task.id, { agentStatus: "running" });
         } else {
           console.log(

@@ -45,6 +45,24 @@ export async function PATCH(request: Request, { params }: Params) {
         await updateTask(id, taskId, { agentStatus, renderMode });
         updated.agentStatus = agentStatus;
         updated.renderMode = renderMode;
+      } else if (prevStatus === "done" || prevStatus === "verify") {
+        // Re-dispatch: user is sending a follow-up on a completed task
+        clearSession(taskId);
+        const settings = await getSettings();
+        const agentStatus = await getInitialAgentStatus(id, taskId);
+        const renderMode = updated.renderMode || settings.agentRenderMode || 'structured';
+        const followUpFields: Record<string, unknown> = {
+          agentStatus,
+          renderMode,
+          agentBlocks: undefined,
+          agentLog: "",
+        };
+        if (body.followUpMessage) {
+          followUpFields.followUpMessage = body.followUpMessage;
+        }
+        await updateTask(id, taskId, followUpFields);
+        updated.agentStatus = agentStatus as typeof updated.agentStatus;
+        updated.renderMode = renderMode as typeof updated.renderMode;
       }
     } else if (body.status === "todo" && prevStatus !== "todo") {
       cancelCleanup(taskId);

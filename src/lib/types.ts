@@ -93,6 +93,7 @@ export interface Task {
   agentBlocks?: AgentBlock[];
   sessionId?: string;
   attachments?: TaskAttachment[];
+  followUpMessage?: string;
   createdAt: string;
   updatedAt: string;
 }
