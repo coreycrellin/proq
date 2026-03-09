@@ -173,7 +173,7 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
         <button
           type="button"
           onClick={() => setShowSetup(true)}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none bg-amber-500/10 border border-amber-500/30 text-amber-400 active:bg-amber-500/20"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80"
         >
           <ShieldAlertIcon className="w-5 h-5" />
           <span className="text-sm font-medium">Tap to enable voice dictation</span>
