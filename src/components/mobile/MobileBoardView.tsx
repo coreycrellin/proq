@@ -8,6 +8,7 @@ interface MobileBoardViewProps {
   tasks: TaskColumns;
   projectId: string;
   onTaskCreated?: () => void;
+  onTaskClick?: (taskId: string) => void;
 }
 
 const COLUMNS: { key: TaskStatus; label: string; color: string }[] = [
