@@ -131,6 +131,9 @@ const LOGOTYPE_SINGLE_PATH =
 const LOGOTYPE_SINGLE_PATH_2 =
   "M145.152 165.235H182.126V113.651H106.241V217.41H236.237V60H53V271.749H289.5V233V60H472.737V217.41H342.741V113.651H418.626V165.235H391.5V271.749H527V60H688.111V217.41H580.241V165.235V113.651H634V165.235V271.749H925.374V60.0001H742.374V217.41H872.202V113.651H796.415V165.235H833.342";
 
+const LOGOTYPE_SEPARATE_PATH =
+  "M55 317.501V80.5006H238.237V237.911H108.241V134.152H184.126V185.736H147.152M291.5 253.501V80.5006H474.737V237.911H344.741V134.152H420.626V185.736H383.652M949.5 317.501V80.5007H766.5V237.911H896.328V134.152H820.541V185.736H857.467M529 237.911V80.5006H712.237V237.911H529ZM582.241 134.152H658.126V185.736H582.241V134.152Z";
+
 function LogoAnimation({
   config,
   selected,
@@ -682,7 +685,8 @@ export default function ExperimentsPage() {
   const [configB, setConfigB] = useState<Config>(PRESET_C);
   const [configC, setConfigC] = useState<Config>(PRESET_C);
   const [configD, setConfigD] = useState<GlitchConfig>(DEFAULT_GLITCH_CONFIG);
-  const [selected, setSelected] = useState<"a" | "b" | "c" | null>(null);
+  const [configD2, setConfigD2] = useState<Config>(PRESET_C);
+  const [selected, setSelected] = useState<"a" | "b" | "c" | "d2" | null>(null);
   const [showGlitchConfig, setShowGlitchConfig] = useState(false);
 
   const updateA = useCallback(
@@ -706,6 +710,13 @@ export default function ExperimentsPage() {
     []
   );
 
+  const updateD2 = useCallback(
+    <K extends keyof Config>(key: K, value: Config[K]) => {
+      setConfigD2((prev) => ({ ...prev, [key]: value }));
+    },
+    []
+  );
+
   const updateD = useCallback(
     <K extends keyof GlitchConfig>(key: K, value: GlitchConfig[K]) => {
       setConfigD((prev) => ({ ...prev, [key]: value }));
@@ -713,10 +724,10 @@ export default function ExperimentsPage() {
     []
   );
 
-  const configs = { a: configA, b: configB, c: configC };
-  const updates = { a: updateA, b: updateB, c: updateC };
-  const setConfigs = { a: setConfigA, b: setConfigB, c: setConfigC };
-  const labels = { a: "Variant A", b: "Variant B", c: "Variant C" };
+  const configs = { a: configA, b: configB, c: configC, d2: configD2 };
+  const updates = { a: updateA, b: updateB, c: updateC, d2: updateD2 };
+  const setConfigs = { a: setConfigA, b: setConfigB, c: setConfigC, d2: setConfigD2 };
+  const labels = { a: "Variant A", b: "Variant B", c: "Variant C", d2: "Variant D" };
 
   const activeConfig = selected ? configs[selected] : configA;
   const activeUpdate = selected ? updates[selected] : updateA;
@@ -771,6 +782,15 @@ export default function ExperimentsPage() {
             onClick={() => setSelected(selected === "c" ? null : "c")}
             label="C"
             svgPath={LOGOTYPE_SINGLE_PATH}
+            viewBox="0 0 1001 372"
+            aspectRatio={1001 / 372}
+          />
+          <LogoAnimation
+            config={configD2}
+            selected={selected === "d2"}
+            onClick={() => setSelected(selected === "d2" ? null : "d2")}
+            label="D"
+            svgPath={LOGOTYPE_SEPARATE_PATH}
             viewBox="0 0 1001 372"
             aspectRatio={1001 / 372}
           />
