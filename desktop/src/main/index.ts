@@ -155,9 +155,13 @@ function registerIpcHandlers(): void {
 
   // Server
   ipcMain.handle('server:start', async () => {
-    return startServer((line) => {
+    const result = await startServer((line) => {
       mainWindow?.webContents.send('server:log', line)
     })
+    if (result.ok) {
+      transitionToApp()
+    }
+    return result
   })
 
   // Updates
@@ -171,6 +175,23 @@ function registerIpcHandlers(): void {
 }
 
 // ── App Lifecycle ─────────────────────────────────────────────────────
+
+function transitionToApp(): void {
+  const config = getConfig()
+  const appWindow = createWindow('app')
+  appWindow.loadURL(`http://localhost:${config.port}`)
+
+  appWindow.webContents.on('did-finish-load', () => {
+    mainWindow?.close()
+    mainWindow = appWindow
+  })
+
+  // Open external links in default browser
+  appWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http')) shell.openExternal(url)
+    return { action: 'deny' }
+  })
+}
 
 async function launchApp(): Promise<void> {
   const config = getConfig()
@@ -190,20 +211,7 @@ async function launchApp(): Promise<void> {
       })
 
       if (result.ok) {
-        // Replace splash with main app window
-        const appWindow = createWindow('app')
-        appWindow.loadURL(`http://localhost:${config.port}`)
-
-        appWindow.webContents.on('did-finish-load', () => {
-          mainWindow?.close()
-          mainWindow = appWindow
-        })
-
-        // Open external links in default browser
-        appWindow.webContents.setWindowOpenHandler(({ url }) => {
-          if (url.startsWith('http')) shell.openExternal(url)
-          return { action: 'deny' }
-        })
+        transitionToApp()
       } else {
         mainWindow?.webContents.send('server:error', result.error || 'Server failed to start')
       }

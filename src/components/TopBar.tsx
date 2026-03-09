@@ -324,7 +324,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                       <DropdownMenuItem disabled className="text-xs text-text-tertiary">No changes found</DropdownMenuItem>
                     ) : (
                       dirtyFiles.map((file, i) => (
-                        <DropdownMenuItem key={i} className="text-xs gap-2 font-mono pointer-events-none">
+                        <DropdownMenuItem key={i} className="text-xs gap-2 font-mono pointer-events-none min-w-0">
                           <StatusBadge status={file.status} />
                           <span className="truncate">{file.path}</span>
                         </DropdownMenuItem>

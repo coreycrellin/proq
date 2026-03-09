@@ -183,7 +183,7 @@ export function runNpmBuild(
   return new Promise((resolve) => {
     const child = spawn('npm', ['run', 'build'], {
       cwd: proqPath,
-      env: { ...process.env },
+      env: { ...process.env, NODE_ENV: 'production' },
       stdio: ['ignore', 'pipe', 'pipe']
     })
 
