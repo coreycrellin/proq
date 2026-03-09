@@ -86,36 +86,24 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, colum
       `}
       onClick={() => !isDragOverlay && onClick?.(task)}
     >
-      {/* Action buttons */}
-      {!isDragOverlay && (onDelete || onComplete) && (
+      {/* Delete button */}
+      {!isDragOverlay && onDelete && (
         <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-          {onComplete && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onComplete(task.id);
-              }}
-              className="p-1 rounded text-text-chrome hover:text-emerald hover:bg-surface-hover"
-            >
-              <CheckIcon className="w-3.5 h-3.5" />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(task.id);
-              }}
-              className="p-1 rounded text-text-chrome hover:text-crimson hover:bg-surface-hover"
-            >
-              <Trash2Icon className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(task.id);
+            }}
+            className="p-1 rounded text-text-chrome hover:text-crimson hover:bg-surface-hover"
+          >
+            <Trash2Icon className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
       <div className="p-3 min-h-[80px]">
-        <div className="flex items-start justify-between pr-6">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0 pr-4">
           {editing ? (
             <input
               ref={inputRef}
@@ -142,6 +130,18 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, colum
             <p className="text-sm text-text-primary leading-snug font-normal line-clamp-2">
               {task.description}
             </p>
+          )}
+          </div>
+          {!isDragOverlay && onComplete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onComplete(task.id);
+              }}
+              className="p-1 rounded text-text-chrome opacity-0 group-hover:opacity-100 transition-opacity hover:text-emerald hover:bg-surface-hover shrink-0 mt-0.5"
+            >
+              <CheckIcon className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
 
