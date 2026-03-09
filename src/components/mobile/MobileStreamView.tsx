@@ -287,19 +287,29 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchDeltaX.current = 0;
+    setIsAnimating(false);
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
-  }, []);
+    const delta = e.touches[0].clientX - touchStartX.current;
+    touchDeltaX.current = delta;
+    // Add resistance at edges
+    if ((currentIndex === 0 && delta > 0) || (currentIndex === streamTasks.length - 1 && delta < 0)) {
+      setSwipeOffset(delta * 0.3);
+    } else {
+      setSwipeOffset(delta);
+    }
+  }, [currentIndex, streamTasks.length]);
 
   const handleTouchEnd = useCallback(() => {
     const threshold = 50;
+    setIsAnimating(true);
     if (touchDeltaX.current < -threshold && currentIndex < streamTasks.length - 1) {
       setCurrentIndex((i) => i + 1);
     } else if (touchDeltaX.current > threshold && currentIndex > 0) {
       setCurrentIndex((i) => i - 1);
     }
+    setSwipeOffset(0);
     touchDeltaX.current = 0;
   }, [currentIndex, streamTasks.length]);
 
