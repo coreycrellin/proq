@@ -374,6 +374,16 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
     }
   }, [streamTasks.length, currentIndex]);
 
+  // Sync slider position when currentIndex changes (dot clicks, focus, clamp)
+  // Touch gestures handle their own animation — this covers non-touch index changes
+  const isTouchActiveRef = useRef(false);
+  useEffect(() => {
+    const slider = sliderRef.current;
+    if (!slider || isTouchActiveRef.current) return;
+    slider.style.transition = 'transform 300ms cubic-bezier(0.25, 1, 0.5, 1)';
+    slider.style.transform = `translateX(-${currentIndex * 100}%)`;
+  }, [currentIndex]);
+
   // Use native touch listeners with { passive: false } so we can preventDefault on horizontal swipes
   useEffect(() => {
     const el = containerRef.current;
@@ -387,11 +397,12 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
     };
 
     const onTouchStart = (e: TouchEvent) => {
+      isTouchActiveRef.current = true;
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
       touchDeltaX.current = 0;
       isHorizontalSwipe.current = null;
-      // Cancel any ongoing animation
+      // Cancel any ongoing animation — snap to current position
       updateSliderTransform(currentIndexRef.current, 0, false);
     };
 
@@ -426,6 +437,7 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
     const onTouchEnd = () => {
       if (isHorizontalSwipe.current === false) {
         isHorizontalSwipe.current = null;
+        isTouchActiveRef.current = false;
         return;
       }
       const threshold = 50;
@@ -442,6 +454,8 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
       swipeOffsetRef.current = 0;
       touchDeltaX.current = 0;
       isHorizontalSwipe.current = null;
+      // Release touch lock after animation completes
+      setTimeout(() => { isTouchActiveRef.current = false; }, 320);
       if (newIdx !== idx) {
         setCurrentIndex(newIdx);
       }
@@ -553,10 +567,7 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
       >
         <div
           ref={sliderRef}
-          className="flex h-full"
-          style={{
-            transform: `translateX(-${currentIndex * 100}%)`,
-          }}
+          className="flex h-full will-change-transform"
         >
           {streamTasks.map((task, i) => (
             <div key={task.id} className="w-full h-full flex-shrink-0 flex flex-col min-h-0" style={{ width: '100%' }}>
