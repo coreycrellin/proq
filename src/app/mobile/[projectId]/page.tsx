@@ -7,7 +7,7 @@ import { MobileShell } from '@/components/mobile/MobileShell';
 import { MobileStreamView } from '@/components/mobile/MobileStreamView';
 import { MobileBoardView } from '@/components/mobile/MobileBoardView';
 import { MobileChat } from '@/components/mobile/MobileChat';
-import type { Project, TaskColumns } from '@/lib/types';
+import type { Project, Task, TaskStatus, TaskColumns } from '@/lib/types';
 
 type MobileTab = 'streams' | 'board' | 'chat';
 
@@ -54,7 +54,7 @@ export default function MobileProjectView() {
     fetchTasks();
   }, [fetchTasks]);
 
-  // SSE for real-time updates
+  // SSE for real-time updates — move tasks between columns on status change
   useEffect(() => {
     let es: EventSource | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout>;
@@ -69,15 +69,30 @@ export default function MobileProjectView() {
         try {
           const update = JSON.parse(event.data);
           if (update.taskId && update.changes) {
-            // Merge changes into local state
+            const newStatus = update.changes.status as TaskStatus | undefined;
+
             setTasks((prev) => {
-              const next = { ...prev };
-              for (const col of Object.keys(next) as (keyof TaskColumns)[]) {
-                next[col] = next[col].map((t) =>
-                  t.id === update.taskId ? { ...t, ...update.changes } : t
-                );
+              // Find the task in any column
+              for (const status of ['todo', 'in-progress', 'verify', 'done'] as TaskStatus[]) {
+                const idx = prev[status].findIndex((t: Task) => t.id === update.taskId);
+                if (idx === -1) continue;
+
+                const task = prev[status][idx];
+                const merged = { ...task, ...update.changes } as Task;
+                const next = { ...prev };
+
+                if (newStatus && newStatus !== status) {
+                  // Move between columns
+                  next[status] = prev[status].filter((t: Task) => t.id !== update.taskId);
+                  next[newStatus] = [...prev[newStatus], merged];
+                } else {
+                  // Update in place
+                  next[status] = [...prev[status]];
+                  next[status][idx] = merged;
+                }
+                return next;
               }
-              return next;
+              return prev; // task not found — will be caught by poll
             });
           }
         } catch {
@@ -100,9 +115,9 @@ export default function MobileProjectView() {
     };
   }, [projectId]);
 
-  // Fallback poll every 5s
+  // Poll every 3s for full consistency (catches new tasks, deletions, reorders)
   useEffect(() => {
-    const interval = setInterval(fetchTasks, 5000);
+    const interval = setInterval(fetchTasks, 3000);
     return () => clearInterval(interval);
   }, [fetchTasks]);
 
@@ -131,7 +146,7 @@ export default function MobileProjectView() {
       }
     >
       {activeTab === 'streams' && (
-        <MobileStreamView tasks={tasks} projectId={projectId} />
+        <MobileStreamView tasks={tasks} projectId={projectId} onTaskCreated={fetchTasks} />
       )}
       {activeTab === 'board' && (
         <MobileBoardView tasks={tasks} />
