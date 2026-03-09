@@ -743,18 +743,9 @@ export default function ProjectPage() {
                   tasks={columns}
                   projectId={projectId}
                   onAddTask={handleAddTask}
-                  onClickTask={(task) => {
-                    if (task.status === 'todo') {
-                      setModalTask(task);
-                    } else {
-                      setAgentModalTask(task);
-                    }
-                  }}
-                  onDeleteTask={deleteTask}
                   executionMode={executionMode}
                   onExecutionModeChange={handleExecutionModeChange}
                   onStartTask={(taskId) => moveTask(taskId, 'in-progress', 0)}
-                  cleanupTimes={cleanupTimes}
                   followUpDraftsRef={followUpDraftsRef}
                   onFollowUpDraftChange={(taskId, draft) => {
                     if (draft) followUpDraftsRef.current.set(taskId, draft);
@@ -768,11 +759,6 @@ export default function ProjectPage() {
                   onResumeEditing={async (taskId) => {
                     await updateTask(taskId, { status: 'verify' });
                   }}
-                  onUpdateTitle={(taskId, title) => updateTask(taskId, { title })}
-                  parallelMode={executionMode === 'parallel'}
-                  currentBranch={currentBranch}
-                  onSwitchBranch={handleSwitchBranch}
-                  defaultBranch={project?.defaultBranch || 'main'}
                 />
               )}
             </div>

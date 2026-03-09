@@ -30,20 +30,12 @@ import {
 interface StreamsViewProps {
   tasks: TaskColumns;
   projectId: string;
-  onClickTask?: (task: Task) => void;
-  onDeleteTask?: (taskId: string) => void;
   executionMode?: ExecutionMode;
   onExecutionModeChange?: (mode: ExecutionMode) => void;
-  cleanupTimes?: Record<string, number>;
   followUpDraftsRef?: React.MutableRefObject<Map<string, FollowUpDraft>>;
   onFollowUpDraftChange?: (taskId: string, draft: FollowUpDraft | null) => void;
   onComplete?: (taskId: string) => void;
   onResumeEditing?: (taskId: string) => void;
-  onUpdateTitle?: (taskId: string, title: string) => void;
-  parallelMode?: boolean;
-  currentBranch?: string;
-  onSwitchBranch?: (branch: string) => void;
-  defaultBranch?: string;
   onAddTask?: () => void;
   onStartTask?: (taskId: string) => void;
 }
@@ -231,11 +223,9 @@ function ResizableGrid({
 }
 
 function statusBorderColor(task: Task): string {
-  if (task.agentStatus === 'running') return 'border-l-zinc-500';
-  if (task.agentStatus === 'starting') return 'border-l-zinc-500';
-  if (task.agentStatus === 'queued') return 'border-l-zinc-600';
-  if (task.status === 'verify') return 'border-l-zinc-500';
-  if (task.status === 'done') return 'border-l-zinc-600';
+  if (task.agentStatus === 'running' || task.agentStatus === 'starting' || task.status === 'verify') {
+    return 'border-l-zinc-500';
+  }
   return 'border-l-zinc-600';
 }
 
@@ -497,27 +487,31 @@ export function StreamsView({
     </div>
   ) : null;
 
+  const toolbar = (extra?: React.ReactNode) => (
+    <div className="flex items-center px-2 py-1 shrink-0 gap-2">
+      {onAddTask && (
+        <button
+          onClick={onAddTask}
+          className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 transition-colors"
+          title="New Task"
+        >
+          <PlusIcon className="w-3 h-3" />
+          New Task
+        </button>
+      )}
+      {modeDropdown}
+      {extra}
+      <div className="flex-1 min-w-0">{todoQueue}</div>
+      <div className="flex items-center gap-1 shrink-0">
+        {addStreamButton}
+      </div>
+    </div>
+  );
+
   if (streamTasks.length === 0) {
     return (
       <div className="h-full flex flex-col text-text-tertiary relative">
-        {/* Toolbar even when empty */}
-        <div className="flex items-center px-2 py-1 shrink-0 gap-2">
-          {onAddTask && (
-            <button
-              onClick={onAddTask}
-              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 transition-colors"
-              title="New Task"
-            >
-              <PlusIcon className="w-3 h-3" />
-              New Task
-            </button>
-          )}
-          {modeDropdown}
-          <div className="flex-1 min-w-0">{todoQueue}</div>
-          <div className="flex items-center gap-1 shrink-0">
-            {addStreamButton}
-          </div>
-        </div>
+        {toolbar()}
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <RadioTowerIcon className="w-8 h-8 opacity-30" />
           <p className="text-sm">No active streams</p>
@@ -564,27 +558,11 @@ export function StreamsView({
 
     return (
       <div className="h-full flex flex-col min-h-0 overflow-hidden">
-        {/* Toolbar */}
-        <div className="flex items-center px-2 py-1 shrink-0 gap-2">
-          {onAddTask && (
-            <button
-              onClick={onAddTask}
-              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 transition-colors"
-              title="New Task"
-            >
-              <PlusIcon className="w-3 h-3" />
-              New Task
-            </button>
-          )}
-          {modeDropdown}
+        {toolbar(
           <span className="text-[10px] text-text-placeholder">
             {streamTasks.length} streams
           </span>
-          <div className="flex-1 min-w-0">{todoQueue}</div>
-          <div className="flex items-center gap-1 shrink-0">
-            {addStreamButton}
-          </div>
-        </div>
+        )}
         {/* Scrollable area with navigation arrows */}
         <div className="flex-1 relative min-h-0">
           {/* Left scroll arrow */}
@@ -679,24 +657,7 @@ export function StreamsView({
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex items-center px-2 py-1 shrink-0 gap-2">
-        {onAddTask && (
-          <button
-            onClick={onAddTask}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 transition-colors"
-            title="New Task"
-          >
-            <PlusIcon className="w-3 h-3" />
-            New Task
-          </button>
-        )}
-        {modeDropdown}
-        <div className="flex-1 min-w-0">{todoQueue}</div>
-        <div className="flex items-center gap-1 shrink-0">
-          {addStreamButton}
-        </div>
-      </div>
+      {toolbar()}
       <div className="flex-1 overflow-hidden min-h-0">
         <ResizableGrid rows={gridRows} cols={gridCols}>
           {streamTasks.map((task, i) => (
