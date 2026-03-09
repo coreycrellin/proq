@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon, PlusIcon, CheckIcon, SendIcon, PaperclipIcon, XIcon, FileIcon } from 'lucide-react';
 import type { Task, TaskColumns, TaskAttachment } from '@/lib/types';
 import { StructuredPane } from '../StructuredPane';
@@ -180,13 +180,27 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
 }
 
 export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId, isNewTask }: MobileStreamViewProps) {
-  const streamTasks = getStreamTasks(tasks, focusTaskId);
+  // Memoize streamTasks by task IDs + statuses to avoid unnecessary recalculations
+  const streamTasks = useMemo(() => getStreamTasks(tasks, focusTaskId), [
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    JSON.stringify(
+      [...(tasks['in-progress'] || []), ...(tasks['verify'] || []), ...(tasks['done'] || []), ...(tasks['todo'] || [])]
+        .map(t => `${t.id}:${t.status}:${t.agentStatus}`)
+    ),
+    focusTaskId,
+  ]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
   const touchDeltaX = useRef(0);
+  const isHorizontalSwipe = useRef<boolean | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+  const streamTasksLenRef = useRef(streamTasks.length);
+  streamTasksLenRef.current = streamTasks.length;
   const sendRef = useRef<((text: string) => void) | null>(null);
   const attachRef = useRef<(() => void) | null>(null);
   const [showNewTask, setShowNewTask] = useState(false);
@@ -299,14 +313,16 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
     }
   }, [completing, projectId, onTaskCreated]);
 
-  // Focus on a specific task when requested from board view
+  // Focus on a specific task when requested from board view — only on focusTaskId change
+  const prevFocusTaskId = useRef(focusTaskId);
   useEffect(() => {
-    if (focusTaskId) {
+    if (focusTaskId && focusTaskId !== prevFocusTaskId.current) {
       const idx = streamTasks.findIndex((t) => t.id === focusTaskId);
       if (idx !== -1) {
         setCurrentIndex(idx);
       }
     }
+    prevFocusTaskId.current = focusTaskId;
   }, [focusTaskId, streamTasks]);
 
   // Clamp index when tasks change
@@ -316,34 +332,76 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
     }
   }, [streamTasks.length, currentIndex]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchDeltaX.current = 0;
-    setIsAnimating(false);
-  }, []);
+  // Use native touch listeners with { passive: false } so we can preventDefault on horizontal swipes
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const delta = e.touches[0].clientX - touchStartX.current;
-    touchDeltaX.current = delta;
-    // Add resistance at edges
-    if ((currentIndex === 0 && delta > 0) || (currentIndex === streamTasks.length - 1 && delta < 0)) {
-      setSwipeOffset(delta * 0.3);
-    } else {
-      setSwipeOffset(delta);
-    }
-  }, [currentIndex, streamTasks.length]);
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+      touchDeltaX.current = 0;
+      isHorizontalSwipe.current = null;
+      setIsAnimating(false);
+    };
 
-  const handleTouchEnd = useCallback(() => {
-    const threshold = 50;
-    setIsAnimating(true);
-    if (touchDeltaX.current < -threshold && currentIndex < streamTasks.length - 1) {
-      setCurrentIndex((i) => i + 1);
-    } else if (touchDeltaX.current > threshold && currentIndex > 0) {
-      setCurrentIndex((i) => i - 1);
-    }
-    setSwipeOffset(0);
-    touchDeltaX.current = 0;
-  }, [currentIndex, streamTasks.length]);
+    const onTouchMove = (e: TouchEvent) => {
+      const deltaX = e.touches[0].clientX - touchStartX.current;
+      const deltaY = e.touches[0].clientY - touchStartY.current;
+
+      // Determine swipe direction on first significant movement
+      if (isHorizontalSwipe.current === null) {
+        if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+          isHorizontalSwipe.current = Math.abs(deltaX) > Math.abs(deltaY);
+        }
+        return;
+      }
+
+      if (!isHorizontalSwipe.current) return;
+
+      // Prevent vertical scroll during horizontal swipe
+      e.preventDefault();
+
+      touchDeltaX.current = deltaX;
+      const idx = currentIndexRef.current;
+      const len = streamTasksLenRef.current;
+      // Add resistance at edges
+      if ((idx === 0 && deltaX > 0) || (idx === len - 1 && deltaX < 0)) {
+        setSwipeOffset(deltaX * 0.3);
+      } else {
+        setSwipeOffset(deltaX);
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (isHorizontalSwipe.current === false) {
+        isHorizontalSwipe.current = null;
+        return;
+      }
+      const threshold = 50;
+      const idx = currentIndexRef.current;
+      const len = streamTasksLenRef.current;
+      setIsAnimating(true);
+      if (touchDeltaX.current < -threshold && idx < len - 1) {
+        setCurrentIndex(idx + 1);
+      } else if (touchDeltaX.current > threshold && idx > 0) {
+        setCurrentIndex(idx - 1);
+      }
+      setSwipeOffset(0);
+      touchDeltaX.current = 0;
+      isHorizontalSwipe.current = null;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, []); // Uses refs for all mutable values — no deps needed
 
   const handleTranscript = useCallback((text: string) => {
     sendRef.current?.(text);
@@ -435,9 +493,6 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
       <div
         ref={containerRef}
         className="flex-1 min-h-0 overflow-hidden"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         <div
           className="flex h-full"
