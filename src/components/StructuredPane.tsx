@@ -482,7 +482,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
 
         {/* Processing overlay — light grey when agent is working */}
         {isProcessing && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-black/80 pointer-events-none z-[5]" />
+          <div className="absolute inset-0 bg-white/75 dark:bg-black/80 pointer-events-none z-[5]" />
         )}
 
         {/* Jump to bottom */}
