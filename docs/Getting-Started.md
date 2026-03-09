@@ -21,6 +21,10 @@ npm run dev     # starts dev server on localhost:1337
 
 Open [http://localhost:1337](http://localhost:1337).
 
+### Desktop App (Alternative)
+
+The [desktop shell](../desktop/) is an Electron wrapper that handles everything above through a setup wizard — no terminal needed. It clones proq, installs dependencies, builds the server, and runs it inside a native window. See the [desktop README](../desktop/README.md) for setup and packaging instructions.
+
 ## Add a Project
 
 Click the **+** button in the sidebar. Enter:
