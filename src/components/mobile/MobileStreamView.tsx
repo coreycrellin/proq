@@ -106,7 +106,7 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
     setSupported(hasSR);
     if (!hasSR) {
       const isSecure = w.location?.protocol === 'https:' || w.location?.hostname === 'localhost';
-      setError(isSecure ? 'Not supported in this browser' : 'Requires HTTPS — use npm run dev:mobile');
+      setError(isSecure ? 'Not supported in this browser' : 'Speech requires secure connection');
     }
   }, []);
 
