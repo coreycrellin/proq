@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
-import { XIcon, Loader2Icon, ClockIcon, CheckCircle2Icon } from 'lucide-react';
+import { XIcon, Loader2Icon, ClockIcon, CheckCircle2Icon, CheckIcon } from 'lucide-react';
 import type { Task, FollowUpDraft } from '@/lib/types';
 import { TaskAgentDetail } from './TaskAgentDetail';
 
@@ -93,6 +93,15 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
           <h2 className="text-sm font-semibold text-text-primary truncate flex-1">
             {task.title || 'Untitled task'}
           </h2>
+          {onComplete && task.status !== 'done' && (
+            <button
+              onClick={() => onComplete(task.id)}
+              className="p-1 rounded-md text-text-chrome hover:text-emerald hover:bg-surface-hover shrink-0"
+              title="Mark complete"
+            >
+              <CheckIcon className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={onClose}
             className="p-1 rounded-md text-text-chrome hover:text-text-chrome-hover hover:bg-surface-hover shrink-0"
