@@ -672,7 +672,7 @@ function StreamCellFull({
       : undefined;
 
   return (
-    <div className={`flex flex-col min-h-0 bg-surface-deep border-l-[3px] ${statusBorderColor(task)}`}>
+    <div className={`flex flex-col min-h-0 h-full bg-surface-deep border-l-[3px] ${statusBorderColor(task)}`}>
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0">
         {statusIcon(task)}
