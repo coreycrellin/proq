@@ -39,7 +39,6 @@
   "exclude": [
     "node_modules",
     "design-mock",
-    "desktop",
-    "desktop-old"
+    "desktop"
   ]
 }
