@@ -245,18 +245,22 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     }
   }, []);
 
-  // Notify parent of new text blocks for TTS
-  const prevBlockCountRef = useRef(0);
+  // Notify parent of new text blocks for TTS — only after agent finishes
+  const ttsReadRef = useRef(false);
   useEffect(() => {
-    if (!onNewText || !visible) return;
-    const newBlocks = blocks.slice(prevBlockCountRef.current);
-    prevBlockCountRef.current = blocks.length;
-    for (const block of newBlocks) {
+    // Reset when a new session starts
+    if (!sessionDone) {
+      ttsReadRef.current = false;
+      return;
+    }
+    if (!onNewText || !visible || ttsReadRef.current) return;
+    ttsReadRef.current = true;
+    for (const block of blocks) {
       if (block.type === 'text' && block.text) {
         onNewText(block.text);
       }
     }
-  }, [blocks, onNewText, visible]);
+  }, [sessionDone, blocks, onNewText, visible]);
 
   if (!visible) return null;
 
