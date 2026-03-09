@@ -559,7 +559,7 @@ function ConfigPanel({
       </h2>
 
       <Slider
-        label="Duration"
+        label="Duration (retract+extend)"
         value={config.duration}
         onChange={(v) => onChange("duration", v)}
         min={200}
@@ -685,7 +685,17 @@ export default function ExperimentsPage() {
   const [configB, setConfigB] = useState<Config>(PRESET_C);
   const [configC, setConfigC] = useState<Config>(PRESET_C);
   const [configD, setConfigD] = useState<GlitchConfig>(DEFAULT_GLITCH_CONFIG);
-  const [configD2, setConfigD2] = useState<Config>(PRESET_C);
+  const [configD2, setConfigD2] = useState<Config>({
+    duration: 8000,
+    retractPercent: 100,
+    holdFullMs: 1350,
+    holdRetractedMs: 350,
+    easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+    strokeWidth: 27,
+    logoSize: 128,
+    direction: "inward",
+    startRetracted: true,
+  });
   const [selected, setSelected] = useState<"a" | "b" | "c" | "d2" | null>(null);
   const [showGlitchConfig, setShowGlitchConfig] = useState(false);
 
