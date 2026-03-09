@@ -227,9 +227,9 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
   const touchStartY = useRef(0);
   const touchDeltaX = useRef(0);
   const isHorizontalSwipe = useRef<boolean | null>(null);
-  const [swipeOffset, setSwipeOffset] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const swipeOffsetRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
   const currentIndexRef = useRef(currentIndex);
   currentIndexRef.current = currentIndex;
   const streamTasksLenRef = useRef(streamTasks.length);
@@ -379,12 +379,20 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
     const el = containerRef.current;
     if (!el) return;
 
+    const updateSliderTransform = (idx: number, offset: number, animate: boolean) => {
+      const slider = sliderRef.current;
+      if (!slider) return;
+      slider.style.transition = animate ? 'transform 300ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none';
+      slider.style.transform = `translateX(calc(-${idx * 100}% + ${offset}px))`;
+    };
+
     const onTouchStart = (e: TouchEvent) => {
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
       touchDeltaX.current = 0;
       isHorizontalSwipe.current = null;
-      setIsAnimating(false);
+      // Cancel any ongoing animation
+      updateSliderTransform(currentIndexRef.current, 0, false);
     };
 
     const onTouchMove = (e: TouchEvent) => {
@@ -408,11 +416,11 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
       const idx = currentIndexRef.current;
       const len = streamTasksLenRef.current;
       // Add resistance at edges
-      if ((idx === 0 && deltaX > 0) || (idx === len - 1 && deltaX < 0)) {
-        setSwipeOffset(deltaX * 0.3);
-      } else {
-        setSwipeOffset(deltaX);
-      }
+      const offset = (idx === 0 && deltaX > 0) || (idx === len - 1 && deltaX < 0)
+        ? deltaX * 0.3
+        : deltaX;
+      swipeOffsetRef.current = offset;
+      updateSliderTransform(idx, offset, false);
     };
 
     const onTouchEnd = () => {
@@ -423,15 +431,20 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
       const threshold = 50;
       const idx = currentIndexRef.current;
       const len = streamTasksLenRef.current;
-      setIsAnimating(true);
+      let newIdx = idx;
       if (touchDeltaX.current < -threshold && idx < len - 1) {
-        setCurrentIndex(idx + 1);
+        newIdx = idx + 1;
       } else if (touchDeltaX.current > threshold && idx > 0) {
-        setCurrentIndex(idx - 1);
+        newIdx = idx - 1;
       }
-      setSwipeOffset(0);
+      // Animate to final position
+      updateSliderTransform(newIdx, 0, true);
+      swipeOffsetRef.current = 0;
       touchDeltaX.current = 0;
       isHorizontalSwipe.current = null;
+      if (newIdx !== idx) {
+        setCurrentIndex(newIdx);
+      }
     };
 
     el.addEventListener('touchstart', onTouchStart, { passive: true });
@@ -539,12 +552,11 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
         style={{ touchAction: 'pan-y' }}
       >
         <div
+          ref={sliderRef}
           className="flex h-full"
           style={{
-            transform: `translateX(calc(-${currentIndex * 100}% + ${swipeOffset}px))`,
-            transition: isAnimating ? 'transform 300ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
+            transform: `translateX(-${currentIndex * 100}%)`,
           }}
-          onTransitionEnd={() => setIsAnimating(false)}
         >
           {streamTasks.map((task, i) => (
             <div key={task.id} className="w-full h-full flex-shrink-0 flex flex-col min-h-0" style={{ width: '100%' }}>
