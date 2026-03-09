@@ -7,6 +7,10 @@ const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '42069';
 const MAX_RETRIES = 15;
 const RETRY_DELAY_MS = 2000;
 
+// After this many consecutive WS failures, switch to HTTP polling
+const WS_FAIL_THRESHOLD = 3;
+const HTTP_POLL_INTERVAL = 2000;
+
 interface UseAgentSessionResult {
   blocks: AgentBlock[];
   connected: boolean;
@@ -37,9 +41,61 @@ export function useAgentSession(
     let retryCount = 0;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
+    let wsFailCount = 0;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
 
+    // ── HTTP polling fallback ──
+    function startHttpPolling() {
+      if (cancelled || pollTimer) return;
+      let lastTotal = 0;
+
+      pollTimer = setInterval(async () => {
+        if (cancelled) { if (pollTimer) clearInterval(pollTimer); return; }
+        try {
+          const res = await fetch(
+            `/api/projects/${projectId}/tasks/${taskId}/blocks?after=${lastTotal}`
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+
+          if (data.blocks && data.blocks.length > 0) {
+            setBlocks((prev) => {
+              // If this is a full replay (lastTotal was 0), replace
+              if (lastTotal === 0) return data.blocks;
+              return [...prev, ...data.blocks];
+            });
+            setConnected(true);
+          }
+          lastTotal = data.total || lastTotal;
+
+          if (data.done) {
+            setSessionDone(true);
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+          }
+        } catch {
+          // Retry next interval
+        }
+      }, HTTP_POLL_INTERVAL);
+    }
+
+    // ── WebSocket connection ──
     function connect() {
       if (cancelled) return;
+
+      // Check if WS port is likely reachable: if we're on a tunnel domain (not a local IP/localhost),
+      // the separate WS port won't be forwarded. Skip WS and go straight to polling.
+      const hostname = window.location.hostname;
+      const isLocalAccess = hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        /^192\.168\./.test(hostname) ||
+        /^10\./.test(hostname) ||
+        /^172\.(1[6-9]|2\d|3[01])\./.test(hostname);
+
+      if (!isLocalAccess) {
+        // Tunnel/remote access — WS port won't work, use HTTP polling
+        startHttpPolling();
+        return;
+      }
 
       const wsHost = window.location.hostname;
       const url = `ws://${wsHost}:${WS_PORT}/ws/agent?taskId=${taskId}&projectId=${projectId}`;
@@ -48,6 +104,7 @@ export function useAgentSession(
 
       ws.onopen = () => {
         setConnected(true);
+        wsFailCount = 0;
       };
 
       ws.onmessage = (event) => {
@@ -114,6 +171,12 @@ export function useAgentSession(
 
       ws.onerror = () => {
         setConnected(false);
+        wsFailCount++;
+        // If WS consistently fails, switch to HTTP polling
+        if (wsFailCount >= WS_FAIL_THRESHOLD && !pollTimer) {
+          console.log('[useAgentSession] WebSocket unreachable, switching to HTTP polling');
+          startHttpPolling();
+        }
       };
     }
 
@@ -122,6 +185,7 @@ export function useAgentSession(
     return () => {
       cancelled = true;
       if (retryTimer) clearTimeout(retryTimer);
+      if (pollTimer) clearInterval(pollTimer);
       if (wsRef.current) wsRef.current.close();
       wsRef.current = null;
     };
