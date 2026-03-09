@@ -535,6 +535,7 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
       <div
         ref={containerRef}
         className="flex-1 min-h-0 overflow-hidden"
+        style={{ touchAction: 'pan-y' }}
       >
         <div
           className="flex h-full"
