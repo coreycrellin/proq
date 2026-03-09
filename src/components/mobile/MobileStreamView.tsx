@@ -78,6 +78,7 @@ function statusBadge(task: Task) {
 function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }) {
   const [recording, setRecording] = useState(false);
   const [supported, setSupported] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<AnyRef>(null);
 
   useEffect(() => {
@@ -87,10 +88,15 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
   }, []);
 
   const start = useCallback(() => {
+    setError(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!SR) return;
+    if (!SR) {
+      setError('Speech recognition requires HTTPS');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
 
     const recognition = new SR();
     recognition.continuous = false;
@@ -105,20 +111,31 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
       }
     };
 
-    recognition.onerror = () => setRecording(false);
+    recognition.onerror = (e: AnyRef) => {
+      setRecording(false);
+      if (e.error === 'not-allowed') {
+        setError('Microphone access denied');
+      } else {
+        setError('Speech recognition failed');
+      }
+      setTimeout(() => setError(null), 3000);
+    };
     recognition.onend = () => setRecording(false);
 
     recognitionRef.current = recognition;
-    recognition.start();
-    setRecording(true);
+    try {
+      recognition.start();
+      setRecording(true);
+    } catch {
+      setError('Speech recognition not available');
+      setTimeout(() => setError(null), 3000);
+    }
   }, [onTranscript]);
 
   const stop = useCallback(() => {
     recognitionRef.current?.stop();
     setRecording(false);
   }, []);
-
-  if (!supported) return null;
 
   return (
     <div className="flex-shrink-0 px-3 pb-2">
@@ -131,12 +148,14 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
         className={`w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none ${
           recording
             ? 'bg-red-500 text-white'
+            : error
+            ? 'bg-surface-hover border border-red-500/50 text-red-400'
             : 'bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80'
         }`}
       >
         <MicIcon className={`w-5 h-5 ${recording ? 'animate-pulse' : ''}`} />
         <span className="text-sm font-medium">
-          {recording ? 'Recording... release to send' : 'Hold to dictate'}
+          {recording ? 'Recording... release to send' : error ? error : 'Hold to dictate'}
         </span>
       </button>
     </div>

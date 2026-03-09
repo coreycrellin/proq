@@ -16,16 +16,11 @@ export function MobileChat({ projectId }: MobileChatProps) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [recognitionSupported, setRecognitionSupported] = useState(false);
+  const [recordError, setRecordError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<AnyRef>(null);
 
-  // Check for speech recognition support
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    setRecognitionSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
-  }, []);
+  // No need to check support upfront — always show button, handle errors on use
 
   // Fetch messages
   useEffect(() => {
@@ -79,10 +74,15 @@ export function MobileChat({ projectId }: MobileChatProps) {
   }, [input, sendMessage]);
 
   const startRecording = useCallback(() => {
+    setRecordError(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!SR) return;
+    if (!SR) {
+      setRecordError('Speech recognition requires HTTPS');
+      setTimeout(() => setRecordError(null), 3000);
+      return;
+    }
 
     const recognition = new SR();
     recognition.continuous = false;
@@ -97,8 +97,15 @@ export function MobileChat({ projectId }: MobileChatProps) {
       }
     };
 
-    recognition.onerror = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onerror = (e: any) => {
       setRecording(false);
+      if (e.error === 'not-allowed') {
+        setRecordError('Microphone access denied');
+      } else {
+        setRecordError('Speech recognition failed');
+      }
+      setTimeout(() => setRecordError(null), 3000);
     };
 
     recognition.onend = () => {
@@ -106,8 +113,13 @@ export function MobileChat({ projectId }: MobileChatProps) {
     };
 
     recognitionRef.current = recognition;
-    recognition.start();
-    setRecording(true);
+    try {
+      recognition.start();
+      setRecording(true);
+    } catch {
+      setRecordError('Speech recognition not available');
+      setTimeout(() => setRecordError(null), 3000);
+    }
   }, [sendMessage]);
 
   const stopRecording = useCallback(() => {
@@ -174,25 +186,25 @@ export function MobileChat({ projectId }: MobileChatProps) {
         </form>
 
         {/* Full-width record button */}
-        {recognitionSupported && (
-          <button
-            type="button"
-            onTouchStart={(e) => { e.preventDefault(); startRecording(); }}
-            onTouchEnd={(e) => { e.preventDefault(); stopRecording(); }}
-            onMouseDown={startRecording}
-            onMouseUp={stopRecording}
-            className={`w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none ${
-              recording
-                ? 'bg-red-500 text-white'
-                : 'bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80'
-            }`}
-          >
-            <MicIcon className={`w-5 h-5 ${recording ? 'animate-pulse' : ''}`} />
-            <span className="text-sm font-medium">
-              {recording ? 'Recording... release to send' : 'Hold to dictate'}
-            </span>
-          </button>
-        )}
+        <button
+          type="button"
+          onTouchStart={(e) => { e.preventDefault(); startRecording(); }}
+          onTouchEnd={(e) => { e.preventDefault(); stopRecording(); }}
+          onMouseDown={startRecording}
+          onMouseUp={stopRecording}
+          className={`w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none ${
+            recording
+              ? 'bg-red-500 text-white'
+              : recordError
+              ? 'bg-surface-hover border border-red-500/50 text-red-400'
+              : 'bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80'
+          }`}
+        >
+          <MicIcon className={`w-5 h-5 ${recording ? 'animate-pulse' : ''}`} />
+          <span className="text-sm font-medium">
+            {recording ? 'Recording... release to send' : recordError ? recordError : 'Hold to dictate'}
+          </span>
+        </button>
       </div>
     </div>
   );

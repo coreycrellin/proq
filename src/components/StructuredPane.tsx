@@ -39,7 +39,7 @@ interface StructuredPaneProps {
 }
 
 export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly, sendRef }: StructuredPaneProps) {
-  const { blocks, sessionDone, sendFollowUp, approvePlan, stop } = useAgentSession(taskId, projectId, agentBlocks);
+  const { blocks, connected, sessionDone, sendFollowUp, approvePlan, stop } = useAgentSession(taskId, projectId, agentBlocks);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -158,7 +158,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     const text = inputValue.trim();
     if (!text && attachments.length === 0) return;
 
-    if (taskStatus === 'done') {
+    if (taskStatus === 'done' || taskStatus === 'verify' || !connected) {
       // Re-dispatch: move task back to in-progress with follow-up message
       fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
         method: 'PATCH',
@@ -185,7 +185,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     if (sendRef) {
       sendRef.current = (text: string) => {
         if (!text.trim()) return;
-        if (taskStatus === 'done') {
+        if (taskStatus === 'done' || taskStatus === 'verify' || !connected) {
           fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -197,7 +197,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
       };
     }
     return () => { if (sendRef) sendRef.current = null; };
-  }, [sendRef, taskId, projectId, taskStatus, sendFollowUp]);
+  }, [sendRef, taskId, projectId, taskStatus, connected, sendFollowUp]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
