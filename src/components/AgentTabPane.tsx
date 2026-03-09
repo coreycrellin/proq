@@ -17,9 +17,11 @@ import { UserBlock } from './blocks/UserBlock';
 // Persist drafts across project switches (survives unmount/remount)
 const draftMap = new Map<string, string>();
 
-/** Pre-fill a draft message for a given tab before it mounts */
+/** Pre-fill a draft message for a given tab (works whether mounted or not) */
 export function setAgentDraft(tabId: string, text: string) {
   draftMap.set(tabId, text);
+  // Notify already-mounted components
+  window.dispatchEvent(new CustomEvent('agent-draft', { detail: { tabId, text } }));
 }
 
 function formatSize(bytes: number): string {
@@ -45,6 +47,27 @@ export function AgentTabPane({ tabId, projectId, visible, context }: AgentTabPan
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
+
+  // Listen for external draft injections (e.g. from the Live empty state Agent button)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { tabId: targetId, text } = (e as CustomEvent).detail;
+      if (targetId === tabId) {
+        setInputValue(text);
+        draftMap.set(tabId, text);
+        // Resize textarea to fit
+        requestAnimationFrame(() => {
+          const ta = textareaRef.current;
+          if (ta) {
+            ta.style.height = '0';
+            ta.style.height = Math.max(36, Math.min(ta.scrollHeight, 300)) + 'px';
+          }
+        });
+      }
+    };
+    window.addEventListener('agent-draft', handler);
+    return () => window.removeEventListener('agent-draft', handler);
+  }, [tabId]);
 
   // Auto-scroll to bottom on new blocks unless user scrolled up
   useEffect(() => {
