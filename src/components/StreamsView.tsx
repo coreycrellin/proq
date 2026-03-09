@@ -744,8 +744,9 @@ function StreamCellFull({
   onFollowUpDraftChange,
 }: StreamCellFullProps) {
   const isLive = task.agentStatus === 'running' || task.agentStatus === 'starting';
+  // Only use static blocks for "done" tasks — verify tasks need a live WS connection for follow-ups
   const staticBlocks =
-    !isLive && (task.status === 'verify' || task.status === 'done') && task.agentBlocks
+    !isLive && task.status === 'done' && task.agentBlocks
       ? task.agentBlocks
       : undefined;
 
