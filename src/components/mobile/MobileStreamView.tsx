@@ -654,7 +654,7 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
                 </div>
               ) : (
                 /* Agent output — must be flex col so StructuredPane's flex-1 works */
-                <div className="flex-1 min-h-0 flex flex-col overflow-x-hidden max-w-[100vw]">
+                <div className="flex-1 min-h-0 flex flex-col overflow-x-hidden max-w-[100vw]" style={{ touchAction: 'pan-y' }}>
                   <StructuredPane
                     taskId={task.id}
                     projectId={projectId}

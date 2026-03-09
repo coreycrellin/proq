@@ -428,6 +428,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
           ref={scrollRef}
           onScroll={handleScroll}
           className="absolute inset-0 overflow-y-auto overflow-x-hidden px-5 py-4 space-y-1"
+          style={compact ? { touchAction: 'pan-y' } : undefined}
         >
           {/* Starting session placeholder — shown before any blocks arrive */}
           {blocks.length === 0 && !sessionDone && (
