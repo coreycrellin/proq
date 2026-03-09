@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon, PlusIcon, CheckIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, ShieldAlertIcon } from 'lucide-react';
+import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon, PlusIcon, CheckIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, ShieldAlertIcon, Volume2Icon, VolumeXIcon } from 'lucide-react';
 import type { Task, TaskColumns, TaskAttachment } from '@/lib/types';
 import { StructuredPane } from '../StructuredPane';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
 import { HttpsSetupSheet } from './HttpsSetupSheet';
+import { useTTS } from '@/hooks/useTTS';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRef = any;
@@ -211,6 +212,7 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
 }
 
 export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId, isNewTask }: MobileStreamViewProps) {
+  const tts = useTTS();
   // Memoize streamTasks by task IDs + statuses to avoid unnecessary recalculations
   const streamTasks = useMemo(() => getStreamTasks(tasks, focusTaskId), [
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -243,6 +245,15 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
   const [composeAttachments, setComposeAttachments] = useState<TaskAttachment[]>([]);
   const composeFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset TTS when switching tasks
+  const prevTaskIndexRef = useRef(currentIndex);
+  useEffect(() => {
+    if (currentIndex !== prevTaskIndexRef.current) {
+      tts.reset();
+      prevTaskIndexRef.current = currentIndex;
+    }
+  }, [currentIndex, tts]);
 
   // Track whether current task is in compose mode (new blank task)
   const currentTask = streamTasks[currentIndex];
@@ -656,6 +667,7 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
                     compact={true}
                     sendRef={i === currentIndex ? sendRef : undefined}
                     attachRef={i === currentIndex ? attachRef : undefined}
+                    onNewText={i === currentIndex ? tts.speak : undefined}
                   />
                 </div>
               )}
@@ -664,11 +676,30 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
         </div>
       </div>
 
-      {/* Action bar: record + new task */}
+      {/* Action bar: record + TTS toggle + attach */}
       <div className="flex-shrink-0 flex items-center gap-2 px-3 pb-2">
         <div className="flex-1">
           <RecordButton onTranscript={handleTranscript} />
         </div>
+        {tts.supported && (
+          <button
+            onClick={tts.speaking ? tts.stop : tts.toggle}
+            className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full border transition-colors ${
+              tts.speaking
+                ? 'bg-blue-500/20 border-blue-500/40 text-blue-400 active:bg-blue-500/30'
+                : tts.enabled
+                ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 active:bg-blue-500/20'
+                : 'bg-surface-hover border-border-default text-text-tertiary active:bg-surface-hover/80'
+            }`}
+            title={tts.speaking ? 'Stop reading' : tts.enabled ? 'Disable read aloud' : 'Enable read aloud'}
+          >
+            {tts.enabled ? (
+              <Volume2Icon className={`w-5 h-5 ${tts.speaking ? 'animate-pulse' : ''}`} />
+            ) : (
+              <VolumeXIcon className="w-5 h-5" />
+            )}
+          </button>
+        )}
         <button
           onClick={() => attachRef.current?.()}
           className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80"

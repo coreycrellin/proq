@@ -37,9 +37,10 @@ interface StructuredPaneProps {
   readOnly?: boolean;
   sendRef?: React.MutableRefObject<((text: string) => void) | null>;
   attachRef?: React.MutableRefObject<(() => void) | null>;
+  onNewText?: (text: string) => void;
 }
 
-export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly, sendRef, attachRef }: StructuredPaneProps) {
+export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly, sendRef, attachRef, onNewText }: StructuredPaneProps) {
   const { blocks, connected, sessionDone, sendFollowUp, approvePlan, stop } = useAgentSession(taskId, projectId, agentBlocks);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -243,6 +244,19 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
       setIsDragOver(false);
     }
   }, []);
+
+  // Notify parent of new text blocks for TTS
+  const prevBlockCountRef = useRef(0);
+  useEffect(() => {
+    if (!onNewText || !visible) return;
+    const newBlocks = blocks.slice(prevBlockCountRef.current);
+    prevBlockCountRef.current = blocks.length;
+    for (const block of newBlocks) {
+      if (block.type === 'text' && block.text) {
+        onNewText(block.text);
+      }
+    }
+  }, [blocks, onNewText, visible]);
 
   if (!visible) return null;
 
