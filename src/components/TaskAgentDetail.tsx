@@ -72,7 +72,7 @@ function AccordionSection({
     <div className="border-b border-border-default last:border-b-0">
       <button
         onClick={() => setInternalOpen((v) => !v)}
-        className="flex items-center gap-2 w-full px-4 py-3 text-left hover:bg-surface-hover/50 transition-colors"
+        className="flex items-center gap-2 w-full px-4 py-3.5 text-left hover:bg-surface-hover/50 transition-colors"
       >
         <ChevronRightIcon className={`w-3 h-3 text-text-placeholder shrink-0 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`} />
         {icon}
