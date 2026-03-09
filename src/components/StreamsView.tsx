@@ -539,6 +539,7 @@ export function StreamsView({
         <StreamCellFull
           task={task}
           projectId={projectId}
+          hideLeftBorder
           onCollapse={() => setExpandedTaskId(null)}
           onRemove={() => handleRemoveStream(task.id)}
           onComplete={onComplete}
@@ -628,6 +629,7 @@ export function StreamsView({
                         task={task}
                         projectId={projectId}
                         compact
+                        hideLeftBorder={i === 0}
                         onExpand={() => setExpandedTaskId(task.id)}
                         onRemove={() => handleRemoveStream(task.id)}
                         onComplete={onComplete}
@@ -653,6 +655,7 @@ export function StreamsView({
                         task={task}
                         projectId={projectId}
                         compact
+                        hideLeftBorder={i === 0}
                         onExpand={() => setExpandedTaskId(task.id)}
                         onRemove={() => handleRemoveStream(task.id)}
                         onComplete={onComplete}
@@ -696,12 +699,13 @@ export function StreamsView({
       </div>
       <div className="flex-1 overflow-hidden min-h-0">
         <ResizableGrid rows={gridRows} cols={gridCols}>
-          {streamTasks.map((task) => (
+          {streamTasks.map((task, i) => (
             <StreamCellFull
               key={task.id}
               task={task}
               projectId={projectId}
               compact
+              hideLeftBorder={i % gridCols === 0}
               onExpand={() => setExpandedTaskId(task.id)}
               onRemove={() => handleRemoveStream(task.id)}
               onComplete={onComplete}
@@ -722,6 +726,7 @@ interface StreamCellFullProps {
   task: Task;
   projectId: string;
   compact?: boolean;
+  hideLeftBorder?: boolean;
   onExpand?: () => void;
   onCollapse?: () => void;
   onRemove?: () => void;
@@ -735,6 +740,7 @@ function StreamCellFull({
   task,
   projectId,
   compact,
+  hideLeftBorder,
   onExpand,
   onCollapse,
   onRemove,
@@ -751,7 +757,7 @@ function StreamCellFull({
       : undefined;
 
   return (
-    <div className={`flex flex-col min-h-0 h-full bg-surface-deep border-l-[3px] ${statusBorderColor(task)}`}>
+    <div className={`flex flex-col min-h-0 h-full bg-surface-deep ${hideLeftBorder ? '' : `border-l-[3px] ${statusBorderColor(task)}`}`}>
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0">
         {statusIcon(task)}
