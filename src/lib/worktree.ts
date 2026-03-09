@@ -737,6 +737,18 @@ export function gitLogPaginated(
   }
 }
 
+/** Get HEAD commit hash for a project path */
+export function getHeadCommit(projectPath: string): string | null {
+  try {
+    return execSync(
+      `git -C '${projectPath}' rev-parse HEAD`,
+      { timeout: 5_000, encoding: "utf-8" },
+    ).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 /** Get commits for a task: between two refs (branch range or startCommit..HEAD) */
 export function gitTaskCommits(
   projectPath: string,

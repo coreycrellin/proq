@@ -91,6 +91,7 @@ export interface Task {
     diff?: string; // unified diff showing what conflicts
   };
   startCommit?: string;
+  endCommit?: string;
   renderMode?: AgentRenderMode;
   agentBlocks?: AgentBlock[];
   sessionId?: string;

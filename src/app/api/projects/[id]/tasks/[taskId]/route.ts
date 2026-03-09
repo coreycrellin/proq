@@ -5,7 +5,7 @@ import { abortTask, processQueue, getInitialAgentStatus, scheduleCleanup, cancel
 import { autoTitle } from "@/lib/auto-title";
 import { clearSession } from "@/lib/agent-session";
 import { emitTaskUpdate } from "@/lib/task-events";
-import { mergeWorktree, removeWorktree, ensureNotOnTaskBranch, ensureOnMainForMerge, popAutoStash } from "@/lib/worktree";
+import { mergeWorktree, removeWorktree, ensureNotOnTaskBranch, ensureOnMainForMerge, popAutoStash, getHeadCommit } from "@/lib/worktree";
 
 type Params = { params: Promise<{ id: string; taskId: string }> };
 
@@ -77,6 +77,18 @@ export async function PATCH(request: Request, { params }: Params) {
         await abortTask(id, taskId);
       }
     } else if (prevStatus === "in-progress" && body.status === "verify") {
+      // Capture endCommit for sequential mode commit tracking
+      if (prevTask?.startCommit && !prevTask?.branch) {
+        const proj = await getProject(id);
+        if (proj) {
+          const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
+          const head = getHeadCommit(projectPath);
+          if (head) {
+            await updateTask(id, taskId, { endCommit: head });
+            updated.endCommit = head;
+          }
+        }
+      }
       // Deferred merge: keep worktree alive for branch preview
       // No merge here — branch stays available for preview until "done"
       // Emit SSE so client updates immediately (agent-initiated via MCP)
@@ -87,6 +99,18 @@ export async function PATCH(request: Request, { params }: Params) {
       emitTaskUpdate(id, taskId, sseChanges);
       notify(`✅ *${(updated.title || updated.description.slice(0, 40)).replace(/"/g, '\\"')}* → verify`);
     } else if (prevStatus === "in-progress" && body.status === "done") {
+      // Capture endCommit for sequential mode commit tracking
+      if (prevTask?.startCommit && !prevTask?.branch) {
+        const proj = await getProject(id);
+        if (proj) {
+          const projectPath = proj.path.replace(/^~/, process.env.HOME || "~");
+          const head = getHeadCommit(projectPath);
+          if (head) {
+            await updateTask(id, taskId, { endCommit: head });
+            updated.endCommit = head;
+          }
+        }
+      }
       // Merge worktree when skipping verify
       if (prevTask?.worktreePath || prevTask?.branch) {
         const proj = await getProject(id);

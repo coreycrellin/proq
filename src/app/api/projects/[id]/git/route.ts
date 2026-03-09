@@ -266,9 +266,9 @@ ${diff.slice(0, 12000)}`;
         toRef = task.branch;
         // Use main project path (worktree branches are visible from main repo)
       } else if (task.startCommit) {
-        // Sequential mode: commits since startCommit
+        // Sequential mode: commits from startCommit to endCommit (or HEAD if still running)
         fromRef = task.startCommit;
-        toRef = "HEAD";
+        toRef = task.endCommit || "HEAD";
       }
 
       if (!fromRef) {
