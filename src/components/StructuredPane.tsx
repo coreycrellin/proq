@@ -337,6 +337,13 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     }
   }
 
+  // Determine if agent is processing (not waiting for user input, not finished)
+  const lastRenderItem = renderItems[renderItems.length - 1];
+  const isWaitingForInput =
+    (lastRenderItem?.kind === 'ask_question' && !lastRenderItem.result) ||
+    (lastRenderItem?.kind === 'plan_approval' && !lastRenderItem.alreadyResponded);
+  const isProcessing = isRunning && !isWaitingForInput;
+
   return (
     <div
       className="flex-1 flex flex-col min-h-0 bg-surface-deep relative"
@@ -472,6 +479,11 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
             </div>
           )}
         </div>
+
+        {/* Processing overlay — light grey when agent is working */}
+        {isProcessing && (
+          <div className="absolute inset-0 bg-zinc-400/8 pointer-events-none z-[5]" />
+        )}
 
         {/* Jump to bottom */}
         {userScrolledUp && (
