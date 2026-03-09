@@ -160,8 +160,11 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     const text = inputValue.trim();
     if (!text && attachments.length === 0) return;
 
-    if (taskStatus === 'done' || taskStatus === 'verify' || !connected) {
-      // Re-dispatch: move task back to in-progress with follow-up message
+    if (connected) {
+      // WS is live — use continueSession which preserves blocks and resumes
+      sendFollowUp(text, attachments.length > 0 ? attachments : undefined);
+    } else {
+      // No WS connection — fall back to re-dispatch via PATCH
       fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -170,8 +173,6 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
           followUpMessage: text,
         }),
       });
-    } else {
-      sendFollowUp(text, attachments.length > 0 ? attachments : undefined);
     }
 
     setInputValue('');
@@ -187,14 +188,14 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     if (sendRef) {
       sendRef.current = (text: string) => {
         if (!text.trim()) return;
-        if (taskStatus === 'done' || taskStatus === 'verify' || !connected) {
+        if (connected) {
+          sendFollowUp(text);
+        } else {
           fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'in-progress', followUpMessage: text }),
           });
-        } else {
-          sendFollowUp(text);
         }
       };
     }

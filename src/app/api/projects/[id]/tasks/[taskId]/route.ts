@@ -63,8 +63,6 @@ export async function PATCH(request: Request, { params }: Params) {
         const followUpFields: Record<string, unknown> = {
           agentStatus,
           renderMode,
-          agentBlocks: undefined,
-          agentLog: "",
         };
         if (body.followUpMessage) {
           followUpFields.followUpMessage = body.followUpMessage;

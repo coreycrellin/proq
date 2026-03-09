@@ -23,6 +23,7 @@ import { createWorktree, removeWorktree, getCurrentBranch } from "./worktree";
 import type { TaskAttachment, TaskMode, AgentRenderMode } from "./types";
 import {
   startSession,
+  continueSession,
   stopSession,
   isSessionRunning,
   clearSession,
@@ -396,11 +397,16 @@ export async function dispatchTask(
   const permissionMode = mode === "plan" ? "plan" : undefined;
 
   try {
-    await startSession(projectId, taskId, prompt, effectivePath, {
-      proqSystemPrompt,
-      mcpConfig: mcpConfigPath,
-      permissionMode,
-    });
+    if (followUpMessage) {
+      // Follow-up: use continueSession to preserve blocks and resume context
+      await continueSession(projectId, taskId, prompt, effectivePath);
+    } else {
+      await startSession(projectId, taskId, prompt, effectivePath, {
+        proqSystemPrompt,
+        mcpConfig: mcpConfigPath,
+        permissionMode,
+      });
+    }
     console.log(
       `[agent-dispatch] launched agent session for task ${taskId}`,
     );
