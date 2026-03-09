@@ -34,12 +34,47 @@ export function HttpsSetupSheet({ open, onClose }: HttpsSetupSheetProps) {
       const data = await res.json();
       if (res.ok && data.url) {
         setTunnelUrl(data.url);
-      } else {
-        setError(data.error || 'Failed to start tunnel');
+        setStarting(false);
+        return;
       }
+      if (!res.ok) {
+        setError(data.error || 'Failed to start tunnel');
+        setStarting(false);
+        return;
+      }
+      // POST returned starting: true — poll GET until ready
+      const poll = setInterval(async () => {
+        try {
+          const r = await fetch('/api/tunnel');
+          const d = await r.json();
+          if (d.active && d.url) {
+            clearInterval(poll);
+            setTunnelUrl(d.url);
+            setStarting(false);
+          } else if (d.error) {
+            clearInterval(poll);
+            setError(d.error);
+            setStarting(false);
+          } else if (!d.starting) {
+            // Process died without setting error or url
+            clearInterval(poll);
+            setError('Tunnel process exited unexpectedly');
+            setStarting(false);
+          }
+        } catch {
+          // network hiccup, keep polling
+        }
+      }, 1000);
+      // Safety timeout: stop polling after 60s
+      setTimeout(() => {
+        clearInterval(poll);
+        setStarting((s) => {
+          if (s) setError('Tunnel took too long to start');
+          return false;
+        });
+      }, 60000);
     } catch {
       setError('Network error');
-    } finally {
       setStarting(false);
     }
   }, []);

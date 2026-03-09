@@ -486,12 +486,43 @@ export default function SettingsPage() {
                           const data = await res.json();
                           if (res.ok && data.url) {
                             setTunnelUrl(data.url);
-                          } else {
-                            setTunnelError(data.error || "Failed to start tunnel");
+                            setTunnelStarting(false);
+                            return;
                           }
+                          if (!res.ok) {
+                            setTunnelError(data.error || "Failed to start tunnel");
+                            setTunnelStarting(false);
+                            return;
+                          }
+                          // Still starting — poll GET until ready
+                          const poll = setInterval(async () => {
+                            try {
+                              const r = await fetch("/api/tunnel");
+                              const d = await r.json();
+                              if (d.active && d.url) {
+                                clearInterval(poll);
+                                setTunnelUrl(d.url);
+                                setTunnelStarting(false);
+                              } else if (d.error) {
+                                clearInterval(poll);
+                                setTunnelError(d.error);
+                                setTunnelStarting(false);
+                              } else if (!d.starting) {
+                                clearInterval(poll);
+                                setTunnelError("Tunnel process exited unexpectedly");
+                                setTunnelStarting(false);
+                              }
+                            } catch { /* keep polling */ }
+                          }, 1000);
+                          setTimeout(() => {
+                            clearInterval(poll);
+                            setTunnelStarting((s) => {
+                              if (s) setTunnelError("Tunnel took too long to start");
+                              return false;
+                            });
+                          }, 60000);
                         } catch {
                           setTunnelError("Network error");
-                        } finally {
                           setTunnelStarting(false);
                         }
                       }}

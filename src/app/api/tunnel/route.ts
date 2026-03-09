@@ -91,7 +91,7 @@ export async function POST() {
       tunnelUrl = null;
     });
 
-    // Wait up to 15s for URL
+    // Wait up to 5s for a quick start, otherwise return starting: true and let client poll
     const started = await new Promise<boolean>((resolve) => {
       const check = setInterval(() => {
         if (tunnelUrl) {
@@ -106,21 +106,19 @@ export async function POST() {
       setTimeout(() => {
         clearInterval(check);
         resolve(!!tunnelUrl);
-      }, 15000);
+      }, 5000);
     });
-
-    if (!started && !tunnelError) {
-      tunnelStarting = false;
-      tunnelError = tunnelError || "Tunnel failed to start within 15 seconds";
-      proc.kill();
-      tunnelProcess = null;
-    }
 
     if (tunnelError) {
       return NextResponse.json({ error: tunnelError }, { status: 500 });
     }
 
-    return NextResponse.json({ url: tunnelUrl, active: true });
+    if (started) {
+      return NextResponse.json({ url: tunnelUrl, active: true });
+    }
+
+    // Still starting — don't kill the process, let client poll GET for status
+    return NextResponse.json({ starting: true });
   } catch (err) {
     tunnelStarting = false;
     const msg = err instanceof Error ? err.message : "Unknown error";
