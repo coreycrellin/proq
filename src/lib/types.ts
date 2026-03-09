@@ -14,6 +14,7 @@ export interface Project {
   viewType?: ViewType;
   liveViewport?: 'desktop' | 'tablet' | 'mobile';
   defaultBranch?: string;
+  claudeAccountId?: string;
   createdAt: string;
 }
 
@@ -129,6 +130,13 @@ export interface DeletedTaskEntry {
   deletedAt: string; // ISO timestamp
 }
 
+// ── Claude Account ───────────────────────────────────
+export interface ClaudeAccount {
+  id: string;
+  name: string;       // e.g. "Work", "Personal"
+  configDir: string;  // absolute path, e.g. ~/.claude-work
+}
+
 // ── Settings ─────────────────────────────────────────
 export interface ProqSettings {
   // Agent
@@ -142,6 +150,9 @@ export interface ProqSettings {
 
   // Appearance
   theme: 'dark' | 'light';
+
+  // Accounts
+  claudeAccounts: ClaudeAccount[];
 
   // Notifications
   soundNotifications: boolean;

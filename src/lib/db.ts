@@ -252,7 +252,7 @@ export async function createProject(
 
 export async function updateProject(
   id: string,
-  data: Partial<Pick<Project, "name" | "path" | "status" | "serverUrl" | "activeTab" | "viewType" | "defaultBranch">>
+  data: Partial<Pick<Project, "name" | "path" | "status" | "serverUrl" | "activeTab" | "viewType" | "defaultBranch" | "claudeAccountId">>
 ): Promise<Project | null> {
   return withWriteLock('workspace', async () => {
     const ws = getWorkspaceData();
@@ -643,6 +643,9 @@ const DEFAULT_SETTINGS: ProqSettings = {
   agentRenderMode: "structured",
   showCosts: false,
   codingAgent: "claude-code",
+
+  // Accounts
+  claudeAccounts: [],
 
   // Appearance
   theme: "dark",

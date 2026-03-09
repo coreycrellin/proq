@@ -244,6 +244,24 @@ export async function dispatchTask(
     return undefined;
   }
 
+  // Resolve Claude account config dir for this project
+  let claudeConfigDir: string | undefined;
+  if (project.claudeAccountId) {
+    const settings = await getSettings();
+    const account = settings.claudeAccounts.find(
+      (a) => a.id === project.claudeAccountId,
+    );
+    if (account) {
+      claudeConfigDir = account.configDir.replace(
+        /^~/,
+        process.env.HOME || "~",
+      );
+      console.log(
+        `[agent-dispatch] using Claude account "${account.name}" (${claudeConfigDir})`,
+      );
+    }
+  }
+
   const shortId = taskId.slice(0, 8);
   const terminalTabId = `task-${shortId}`;
   const tmuxSession = `mc-${shortId}`;
@@ -335,9 +353,12 @@ export async function dispatchTask(
     writeFileSync(promptFile, prompt, "utf-8");
     writeFileSync(systemPromptFile, proqSystemPrompt, "utf-8");
     const claudeBin = await getClaudeBin();
+    const configDirEnv = claudeConfigDir
+      ? `CLAUDE_CONFIG_DIR='${claudeConfigDir}' `
+      : "";
     writeFileSync(
       launcherFile,
-      `#!/bin/bash\nexec env -u CLAUDECODE -u PORT '${claudeBin}' ${cliPermFlag} --allowedTools 'mcp__proq__*' --mcp-config '${mcpConfigPath}' --append-system-prompt "$(cat '${systemPromptFile}')" "$(cat '${promptFile}')"\n`,
+      `#!/bin/bash\nexec env -u CLAUDECODE -u PORT ${configDirEnv}'${claudeBin}' ${cliPermFlag} --allowedTools 'mcp__proq__*' --mcp-config '${mcpConfigPath}' --append-system-prompt "$(cat '${systemPromptFile}')" "$(cat '${promptFile}')"\n`,
       "utf-8",
     );
 
@@ -399,12 +420,13 @@ export async function dispatchTask(
   try {
     if (followUpMessage) {
       // Follow-up: use continueSession to preserve blocks and resume context
-      await continueSession(projectId, taskId, prompt, effectivePath);
+      await continueSession(projectId, taskId, prompt, effectivePath, undefined, undefined, { claudeConfigDir });
     } else {
       await startSession(projectId, taskId, prompt, effectivePath, {
         proqSystemPrompt,
         mcpConfig: mcpConfigPath,
         permissionMode,
+        claudeConfigDir,
       });
     }
     console.log(

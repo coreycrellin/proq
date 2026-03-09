@@ -2,28 +2,31 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/Modal';
-import type { Project, ViewType } from '@/lib/types';
+import type { Project, ViewType, ClaudeAccount } from '@/lib/types';
 import { ChevronDownIcon } from 'lucide-react';
 
 interface ProjectSettingsModalProps {
   isOpen: boolean;
   project: Project;
   branches?: string[];
+  claudeAccounts?: ClaudeAccount[];
   onClose: () => void;
   onSave: (data: Partial<Project>) => void;
 }
 
-export function ProjectSettingsModal({ isOpen, project, branches, onClose, onSave }: ProjectSettingsModalProps) {
+export function ProjectSettingsModal({ isOpen, project, branches, claudeAccounts, onClose, onSave }: ProjectSettingsModalProps) {
   const [name, setName] = useState(project.name);
   const [viewType, setViewType] = useState<ViewType>(project.viewType || 'kanban');
   const [defaultBranch, setDefaultBranch] = useState(project.defaultBranch || 'main');
   const [serverUrl, setServerUrl] = useState(project.serverUrl || '');
+  const [claudeAccountId, setClaudeAccountId] = useState(project.claudeAccountId || '');
 
   useEffect(() => {
     setName(project.name);
     setViewType(project.viewType || 'kanban');
     setDefaultBranch(project.defaultBranch || 'main');
     setServerUrl(project.serverUrl || '');
+    setClaudeAccountId(project.claudeAccountId || '');
   }, [project]);
 
   const handleSave = () => {
@@ -32,6 +35,7 @@ export function ProjectSettingsModal({ isOpen, project, branches, onClose, onSav
       viewType,
       defaultBranch,
       serverUrl: serverUrl || undefined,
+      claudeAccountId: claudeAccountId || undefined,
     });
     onClose();
   };
@@ -128,6 +132,28 @@ export function ProjectSettingsModal({ isOpen, project, branches, onClose, onSav
               />
             )}
           </div>
+
+          {/* Claude Account */}
+          {claudeAccounts && claudeAccounts.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                Claude Account
+              </label>
+              <div className="relative">
+                <select
+                  value={claudeAccountId}
+                  onChange={(e) => setClaudeAccountId(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-surface-deep border border-border-strong rounded-md text-text-primary focus:outline-none focus:border-border-strong appearance-none cursor-pointer"
+                >
+                  <option value="">Default (system)</option>
+                  {claudeAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+                <ChevronDownIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
+              </div>
+            </div>
+          )}
 
           {/* Dev Server URL */}
           <div>

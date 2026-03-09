@@ -267,6 +267,7 @@ export async function startSession(
     proqSystemPrompt?: string;
     mcpConfig?: string;
     permissionMode?: string;
+    claudeConfigDir?: string;
   },
 ): Promise<void> {
   const session: AgentRuntimeSession = {
@@ -351,7 +352,14 @@ export async function startSession(
   const proc = spawn(claudeBin, args, {
     cwd,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined },
+    env: {
+      ...process.env,
+      CLAUDECODE: undefined,
+      PORT: undefined,
+      ...(options?.claudeConfigDir
+        ? { CLAUDE_CONFIG_DIR: options.claudeConfigDir }
+        : {}),
+    },
   });
 
   session.queryHandle = proc;
@@ -506,7 +514,7 @@ export async function continueSession(
   cwd: string,
   preAttachClient?: WebSocket,
   attachments?: TaskAttachment[],
-  options?: { planApproved?: boolean },
+  options?: { planApproved?: boolean; claudeConfigDir?: string },
 ): Promise<void> {
   let session = sessions.get(taskId);
   let taskMode: string | undefined;
@@ -673,7 +681,14 @@ export async function continueSession(
   const proc = spawn(claudeBin, args, {
     cwd,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined },
+    env: {
+      ...process.env,
+      CLAUDECODE: undefined,
+      PORT: undefined,
+      ...(options?.claudeConfigDir
+        ? { CLAUDE_CONFIG_DIR: options.claudeConfigDir }
+        : {}),
+    },
   });
 
   session.queryHandle = proc;

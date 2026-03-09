@@ -12,15 +12,18 @@ import {
   SearchIcon,
   LoaderIcon,
   SmartphoneIcon,
+  UsersIcon,
+  TrashIcon,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import type { ProqSettings } from "@/lib/types";
+import type { ProqSettings, ClaudeAccount } from "@/lib/types";
 import { Select } from "@/components/ui/select";
 
 type SettingsSection =
   | "about"
   | "appearance"
   | "agent"
+  | "accounts"
   | "notifications"
   | "mobile";
 
@@ -36,6 +39,11 @@ const SECTIONS: {
     icon: <PaletteIcon className="w-4 h-4" />,
   },
   { id: "agent", label: "Agent", icon: <BotIcon className="w-4 h-4" /> },
+  {
+    id: "accounts",
+    label: "Accounts",
+    icon: <UsersIcon className="w-4 h-4" />,
+  },
   {
     id: "notifications",
     label: "Notifications",
@@ -59,6 +67,9 @@ export default function SettingsPage() {
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
   const [tunnelStarting, setTunnelStarting] = useState(false);
   const [tunnelError, setTunnelError] = useState<string | null>(null);
+  const [newAccountName, setNewAccountName] = useState("");
+  const [newAccountDir, setNewAccountDir] = useState("");
+  const [addingAccount, setAddingAccount] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const isScrollingTo = useRef(false);
@@ -365,6 +376,151 @@ export default function SettingsPage() {
                       onChange={(v) => update("showCosts", v)}
                     />
                   </Field>
+                )}
+              </div>
+            </section>
+
+            {/* Accounts */}
+            <section
+              ref={(el) => {
+                sectionRefs.current.accounts = el;
+              }}
+              id="settings-accounts"
+            >
+              <SectionHeading
+                icon={<UsersIcon className="w-4 h-4" />}
+                label="Accounts"
+              />
+              <p className="text-xs text-text-tertiary mb-4">
+                Configure multiple Claude accounts. Each account uses a separate config directory.
+                Authenticate by running{" "}
+                <code className="font-mono text-text-secondary bg-surface-inset px-1 rounded">
+                  CLAUDE_CONFIG_DIR=&lt;path&gt; claude
+                </code>{" "}
+                in your terminal once. Then assign accounts to projects in project settings.
+              </p>
+              <div className="space-y-3">
+                {(settings.claudeAccounts || []).map((account: ClaudeAccount) => (
+                  <div
+                    key={account.id}
+                    className="flex items-center gap-3 p-3 rounded-lg bg-surface-inset border border-border-default"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-text-primary">
+                        {account.name}
+                      </div>
+                      <div className="text-xs font-mono text-text-tertiary truncate">
+                        {account.configDir}
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await fetch("/api/settings/accounts", {
+                          method: "DELETE",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ id: account.id }),
+                        });
+                        setSettings((s) =>
+                          s
+                            ? {
+                                ...s,
+                                claudeAccounts: s.claudeAccounts.filter(
+                                  (a) => a.id !== account.id,
+                                ),
+                              }
+                            : s,
+                        );
+                      }}
+                      className="p-1.5 rounded hover:bg-surface-hover text-text-tertiary hover:text-red-400"
+                      title="Remove account"
+                    >
+                      <TrashIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                {addingAccount ? (
+                  <div className="p-3 rounded-lg bg-surface-inset border border-border-default space-y-2">
+                    <input
+                      type="text"
+                      value={newAccountName}
+                      onChange={(e) => {
+                        setNewAccountName(e.target.value);
+                        if (!newAccountDir || newAccountDir === `~/.claude-${newAccountName.toLowerCase().replace(/\s+/g, "-")}`) {
+                          setNewAccountDir(
+                            `~/.claude-${e.target.value.toLowerCase().replace(/\s+/g, "-")}`,
+                          );
+                        }
+                      }}
+                      placeholder="Account name (e.g. Work)"
+                      className={`${inputClass}`}
+                      autoFocus
+                    />
+                    <input
+                      type="text"
+                      value={newAccountDir}
+                      onChange={(e) => setNewAccountDir(e.target.value)}
+                      placeholder="Config directory (e.g. ~/.claude-work)"
+                      className={`${inputClassMono}`}
+                    />
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={async () => {
+                          if (!newAccountName.trim() || !newAccountDir.trim())
+                            return;
+                          const res = await fetch("/api/settings/accounts", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              name: newAccountName.trim(),
+                              configDir: newAccountDir.trim(),
+                            }),
+                          });
+                          if (res.ok) {
+                            const account: ClaudeAccount = await res.json();
+                            setSettings((s) =>
+                              s
+                                ? {
+                                    ...s,
+                                    claudeAccounts: [
+                                      ...s.claudeAccounts,
+                                      account,
+                                    ],
+                                  }
+                                : s,
+                            );
+                            setNewAccountName("");
+                            setNewAccountDir("");
+                            setAddingAccount(false);
+                          }
+                        }}
+                        disabled={
+                          !newAccountName.trim() || !newAccountDir.trim()
+                        }
+                        className="px-3 py-1.5 rounded-md text-xs bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        Add
+                      </button>
+                      <button
+                        onClick={() => {
+                          setAddingAccount(false);
+                          setNewAccountName("");
+                          setNewAccountDir("");
+                        }}
+                        className="px-3 py-1.5 rounded-md text-xs bg-surface-base border border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-hover"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAddingAccount(true)}
+                    className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary py-1"
+                  >
+                    <PlusIcon className="w-3.5 h-3.5" />
+                    Add account
+                  </button>
                 )}
               </div>
             </section>

@@ -18,7 +18,7 @@ import { ProjectSettingsModal } from '@/components/ProjectSettingsModal';
 import { CommitModal } from '@/components/CommitModal';
 import { useProjects } from '@/components/ProjectsProvider';
 import { emptyColumns } from '@/components/ProjectsProvider';
-import type { Task, TaskStatus, TaskColumns, ExecutionMode, FollowUpDraft, TaskAttachment, ViewType } from '@/lib/types';
+import type { Task, TaskStatus, TaskColumns, ExecutionMode, FollowUpDraft, TaskAttachment, ViewType, ClaudeAccount } from '@/lib/types';
 import { uploadFiles } from '@/lib/upload';
 import { useTaskEvents, type TaskUpdateEvent } from '@/hooks/useTaskEvents';
 
@@ -46,6 +46,7 @@ export default function ProjectPage() {
   const [currentBranch, setCurrentBranch] = useState<string>('main');
   const [branches, setBranches] = useState<string[]>([]);
   const [gitStatus, setGitStatus] = useState<GitStatus>({ hasGit: true, hasRemote: false, ahead: 0, behind: 0, dirty: 0 });
+  const [claudeAccounts, setClaudeAccounts] = useState<ClaudeAccount[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const followUpDraftsRef = useRef<Map<string, FollowUpDraft>>(new Map());
   const [boardDragOver, setBoardDragOver] = useState(false);
@@ -131,6 +132,14 @@ export default function ProjectPage() {
       fetchBranchState();
     }
   }, [projectId, fetchExecutionMode, fetchBranchState]);
+
+  // Fetch Claude accounts for project settings
+  useEffect(() => {
+    fetch('/api/settings/accounts')
+      .then((res) => res.json())
+      .then((data) => { if (Array.isArray(data)) setClaudeAccounts(data); })
+      .catch(() => {});
+  }, []);
 
   const dismissAttention = useCallback((taskId: string) => {
     // Optimistically clear needsAttention in local state
@@ -1014,6 +1023,7 @@ export default function ProjectPage() {
           isOpen={showProjectSettings}
           project={project}
           branches={branches}
+          claudeAccounts={claudeAccounts}
           onClose={() => setShowProjectSettings(false)}
           onSave={handleProjectSettingsSave}
         />
