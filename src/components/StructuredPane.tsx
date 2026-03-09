@@ -488,7 +488,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
 
           {/* Thinking indicator */}
           {isThinking && (
-            <div className="py-2">
+            <div className="py-2 relative z-[10]">
               <ScrambleText text="Thinking..." />
             </div>
           )}

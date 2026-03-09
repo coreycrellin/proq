@@ -10,10 +10,11 @@ import { useProjects } from './ProjectsProvider';
 import type { Project } from '@/lib/types';
 
 const STANDALONE_ROUTES = ['/design', '/experiments'];
+const STANDALONE_PREFIXES = ['/mobile'];
 
 function ShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isStandalone = STANDALONE_ROUTES.includes(pathname);
+  const isStandalone = STANDALONE_ROUTES.includes(pathname) || STANDALONE_PREFIXES.some((p) => pathname.startsWith(p));
   const { refreshProjects, isLoaded } = useProjects();
   const [missingProject, setMissingProject] = useState<Project | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
