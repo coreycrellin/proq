@@ -17,10 +17,21 @@ export function MobileChat({ projectId }: MobileChatProps) {
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordError, setRecordError] = useState<string | null>(null);
+  const [supported, setSupported] = useState(false);
+  const [unsupportedMsg, setUnsupportedMsg] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<AnyRef>(null);
 
-  // No need to check support upfront — always show button, handle errors on use
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const hasSR = !!(w.SpeechRecognition || w.webkitSpeechRecognition);
+    setSupported(hasSR);
+    if (!hasSR) {
+      const isSecure = w.location?.protocol === 'https:' || w.location?.hostname === 'localhost';
+      setUnsupportedMsg(isSecure ? 'Not supported in this browser' : 'Requires HTTPS — use npm run dev:mobile');
+    }
+  }, []);
 
   // Fetch messages
   useEffect(() => {

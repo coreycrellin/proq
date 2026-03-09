@@ -96,22 +96,26 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
   const [recording, setRecording] = useState(false);
   const [supported, setSupported] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const recognitionRef = useRef<AnyRef>(null);
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
-    setSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
+    const hasSR = !!(w.SpeechRecognition || w.webkitSpeechRecognition);
+    setSupported(hasSR);
+    if (!hasSR) {
+      const isSecure = w.location?.protocol === 'https:' || w.location?.hostname === 'localhost';
+      setError(isSecure ? 'Not supported in this browser' : 'Requires HTTPS — use npm run dev:mobile');
+    }
   }, []);
 
   const start = useCallback(() => {
-    setError(null);
+    setRuntimeError(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!SR) {
-      setError('Requires HTTPS — use npm run dev:mobile');
-      setTimeout(() => setError(null), 4000);
       return;
     }
 
@@ -131,11 +135,11 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
     recognition.onerror = (e: AnyRef) => {
       setRecording(false);
       if (e.error === 'not-allowed') {
-        setError('Microphone access denied');
+        setRuntimeError('Microphone access denied');
       } else {
-        setError('Speech recognition failed');
+        setRuntimeError('Speech recognition failed');
       }
-      setTimeout(() => setError(null), 3000);
+      setTimeout(() => setRuntimeError(null), 3000);
     };
     recognition.onend = () => setRecording(false);
 
@@ -144,8 +148,8 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
       recognition.start();
       setRecording(true);
     } catch {
-      setError('Speech recognition not available');
-      setTimeout(() => setError(null), 3000);
+      setRuntimeError('Speech recognition not available');
+      setTimeout(() => setRuntimeError(null), 3000);
     }
   }, [onTranscript]);
 
@@ -158,21 +162,24 @@ function RecordButton({ onTranscript }: { onTranscript: (text: string) => void }
     <div>
       <button
         type="button"
-        onTouchStart={(e) => { e.preventDefault(); start(); }}
-        onTouchEnd={(e) => { e.preventDefault(); stop(); }}
-        onMouseDown={start}
-        onMouseUp={stop}
+        disabled={!supported}
+        onTouchStart={(e) => { e.preventDefault(); if (supported) start(); }}
+        onTouchEnd={(e) => { e.preventDefault(); if (supported) stop(); }}
+        onMouseDown={() => { if (supported) start(); }}
+        onMouseUp={() => { if (supported) stop(); }}
         className={`w-full flex items-center justify-center gap-2 py-3 rounded-full transition-colors select-none ${
-          recording
+          !supported
+            ? 'bg-surface-hover border border-border-default text-text-tertiary opacity-60 cursor-not-allowed'
+            : recording
             ? 'bg-red-500 text-white'
-            : error
+            : runtimeError
             ? 'bg-surface-hover border border-red-500/50 text-red-400'
             : 'bg-surface-hover border border-border-default text-text-secondary active:bg-surface-hover/80'
         }`}
       >
         <MicIcon className={`w-5 h-5 ${recording ? 'animate-pulse' : ''}`} />
         <span className="text-sm font-medium">
-          {recording ? 'Recording... release to send' : error ? error : 'Hold to dictate'}
+          {!supported ? (error || 'Dictation not available') : recording ? 'Recording... release to send' : runtimeError ? runtimeError : 'Hold to dictate'}
         </span>
       </button>
     </div>

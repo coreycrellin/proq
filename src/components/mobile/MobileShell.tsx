@@ -21,7 +21,10 @@ export function MobileShell({ title, showBack, connected = true, children, botto
       <header className="h-12 flex-shrink-0 bg-surface-topbar border-b border-border-default flex items-center px-3 gap-2">
         {showBack && (
           <button
-            onClick={() => router.push('/mobile')}
+            onClick={() => {
+              localStorage.removeItem('proq-mobile-project');
+              router.push('/mobile');
+            }}
             className="p-1.5 -ml-1 rounded-lg hover:bg-surface-hover active:bg-surface-hover/80 text-text-secondary"
           >
             <ChevronLeftIcon className="w-5 h-5" />
