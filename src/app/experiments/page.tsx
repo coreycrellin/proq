@@ -134,12 +134,21 @@ const LOGOTYPE_SINGLE_PATH_2 =
 const LOGOTYPE_SEPARATE_PATH =
   "M55 317.501V80.5006H238.237V237.911H108.241V134.152H184.126V185.736H147.152M291.5 253.501V80.5006H474.737V237.911H344.741V134.152H420.626V185.736H383.652M949.5 317.501V80.5007H766.5V237.911H896.328V134.152H820.541V185.736H857.467M529 237.911V80.5006H712.237V237.911H529ZM582.241 134.152H658.126V185.736H582.241V134.152Z";
 
+const LOGOTYPE_SEPARATE_PATHS = [
+  "M55 317.501V80.5006H238.237V237.911H108.241V134.152H184.126V185.736H147.152",
+  "M291.5 253.501V80.5006H474.737V237.911H344.741V134.152H420.626V185.736H383.652",
+  "M529 237.911V80.5006H712.237V237.911H529Z",
+  "M582.241 134.152H658.126V185.736H582.241V134.152Z",
+  "M949.5 317.501V80.5007H766.5V237.911H896.328V134.152H820.541V185.736H857.467",
+];
+
 function LogoAnimation({
   config,
   selected,
   onClick,
   label,
   svgPath = LOGO_PATH,
+  svgPaths,
   viewBox = "0 0 256 256",
   aspectRatio,
 }: {
@@ -148,40 +157,23 @@ function LogoAnimation({
   onClick: () => void;
   label: string;
   svgPath?: string;
+  svgPaths?: string[];
   viewBox?: string;
   aspectRatio?: number;
 }) {
   const pathRef = useRef<SVGPathElement>(null);
+  const pathRefs = useRef<(SVGPathElement | null)[]>([]);
   const animRef = useRef<Animation | null>(null);
+  const animRefs = useRef<Animation[]>([]);
+
+  const isMulti = !!svgPaths;
 
   useEffect(() => {
-    const path = pathRef.current;
-    if (!path) return;
-
-    const totalLength = path.getTotalLength();
-    path.style.strokeDasharray = `${totalLength}`;
-    path.style.strokeDashoffset = "0";
-
-    if (animRef.current) animRef.current.cancel();
-
-    const retractOffset = totalLength * (config.retractPercent / 100);
-    const sign = config.direction === "inward" ? -1 : 1;
-    const target = `${sign * retractOffset}`;
-
     const totalTime =
       config.duration + config.holdFullMs + config.holdRetractedMs;
     const animDuration = config.duration / 2;
-    const holdFullFrac = config.holdFullMs / totalTime;
     const retractFrac = animDuration / totalTime;
-    const holdRetractedFrac = config.holdRetractedMs / totalTime;
 
-    const t1 = holdFullFrac;
-    const t2 = t1 + retractFrac;
-    const t3 = t2 + holdRetractedFrac;
-
-    // When startRetracted, the resting state is retracted and it extends out then back
-    const from = config.startRetracted ? target : "0";
-    const to = config.startRetracted ? "0" : target;
     const holdFirstFrac = config.startRetracted ? config.holdRetractedMs / totalTime : config.holdFullMs / totalTime;
     const holdSecondFrac = config.startRetracted ? config.holdFullMs / totalTime : config.holdRetractedMs / totalTime;
 
@@ -189,26 +181,58 @@ function LogoAnimation({
     const s2 = s1 + retractFrac;
     const s3 = s2 + holdSecondFrac;
 
-    const keyframes: Keyframe[] = [
-      { strokeDashoffset: from, offset: 0, easing: config.easing },
-      ...(holdFirstFrac > 0
-        ? [{ strokeDashoffset: from, offset: s1, easing: config.easing }]
-        : []),
-      { strokeDashoffset: to, offset: s2, easing: config.easing },
-      ...(holdSecondFrac > 0
-        ? [{ strokeDashoffset: to, offset: s3, easing: config.easing }]
-        : []),
-      { strokeDashoffset: from, offset: 1 },
-    ];
+    function animatePath(path: SVGPathElement): Animation {
+      const totalLength = path.getTotalLength();
+      path.style.strokeDasharray = `${totalLength}`;
+      path.style.strokeDashoffset = "0";
 
-    const animation = path.animate(keyframes, {
-      duration: totalTime,
-      iterations: Infinity,
-    });
+      const retractOffset = totalLength * (config.retractPercent / 100);
+      const sign = config.direction === "inward" ? -1 : 1;
+      const target = `${sign * retractOffset}`;
 
-    animRef.current = animation;
-    return () => animation.cancel();
-  }, [config]);
+      const from = config.startRetracted ? target : "0";
+      const to = config.startRetracted ? "0" : target;
+
+      const keyframes: Keyframe[] = [
+        { strokeDashoffset: from, offset: 0, easing: config.easing },
+        ...(holdFirstFrac > 0
+          ? [{ strokeDashoffset: from, offset: s1, easing: config.easing }]
+          : []),
+        { strokeDashoffset: to, offset: s2, easing: config.easing },
+        ...(holdSecondFrac > 0
+          ? [{ strokeDashoffset: to, offset: s3, easing: config.easing }]
+          : []),
+        { strokeDashoffset: from, offset: 1 },
+      ];
+
+      return path.animate(keyframes, {
+        duration: totalTime,
+        iterations: Infinity,
+      });
+    }
+
+    if (isMulti) {
+      // Cancel previous animations
+      animRefs.current.forEach((a) => a.cancel());
+      animRefs.current = [];
+
+      const anims: Animation[] = [];
+      for (const p of pathRefs.current) {
+        if (p) anims.push(animatePath(p));
+      }
+      animRefs.current = anims;
+
+      return () => anims.forEach((a) => a.cancel());
+    } else {
+      const path = pathRef.current;
+      if (!path) return;
+
+      if (animRef.current) animRef.current.cancel();
+      const animation = animatePath(path);
+      animRef.current = animation;
+      return () => animation.cancel();
+    }
+  }, [config, isMulti]);
 
   return (
     <div
@@ -229,12 +253,24 @@ function LogoAnimation({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <path
-          ref={pathRef}
-          d={svgPath}
-          stroke={STROKE_COLOR}
-          strokeWidth={config.strokeWidth}
-        />
+        {isMulti ? (
+          svgPaths!.map((d, i) => (
+            <path
+              key={i}
+              ref={(el) => { pathRefs.current[i] = el; }}
+              d={d}
+              stroke={STROKE_COLOR}
+              strokeWidth={config.strokeWidth}
+            />
+          ))
+        ) : (
+          <path
+            ref={pathRef}
+            d={svgPath}
+            stroke={STROKE_COLOR}
+            strokeWidth={config.strokeWidth}
+          />
+        )}
       </svg>
     </div>
   );
@@ -800,7 +836,7 @@ export default function ExperimentsPage() {
             selected={selected === "d2"}
             onClick={() => setSelected(selected === "d2" ? null : "d2")}
             label="D"
-            svgPath={LOGOTYPE_SEPARATE_PATH}
+            svgPaths={LOGOTYPE_SEPARATE_PATHS}
             viewBox="0 0 1001 372"
             aspectRatio={1001 / 372}
           />
