@@ -431,7 +431,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
   if (collapsed) {
     return (
       <aside
-        className="w-10 h-full bg-surface-secondary border-r border-border-default flex-shrink-0 cursor-pointer hover:bg-surface-hover/40 relative"
+        className={`${isElectron ? 'w-[84px]' : 'w-10'} h-full bg-surface-secondary border-r border-border-default flex-shrink-0 cursor-pointer hover:bg-surface-hover/40 relative`}
         style={isElectron ? { paddingTop: 48 } : undefined}
         onClick={onToggleCollapsed}
       >
