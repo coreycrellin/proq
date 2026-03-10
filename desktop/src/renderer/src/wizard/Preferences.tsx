@@ -66,7 +66,8 @@ export function Preferences({ onNext, onBack }: PreferencesProps): React.JSX.Ele
             fontSize: 12,
             cursor: 'pointer',
             padding: '4px 0',
-            marginBottom: showAdvanced ? 16 : 0
+            marginBottom: showAdvanced ? 16 : 0,
+            textAlign: 'left'
           }}
         >
           Advanced options{' '}

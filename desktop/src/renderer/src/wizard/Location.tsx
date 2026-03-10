@@ -8,22 +8,27 @@ interface LocationProps {
 }
 
 export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProps): React.JSX.Element {
+  const [installDir, setInstallDir] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [existingInstall, setExistingInstall] = useState<boolean | null>(null)
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const fullProqPath = installDir ? installDir.replace(/\/+$/, '') + '/proq' : ''
+
   useEffect(() => {
-    if (!proqPath) {
+    if (!installDir) {
       window.proqDesktop.getConfig().then((config) => {
-        setProqPath(config.proqPath)
+        // Strip /proq from the end to get the parent directory
+        const dir = config.proqPath.replace(/\/proq\/?$/, '') || config.proqPath
+        setInstallDir(dir)
       })
     }
   }, [])
 
   // Auto-detect existing install when path changes
   useEffect(() => {
-    if (!proqPath) {
+    if (!fullProqPath) {
       setExistingInstall(null)
       return
     }
@@ -31,7 +36,7 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
     if (checkTimer.current) clearTimeout(checkTimer.current)
     checkTimer.current = setTimeout(async () => {
       try {
-        const valid = await window.proqDesktop.validateInstall(proqPath)
+        const valid = await window.proqDesktop.validateInstall(fullProqPath)
         setExistingInstall(valid)
       } catch {
         setExistingInstall(false)
@@ -41,11 +46,11 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
     return () => {
       if (checkTimer.current) clearTimeout(checkTimer.current)
     }
-  }, [proqPath])
+  }, [fullProqPath])
 
   const handleBrowse = async (): Promise<void> => {
     const dir = await window.proqDesktop.selectDirectory()
-    if (dir) setProqPath(dir)
+    if (dir) setInstallDir(dir)
   }
 
   const handleNext = async (action: 'use-existing' | 'clone' | 'overwrite'): Promise<void> => {
@@ -54,14 +59,14 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
 
     try {
       if (action === 'use-existing') {
-        const valid = await window.proqDesktop.validateInstall(proqPath)
+        const valid = await window.proqDesktop.validateInstall(fullProqPath)
         if (!valid) {
           setError("Not a valid proq installation. Make sure the directory contains proq's package.json.")
           setLoading(false)
           return
         }
       } else {
-        const result = await window.proqDesktop.cloneRepo(proqPath, action === 'overwrite')
+        const result = await window.proqDesktop.cloneRepo(fullProqPath, action === 'overwrite')
         if (!result.ok) {
           setError(result.error || 'Failed to clone repository')
           setLoading(false)
@@ -69,7 +74,8 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
         }
       }
 
-      await window.proqDesktop.setConfig({ proqPath })
+      setProqPath(fullProqPath)
+      await window.proqDesktop.setConfig({ proqPath: fullProqPath })
       onNext()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
@@ -91,17 +97,19 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
           <div className="field-row">
             <input
               type="text"
-              value={proqPath}
-              onChange={(e): void => setProqPath(e.target.value)}
-              placeholder="~/proq"
+              value={installDir}
+              onChange={(e): void => setInstallDir(e.target.value)}
+              placeholder="/Users/you"
             />
             <button className="btn-primary titlebar-no-drag" onClick={handleBrowse}>
               Browse
             </button>
           </div>
-          {!existingInstall && (
-            <div className="field-hint">proq will be cloned into this directory</div>
-          )}
+          <div className="field-hint">
+            {existingInstall
+              ? `proq found at ${fullProqPath}`
+              : `proq will be cloned to ${fullProqPath || '...'}`}
+          </div>
         </div>
 
         {existingInstall && (
@@ -151,7 +159,7 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
           Back
         </button>
         {!existingInstall && (
-          <button className="btn-accent" onClick={() => handleNext('clone')} disabled={loading || !proqPath}>
+          <button className="btn-accent" onClick={() => handleNext('clone')} disabled={loading || !installDir}>
             {loading ? 'Cloning...' : 'Next'}
           </button>
         )}

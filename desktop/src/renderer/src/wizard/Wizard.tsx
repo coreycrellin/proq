@@ -26,21 +26,21 @@ export function Wizard({ startStep, onComplete }: WizardProps): React.JSX.Elemen
 
   return (
     <div className="wizard-container">
-      <div className="titlebar-drag" style={{ height: 28, marginTop: -16, marginBottom: -12 }} />
-
-      <div
-        className="steps"
-        style={{
-          opacity: step === 'welcome' ? 0 : 1,
-          transition: 'opacity 0.4s ease'
-        }}
-      >
-        {STEPS.map((s, i) => (
-          <div
-            key={s}
-            className={`step-dot ${i === stepIndex ? 'active' : i < stepIndex ? 'completed' : ''}`}
-          />
-        ))}
+      <div className="titlebar-drag" style={{ height: 16, marginTop: -32, marginBottom: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div
+          className="steps"
+          style={{
+            opacity: step === 'welcome' ? 0 : 1,
+            transition: 'opacity 0.4s ease'
+          }}
+        >
+          {STEPS.map((s, i) => (
+            <div
+              key={s}
+              className={`step-dot ${i === stepIndex ? 'active' : i < stepIndex ? 'completed' : ''}`}
+            />
+          ))}
+        </div>
       </div>
 
       {step === 'welcome' && <Welcome onNext={next} />}
