@@ -66,9 +66,6 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen w-full bg-surface-base text-text-primary overflow-hidden font-sans">
-      {process.env.NEXT_PUBLIC_ELECTRON === '1' && (
-        <div className="fixed top-0 left-0 right-0 h-3 electron-drag" style={{ zIndex: 9999 }} />
-      )}
       <Sidebar
         onAddProject={handleAddProject}
         onMissingPath={setMissingProject}
