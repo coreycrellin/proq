@@ -435,7 +435,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
         style={isElectron ? { paddingTop: 38 } : undefined}
         onClick={onToggleCollapsed}
       >
-        <div className="h-16 flex items-center justify-center">
+        <div className="h-[52px] flex items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/proq-logo-vector.svg"
@@ -453,7 +453,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
     <aside className="w-[260px] h-full bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0" style={isElectron ? { paddingTop: 38 } : undefined}>
       {/* Header — collapse toggle */}
       <div
-        className="h-16 flex items-center gap-2.5 px-4 pl-[18px] group/logo hover:bg-surface-hover/40 relative cursor-pointer flex-shrink-0"
+        className="h-[52px] flex items-center gap-2.5 px-4 pl-[18px] group/logo hover:bg-surface-hover/40 relative cursor-pointer flex-shrink-0"
         onClick={onToggleCollapsed}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
