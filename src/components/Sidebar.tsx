@@ -333,6 +333,8 @@ function SortableProject({
 
 // ── Sidebar ──────────────────────────────────────────────
 
+const isElectron = process.env.NEXT_PUBLIC_ELECTRON === '1';
+
 export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollapsed }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -430,6 +432,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
     return (
       <aside
         className="w-10 h-full bg-surface-secondary border-r border-border-default flex-shrink-0 cursor-pointer hover:bg-surface-hover/40"
+        style={isElectron ? { paddingTop: 38 } : undefined}
         onClick={onToggleCollapsed}
       >
         <div className="h-16 flex items-center justify-center">
@@ -447,7 +450,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
   }
 
   return (
-    <aside className="w-[260px] h-full bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0">
+    <aside className="w-[260px] h-full bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0" style={isElectron ? { paddingTop: 38 } : undefined}>
       {/* Header — collapse toggle */}
       <div
         className="h-16 flex items-center gap-2.5 px-4 pl-[18px] group/logo hover:bg-surface-hover/40 relative cursor-pointer flex-shrink-0"

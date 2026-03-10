@@ -22,7 +22,8 @@ export function startServer(
       env: {
         ...process.env,
         PORT: String(port),
-        NEXT_PUBLIC_WS_PORT: String(wsPort)
+        NEXT_PUBLIC_WS_PORT: String(wsPort),
+        NEXT_PUBLIC_ELECTRON: '1'
       },
       stdio: ['ignore', 'pipe', 'pipe']
     })
