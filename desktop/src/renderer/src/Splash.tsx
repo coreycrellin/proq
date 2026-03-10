@@ -6,7 +6,8 @@ interface SplashProps {
 }
 
 function friendlyStatus(line: string, port: number, wsPort: number): string | null {
-  const t = line.trim()
+  // Strip ANSI escape sequences
+  const t = line.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').trim()
   if (!t) return null
   if (t.includes('WS server')) return `Starting WebSocket on port ${wsPort}...`
   if (t.includes('Ready in') || t.includes('ready started')) return 'Almost ready...'

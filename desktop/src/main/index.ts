@@ -1,8 +1,8 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import { app, BrowserWindow, Menu, nativeImage, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { getConfig, setConfig } from './config'
+import { getConfig, setConfig, resetConfig } from './config'
 import {
   checkNodeVersion,
   checkTmux,
@@ -75,7 +75,7 @@ function createWindow(mode: 'wizard' | 'splash' | 'app'): BrowserWindow {
         minWidth: 800,
         minHeight: 600,
         titleBarStyle: 'hiddenInset' as const,
-        trafficLightPosition: { x: 16, y: 12 }
+        trafficLightPosition: { x: 16, y: 18 }
       })
       break
     }
@@ -183,9 +183,21 @@ function transitionToApp(): void {
   const appWindow = createWindow('app')
   appWindow.loadURL(`http://localhost:${config.port}`)
 
-  appWindow.webContents.on('did-finish-load', () => {
-    mainWindow?.close()
+  const previousWindow = mainWindow
+  appWindow.webContents.once('did-finish-load', () => {
+    if (previousWindow && previousWindow !== appWindow && !previousWindow.isDestroyed()) {
+      previousWindow.close()
+    }
     mainWindow = appWindow
+  })
+
+  // Retry loading if the page fails (e.g. Cmd-R while server is slow)
+  appWindow.webContents.on('did-fail-load', (_e, _code, _desc, url) => {
+    if (url.startsWith('http://localhost') && !appWindow.isDestroyed()) {
+      setTimeout(() => {
+        if (!appWindow.isDestroyed()) appWindow.loadURL(url)
+      }, 1000)
+    }
   })
 
   // Open external links in default browser
@@ -235,6 +247,59 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  // App menu
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate([
+        {
+          label: app.name,
+          submenu: [
+            {
+              label: 'About proq',
+              click: (): void => {
+                app.setAboutPanelOptions({
+                  applicationName: 'proq',
+                  applicationVersion: app.getVersion(),
+                  version: '',
+                  copyright: 'Build beautiful things',
+                  iconPath: icon,
+                  icons: [nativeImage.createFromPath(icon)]
+                })
+                app.showAboutPanel()
+              }
+            },
+            { type: 'separator' },
+            {
+              label: 'Reset to Defaults…',
+              click: async (): Promise<void> => {
+                const { response } = await dialog.showMessageBox({
+                  type: 'warning',
+                  icon: nativeImage.createFromPath(icon),
+                  buttons: ['Cancel', 'Reset'],
+                  defaultId: 0,
+                  message: 'Reset proq Desktop?',
+                  detail: 'This will clear all settings and restart the setup wizard.'
+                })
+                if (response === 1) {
+                  await stopServer()
+                  resetConfig()
+                  mainWindow?.close()
+                  mainWindow = null
+                  launchApp()
+                }
+              }
+            },
+            { type: 'separator' },
+            { role: 'quit' }
+          ]
+        },
+        { role: 'editMenu' },
+        { role: 'viewMenu' },
+        { role: 'windowMenu' }
+      ])
+    )
+  }
 
   registerIpcHandlers()
   launchApp()

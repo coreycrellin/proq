@@ -41,7 +41,7 @@ export function Modal({
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4`} onClick={onClose}>
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 electron-no-drag`} onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
         className={`relative bg-surface-modal border border-border-default rounded-lg shadow-2xl animate-in fade-in zoom-in-95 duration-75 ${className}`}

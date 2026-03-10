@@ -6,6 +6,27 @@
   .text-balance {
     text-wrap: balance;
   }
+  .electron-drag {
+    -webkit-app-region: drag;
+  }
+  .electron-drag button,
+  .electron-drag a,
+  .electron-drag input,
+  .electron-drag select,
+  .electron-drag [role="button"],
+  .electron-drag [data-radix-collection-item] {
+    -webkit-app-region: no-drag;
+  }
+  .electron-no-drag {
+    -webkit-app-region: no-drag;
+  }
+  /* Radix portals (modals, popovers, dropdowns) must not be swallowed by drag regions */
+  [data-radix-popper-content-wrapper],
+  [data-radix-dismissable-layer],
+  [data-radix-focus-guard],
+  div[data-radix-portal] {
+    -webkit-app-region: no-drag;
+  }
 }
 
 /* Execution mode dropdown: selected item yields bg to hovered sibling */
