@@ -318,7 +318,7 @@ export async function startSupervisorSession(text: string): Promise<void> {
   const proc = spawn(claudeBin, args, {
     cwd: process.cwd(),
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined },
+    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined, PROQ_API: `http://localhost:${process.env.PORT || 1337}` },
   });
 
   session.queryHandle = proc;
@@ -386,7 +386,7 @@ export async function continueSupervisorSession(
   const proc = spawn(claudeBin, args, {
     cwd: process.cwd(),
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined },
+    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined, PROQ_API: `http://localhost:${process.env.PORT || 1337}` },
   });
 
   session.queryHandle = proc;
