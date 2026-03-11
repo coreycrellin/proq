@@ -9,6 +9,7 @@ interface UseAgentTabSessionResult {
   blocks: AgentBlock[];
   connected: boolean;
   sessionDone: boolean;
+  loaded: boolean;
   sendMessage: (text: string, attachments?: TaskAttachment[]) => void;
   stop: () => void;
 }
@@ -21,6 +22,7 @@ export function useAgentTabSession(
   const [blocks, setBlocks] = useState<AgentBlock[]>([]);
   const [connected, setConnected] = useState(false);
   const [sessionDone, setSessionDone] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export function useAgentTabSession(
           const hasUserAfter = msg.blocks.slice(lastStatusIdx + 1).some((b) => b.type === 'user');
           const isDone = !lastStatus || (lastStatus.type === 'status' && lastStatus.subtype !== 'init' && !hasUserAfter);
           setSessionDone(isDone);
+          setLoaded(true);
         } else if (msg.type === 'block') {
           setBlocks((prev) => [...prev, msg.block]);
           if (msg.block.type === 'status' && msg.block.subtype === 'init' || msg.block.type === 'user') {
@@ -92,5 +95,5 @@ export function useAgentTabSession(
     }
   }, []);
 
-  return { blocks, connected, sessionDone, sendMessage, stop };
+  return { blocks, connected, sessionDone, loaded, sendMessage, stop };
 }

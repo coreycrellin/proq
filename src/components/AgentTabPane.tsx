@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { SquareIcon, ArrowDownIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, Loader2Icon } from 'lucide-react';
+import { SquareIcon, ArrowDownIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, Loader2Icon, ListTodoIcon, CodeIcon, SearchIcon, GitBranchIcon } from 'lucide-react';
 import type { AgentBlock, TaskAttachment } from '@/lib/types';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
 import { useAgentTabSession } from '@/hooks/useAgentTabSession';
@@ -38,7 +38,7 @@ interface AgentTabPaneProps {
 }
 
 export function AgentTabPane({ tabId, projectId, visible, context }: AgentTabPaneProps) {
-  const { blocks, sessionDone, sendMessage, stop } = useAgentTabSession(tabId, projectId, context);
+  const { blocks, sessionDone, loaded, sendMessage, stop } = useAgentTabSession(tabId, projectId, context);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -249,9 +249,32 @@ export function AgentTabPane({ tabId, projectId, visible, context }: AgentTabPan
           className="absolute inset-0 overflow-y-auto px-5 py-4 space-y-1"
         >
           {/* Empty state */}
-          {!hasHistory && sessionDone && (
-            <div className="flex-1 flex items-center justify-center h-full">
-              <p className="text-sm text-text-placeholder">Send a message to start the agent...</p>
+          {!hasHistory && sessionDone && loaded && (
+            <div className="flex flex-col justify-end h-full gap-4 select-none pb-2">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-text-secondary">What can I help with?</p>
+                <p className="text-xs text-text-placeholder">Ask me anything about this project, or try one of these:</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { icon: ListTodoIcon, label: 'Create tasks from a goal', prompt: 'Let\'s break down a goal into specific, descriptive tasks. Start by asking for and understanding the goal.' },
+                  { icon: CodeIcon, label: 'Review recent changes', prompt: 'Review recent changes in this project. Start by asking if I want to focus on specific files, a date range, or just the latest commits.' },
+                  { icon: SearchIcon, label: 'Explore the codebase', prompt: 'Help me understand this project. Start by asking what area or aspect I\'d like to explore.' },
+                  { icon: GitBranchIcon, label: 'Plan a feature', prompt: 'Help me plan the implementation of a new feature. Start by asking what I want to build.' },
+                ] as const).map(({ icon: Icon, label, prompt }) => (
+                  <button
+                    key={label}
+                    onClick={() => {
+                      sendMessage(prompt);
+                    }}
+                    title={prompt}
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border-strong/30 bg-surface-hover/30 hover:bg-surface-hover hover:border-border-strong/60 text-left transition-colors group"
+                  >
+                    <Icon className="w-4 h-4 text-text-placeholder group-hover:text-bronze-500 shrink-0 transition-colors" />
+                    <span className="text-xs text-text-tertiary group-hover:text-text-secondary transition-colors">{label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
