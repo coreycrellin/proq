@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { AgentBlock, AgentWsServerMsg, TaskAttachment } from '@/lib/types';
 
-const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '42069';
+function getWsPort(): string {
+  return (typeof window !== 'undefined' && (window as unknown as { __PROQ_WS_PORT?: string }).__PROQ_WS_PORT) || '42069';
+}
 const MAX_RETRIES = 15;
 const RETRY_DELAY_MS = 2000;
 
@@ -42,7 +44,7 @@ export function useAgentSession(
       if (cancelled) return;
 
       const wsHost = window.location.hostname;
-      const url = `ws://${wsHost}:${WS_PORT}/ws/agent?taskId=${taskId}&projectId=${projectId}`;
+      const url = `ws://${wsHost}:${getWsPort()}/ws/agent?taskId=${taskId}&projectId=${projectId}`;
       const ws = new WebSocket(url);
       wsRef.current = ws;
 

@@ -61,7 +61,7 @@ export function useTerminal(
       });
 
       // Connect WS — server auto-spawns the PTY if needed and replays scrollback
-      const wsPort = process.env.NEXT_PUBLIC_WS_PORT || "42069";
+      const wsPort = (window as unknown as { __PROQ_WS_PORT?: string }).__PROQ_WS_PORT || "42069";
       let wsUrl = `ws://${window.location.hostname}:${wsPort}/ws/terminal?id=${encodeURIComponent(tabId)}`;
       if (cwd) wsUrl += `&cwd=${encodeURIComponent(cwd)}`;
       const ws = new WebSocket(wsUrl);

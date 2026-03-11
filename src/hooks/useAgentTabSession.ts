@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { AgentBlock, AgentWsServerMsg, TaskAttachment } from '@/lib/types';
 
-const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '42069';
+function getWsPort(): string {
+  return (typeof window !== 'undefined' && (window as unknown as { __PROQ_WS_PORT?: string }).__PROQ_WS_PORT) || '42069';
+}
 
 interface UseAgentTabSessionResult {
   blocks: AgentBlock[];
@@ -29,7 +31,7 @@ export function useAgentTabSession(
   useEffect(() => {
     const wsHost = window.location.hostname;
     const contextParam = context ? `&context=${context}` : '';
-    const url = `ws://${wsHost}:${WS_PORT}/ws/agent-tab?tabId=${tabId}&projectId=${projectId}${contextParam}`;
+    const url = `ws://${wsHost}:${getWsPort()}/ws/agent-tab?tabId=${tabId}&projectId=${projectId}${contextParam}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
