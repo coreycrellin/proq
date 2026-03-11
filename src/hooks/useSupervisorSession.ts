@@ -25,6 +25,57 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
   const [sessionDone, setSessionDone] = useState(true);
   const wsRef = useRef<WebSocket | null>(null);
 
+  // ── Smooth streaming buffer ──
+  // Incoming deltas are buffered and drained at a steady rate
+  // to avoid the jerky burst-then-pause feel of raw token delivery.
+  const bufferRef = useRef('');
+  const rafRef = useRef<number | null>(null);
+  const lastFrameRef = useRef(0);
+
+  const startDrain = useCallback(() => {
+    if (rafRef.current !== null) return;
+    lastFrameRef.current = performance.now();
+    const drain = (now: number) => {
+      const elapsed = now - lastFrameRef.current;
+      lastFrameRef.current = now;
+      const buf = bufferRef.current;
+      if (!buf) {
+        rafRef.current = null;
+        return;
+      }
+      // Target ~60 chars/sec base, scale up when buffer grows to avoid falling behind
+      const baseRate = 60;
+      const catchUp = Math.max(0, buf.length - 120) * 0.5;
+      const charsThisFrame = Math.max(1, Math.round((baseRate + catchUp) * (elapsed / 1000)));
+      const chunk = buf.slice(0, charsThisFrame);
+      bufferRef.current = buf.slice(charsThisFrame);
+      setStreamingText((prev) => prev + chunk);
+      rafRef.current = requestAnimationFrame(drain);
+    };
+    rafRef.current = requestAnimationFrame(drain);
+  }, []);
+
+  const flushBuffer = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (bufferRef.current) {
+      const remaining = bufferRef.current;
+      bufferRef.current = '';
+      setStreamingText((prev) => prev + remaining);
+    }
+  }, []);
+
+  const clearBuffer = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    bufferRef.current = '';
+    setStreamingText('');
+  }, []);
+
   useEffect(() => {
     const wsHost = window.location.hostname;
     const url = `ws://${wsHost}:${getWsPort()}/ws/supervisor`;
@@ -41,7 +92,7 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
 
         if (msg.type === 'replay') {
           setBlocks(msg.blocks);
-          setStreamingText('');
+          clearBuffer();
           // Determine session done state
           const statusBlocks = msg.blocks.filter(
             (b) => b.type === 'status' && ['complete', 'error', 'abort', 'init'].includes(b.subtype)
@@ -52,9 +103,11 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
           const isDone = !lastStatus || (lastStatus.type === 'status' && lastStatus.subtype !== 'init' && !hasUserAfter);
           setSessionDone(isDone);
         } else if (msg.type === 'stream_delta') {
-          setStreamingText((prev) => prev + msg.text);
+          bufferRef.current += msg.text;
+          startDrain();
         } else if (msg.type === 'block') {
           if (msg.block.type === 'text' || msg.block.type === 'user') {
+            flushBuffer();
             setStreamingText('');
           }
           setBlocks((prev) => [...prev, msg.block]);
@@ -82,6 +135,7 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
     return () => {
       ws.close();
       wsRef.current = null;
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
