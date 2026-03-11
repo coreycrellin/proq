@@ -29,7 +29,7 @@ export function useAgentTabSession(
   const [sessionDone, setSessionDone] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
-  const { streamingText, appendDelta, hurryBuffer, clearBuffer } = useStreamingBuffer();
+  const { streamingText, appendDelta, clearBuffer } = useStreamingBuffer();
 
   useEffect(() => {
     const wsHost = window.location.hostname;
@@ -63,7 +63,7 @@ export function useAgentTabSession(
           appendDelta(msg.text);
         } else if (msg.type === 'block') {
           if (msg.block.type === 'text' || msg.block.type === 'user') {
-            hurryBuffer();
+            clearBuffer();
           }
           setBlocks((prev) => [...prev, msg.block]);
           if (msg.block.type === 'status' && msg.block.subtype === 'init' || msg.block.type === 'user') {

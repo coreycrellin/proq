@@ -29,7 +29,7 @@ export function useAgentSession(
   const [connected, setConnected] = useState(false);
   const [sessionDone, setSessionDone] = useState(!!staticLog);
   const wsRef = useRef<WebSocket | null>(null);
-  const { streamingText, appendDelta, hurryBuffer, clearBuffer } = useStreamingBuffer();
+  const { streamingText, appendDelta, clearBuffer } = useStreamingBuffer();
 
   // If static log, just use it directly
   useEffect(() => {
@@ -78,7 +78,7 @@ export function useAgentSession(
           } else if (msg.type === 'block') {
             retryCount = 0;
             if (msg.block.type === 'text' || msg.block.type === 'user') {
-              hurryBuffer();
+              clearBuffer();
             }
             setBlocks((prev) => {
               // Dedup: if a tool_use block with the same toolId already exists, replace it
