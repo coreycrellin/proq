@@ -18,14 +18,8 @@ export default function RootPage() {
   if (!isLoaded) return null;
 
   if (projects.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-zinc-500 text-sm mb-2">No projects yet</p>
-          <p className="text-zinc-400 text-xs">Click &quot;Add Project&quot; in the sidebar to get started.</p>
-        </div>
-      </div>
-    );
+    router.replace('/supervisor');
+    return null;
   }
 
   return null;

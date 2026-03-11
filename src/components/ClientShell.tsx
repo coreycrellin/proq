@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { createContext, useCallback, useContext, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { ProjectsProvider } from './ProjectsProvider';
 import { WorkbenchTabsProvider } from './WorkbenchTabsProvider';
@@ -8,6 +8,18 @@ import { Sidebar } from './Sidebar';
 import { MissingPathModal } from './MissingPathModal';
 import { useProjects } from './ProjectsProvider';
 import type { Project } from '@/lib/types';
+
+interface ShellActions {
+  addProject: () => Promise<void>;
+}
+
+const ShellActionsContext = createContext<ShellActions | null>(null);
+
+export function useShellActions() {
+  const ctx = useContext(ShellActionsContext);
+  if (!ctx) throw new Error('useShellActions must be used within ClientShell');
+  return ctx;
+}
 
 const STANDALONE_ROUTES = ['/design'];
 
@@ -65,25 +77,27 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen w-full bg-surface-base text-text-primary overflow-hidden font-sans">
-      <Sidebar
-        onAddProject={handleAddProject}
-        onMissingPath={setMissingProject}
-        collapsed={sidebarCollapsed}
-        onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
-      />
-      <div className="flex-1 flex flex-col min-w-0">
-        {children}
-      </div>
-      {missingProject && (
-        <MissingPathModal
-          project={missingProject}
-          onClose={() => setMissingProject(null)}
-          onRelocate={handleRelocate}
-          onRemove={handleRemoveProject}
+    <ShellActionsContext.Provider value={{ addProject: handleAddProject }}>
+      <div className="flex h-screen w-full bg-surface-base text-text-primary overflow-hidden font-sans">
+        <Sidebar
+          onAddProject={handleAddProject}
+          onMissingPath={setMissingProject}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
         />
-      )}
-    </div>
+        <div className="flex-1 flex flex-col min-w-0">
+          {children}
+        </div>
+        {missingProject && (
+          <MissingPathModal
+            project={missingProject}
+            onClose={() => setMissingProject(null)}
+            onRelocate={handleRelocate}
+            onRemove={handleRemoveProject}
+          />
+        )}
+      </div>
+    </ShellActionsContext.Provider>
   );
 }
 

@@ -5,7 +5,10 @@ import { SquareChevronUpIcon, Trash2Icon, SquareIcon, ArrowDownIcon, SendIcon, P
 import type { AgentBlock, TaskAttachment } from '@/lib/types';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
 import { useSupervisorSession } from '@/hooks/useSupervisorSession';
+import { useProjects } from '@/components/ProjectsProvider';
+import { useShellActions } from '@/components/ClientShell';
 import { ScrambleText } from '@/components/ScrambleText';
+import { OnboardingCards } from '@/components/OnboardingCards';
 import { TextBlock } from '@/components/blocks/TextBlock';
 import { ThinkingBlock } from '@/components/blocks/ThinkingBlock';
 import { ToolBlock } from '@/components/blocks/ToolBlock';
@@ -22,7 +25,9 @@ function formatSize(bytes: number): string {
 }
 
 export default function SupervisorPage() {
-  const { blocks, sessionDone, hasHistory, sendMessage, stop } = useSupervisorSession();
+  const { blocks, sessionDone, hasHistory, sendMessage, stop, clear } = useSupervisorSession();
+  const { projects } = useProjects();
+  const { addProject } = useShellActions();
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -94,10 +99,9 @@ export default function SupervisorPage() {
     }
   };
 
-  const handleClear = useCallback(async () => {
-    await fetch('/api/supervisor', { method: 'DELETE' });
-    window.location.reload();
-  }, []);
+  const handleClear = useCallback(() => {
+    clear();
+  }, [clear]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -198,7 +202,7 @@ export default function SupervisorPage() {
     <>
       <header className="h-12 bg-surface-base flex items-center justify-between px-6 flex-shrink-0 border-b border-border-default">
         <div className="flex items-center gap-2.5">
-          <SquareChevronUpIcon className="w-4.5 h-4.5 text-text-chrome" />
+          <SquareChevronUpIcon className="w-4 h-4 text-bronze-500" />
           <h1 className="text-sm font-semibold text-text-primary leading-tight">Supervisor</h1>
         </div>
         {hasHistory && (
@@ -235,10 +239,11 @@ export default function SupervisorPage() {
           >
             {/* Empty state */}
             {blocks.length === 0 && sessionDone && (
-              <div className="flex flex-col items-center justify-center h-full text-text-tertiary gap-2">
-                <SquareChevronUpIcon className="w-8 h-8 text-text-placeholder" />
-                <p className="text-sm">Send a message to start the supervisor session.</p>
-              </div>
+              <OnboardingCards
+                onAddProject={addProject}
+                onFocusChat={() => textareaRef.current?.focus()}
+                onSendMessage={(text) => sendMessage(text)}
+              />
             )}
 
             {/* Starting placeholder */}

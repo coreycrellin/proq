@@ -14,6 +14,7 @@ interface UseSupervisorSessionResult {
   hasHistory: boolean;
   sendMessage: (text: string, attachments?: TaskAttachment[]) => void;
   stop: () => void;
+  clear: () => Promise<void>;
 }
 
 export function useSupervisorSession(): UseSupervisorSessionResult {
@@ -90,7 +91,15 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
     }
   }, []);
 
+  const clear = useCallback(async () => {
+    await fetch('/api/supervisor', { method: 'DELETE' });
+    setBlocks([]);
+    setSessionDone(true);
+  }, []);
+
   const hasHistory = blocks.length > 0;
 
-  return { blocks, connected, sessionDone, hasHistory, sendMessage, stop };
+  return { blocks, connected, sessionDone, hasHistory, sendMessage, stop, clear };
 }
+
+export type { UseSupervisorSessionResult };
