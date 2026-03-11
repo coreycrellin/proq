@@ -46,14 +46,6 @@ export function Splash({ onSettings }: SplashProps): React.JSX.Element {
       setError(err)
     })
 
-    window.proqDesktop.startServer().then((result) => {
-      if (!result.ok) {
-        setError(result.error || 'Failed to start server')
-      } else {
-        setStatus('Projecting...')
-      }
-    })
-
     return (): void => {
       cleanupLog()
       cleanupError()
@@ -87,7 +79,11 @@ export function Splash({ onSettings }: SplashProps): React.JSX.Element {
               onClick={(): void => {
                 setError(null)
                 setStatus('Restarting...')
-                window.proqDesktop.startServer()
+                window.proqDesktop.startServer().then((result) => {
+                  if (!result.ok) {
+                    setError(result.error || 'Failed to start server')
+                  }
+                })
               }}
             >
               Retry
