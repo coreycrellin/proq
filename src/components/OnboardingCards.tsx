@@ -158,7 +158,7 @@ export function OnboardingCards({
         {/* Divider with label */}
         <div className="w-full max-w-lg flex items-center gap-3 mb-8">
           <div className="flex-1 border-t border-border-default" />
-          <span className="text-[9px] font-semibold text-border-default uppercase tracking-wider">
+          <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider">
             Quick start
           </span>
           <div className="flex-1 border-t border-border-default" />
