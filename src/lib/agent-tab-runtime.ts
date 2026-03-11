@@ -174,10 +174,13 @@ function wireProcess(session: AgentTabSession, proc: ChildProcess, startTime: nu
     }
 
     if (session.status === "aborted") {
-      await setAgentTabData(session.projectId, session.tabId, {
-        agentBlocks: session.blocks,
-        sessionId: session.sessionId,
-      });
+      // Only persist if session is still tracked (skip if it was cleared)
+      if (sessions.get(session.tabId) === session) {
+        await setAgentTabData(session.projectId, session.tabId, {
+          agentBlocks: session.blocks,
+          sessionId: session.sessionId,
+        });
+      }
       return;
     }
 
@@ -477,14 +480,25 @@ This will update the Live preview iframe to show the running application.
 - If asked to install dependencies, run the appropriate install command first`;
 }
 
-export function clearAgentTabSession(tabId: string): void {
+export async function clearAgentTabSession(tabId: string, projectId?: string): Promise<void> {
   const session = sessions.get(tabId);
   if (session) {
     if (session.status === "running" && session.queryHandle) {
       session.status = "aborted";
       session.queryHandle.kill("SIGTERM");
     }
+    // Clear persisted data
+    await setAgentTabData(session.projectId, tabId, {
+      agentBlocks: [],
+      sessionId: undefined,
+    });
     session.clients.clear();
     sessions.delete(tabId);
+  } else if (projectId) {
+    // No in-memory session but clear persisted data
+    await setAgentTabData(projectId, tabId, {
+      agentBlocks: [],
+      sessionId: undefined,
+    });
   }
 }

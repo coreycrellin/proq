@@ -188,14 +188,10 @@ export function WorkbenchTabsProvider({ children }: { children: React.ReactNode 
     setState((prev) => {
       const ps = getOrCreate(prev, projectId, scope);
       const filtered = ps.tabs.filter((t) => t.id !== tabId);
-      let next: Record<string, ProjectWorkbenchState>;
-      if (filtered.length === 0) {
-        const dts = defaultTabs(projectId, scope);
-        next = { ...prev, [key]: { ...ps, tabs: dts, activeTabId: dts[0].id } };
-      } else {
-        const activeTabId = ps.activeTabId === tabId ? filtered[0].id : ps.activeTabId;
-        next = { ...prev, [key]: { ...ps, tabs: filtered, activeTabId } };
-      }
+      const activeTabId = filtered.length === 0
+        ? ''
+        : ps.activeTabId === tabId ? filtered[0].id : ps.activeTabId;
+      const next = { ...prev, [key]: { ...ps, tabs: filtered, activeTabId } };
       persistTabs(projectId, next[key], scope);
       return next;
     });
