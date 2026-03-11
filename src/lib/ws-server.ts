@@ -6,7 +6,7 @@ import { attachAgentWsWithProject } from "./agent-session-server";
 import { attachSupervisorWs } from "./supervisor-server";
 import { attachAgentTabWs } from "./agent-tab-server";
 
-const PORT = parseInt(process.env.NEXT_PUBLIC_WS_PORT || "42069", 10);
+const PORT = parseInt(process.env.PROQ_WS_PORT || process.env.NEXT_PUBLIC_WS_PORT || "42069", 10);
 
 let started = false;
 

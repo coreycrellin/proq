@@ -42,6 +42,7 @@ export async function startServer(
       env: {
         ...process.env,
         PORT: String(port),
+        PROQ_WS_PORT: String(wsPort),
         NEXT_PUBLIC_WS_PORT: String(wsPort),
         NEXT_PUBLIC_ELECTRON: '1'
       },
