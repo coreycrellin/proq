@@ -152,7 +152,7 @@ function SortableTab({
 /* -------------------------------------------------------------------------- */
 
 export default function WorkbenchPanel({ projectId, projectPath, scope = 'project', agentContext, style, collapsed, onToggleCollapsed, onExpand, onResizeStart, isDragging }: WorkbenchPanelProps) {
-  const { getTabs, getActiveTabId, setActiveTabId, openTab, closeTab, renameTab, reorderTabs, hydrateProject } = useWorkbenchTabs();
+  const { getTabs, getActiveTabId, setActiveTabId, openTab, closeTab, renameTab, replaceTab, reorderTabs, hydrateProject } = useWorkbenchTabs();
   const panelRef = useRef<HTMLDivElement>(null);
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -217,32 +217,17 @@ export default function WorkbenchPanel({ projectId, projectPath, scope = 'projec
 
   const clearTab = useCallback(
     (tab: WorkbenchTab) => {
+      const newId = `${tab.type}-${uuidv4().slice(0, 8)}`;
+      // Kill old backend session
       if (tab.type === 'agent') {
-        // Clear agent session server-side, then reset blocks via WS reconnect
-        fetch(`/api/agent-tab/${tab.id}?projectId=${projectId}`, { method: 'DELETE' })
-          .then(() => {
-            // Dispatch after server confirms clear so reconnect gets empty state
-            window.dispatchEvent(new CustomEvent('agent-tab-clear', { detail: { tabId: tab.id } }));
-          })
-          .catch(() => {});
+        fetch(`/api/agent-tab/${tab.id}?projectId=${projectId}`, { method: 'DELETE' }).catch(() => {});
       } else {
-        // Kill and respawn the terminal
-        fetch(`/api/shell/${tab.id}`, { method: 'DELETE' }).then(() => {
-          // Delay to let tmux session fully terminate before respawn
-          setTimeout(() => {
-            fetch('/api/shell/spawn', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tabId: tab.id, cwd: projectPath }),
-            }).then(() => {
-              // Dispatch event so TerminalPane reconnects
-              window.dispatchEvent(new CustomEvent('terminal-clear', { detail: { tabId: tab.id } }));
-            }).catch(() => {});
-          }, 300);
-        }).catch(() => {});
+        fetch(`/api/shell/${tab.id}`, { method: 'DELETE' }).catch(() => {});
       }
+      // Swap to a new ID — React unmounts the old pane and mounts a fresh one
+      replaceTab(projectId, tab.id, newId, scope);
     },
-    [projectId, projectPath]
+    [projectId, replaceTab, scope]
   );
 
   // DnD sensors — require 5px movement before activating to avoid blocking clicks

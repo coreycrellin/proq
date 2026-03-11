@@ -17,7 +17,6 @@ export function useTerminal(
   containerRef: React.RefObject<HTMLDivElement | null>,
   visible: boolean,
   cwd?: string,
-  reconnectKey?: number,
 ) {
   const instanceRef = useRef<TerminalInstance | null>(null);
 
@@ -25,9 +24,6 @@ export function useTerminal(
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
-    // Clear any leftover DOM from previous terminal instance
-    container.innerHTML = '';
 
     let cancelled = false;
     let instance: TerminalInstance | null = null;
@@ -124,9 +120,9 @@ export function useTerminal(
       }
       instanceRef.current = null;
     };
-    // Only re-run if tabId or reconnectKey changes (container ref is stable)
+    // Only re-run if tabId changes (container ref is stable)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabId, reconnectKey]);
+  }, [tabId]);
 
   // Fit on visibility change + resize observer
   useEffect(() => {
@@ -182,21 +178,8 @@ export function TerminalPane({
   cwd?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [clearKey, setClearKey] = useState(0);
-  const { sendData } = useTerminal(tabId, containerRef, visible, cwd, clearKey);
+  const { sendData } = useTerminal(tabId, containerRef, visible, cwd);
   const [dropping, setDropping] = useState(false);
-
-  // Listen for terminal-clear events to force reconnect with fresh PTY
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const { tabId: targetId } = (e as CustomEvent).detail;
-      if (targetId === tabId) {
-        setClearKey((k) => k + 1);
-      }
-    };
-    window.addEventListener('terminal-clear', handler);
-    return () => window.removeEventListener('terminal-clear', handler);
-  }, [tabId]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (!enableDrop) return;
