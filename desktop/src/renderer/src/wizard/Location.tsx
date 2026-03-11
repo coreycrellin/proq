@@ -9,7 +9,7 @@ interface LocationProps {
 
 export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProps): React.JSX.Element {
   const [installDir, setInstallDir] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loadingAction, setLoadingAction] = useState<'use-existing' | 'clone' | 'overwrite' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [existingInstall, setExistingInstall] = useState<boolean | null>(null)
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -61,8 +61,10 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
     }
   }
 
+  const loading = loadingAction !== null
+
   const handleNext = async (action: 'use-existing' | 'clone' | 'overwrite'): Promise<void> => {
-    setLoading(true)
+    setLoadingAction(action)
     setError(null)
 
     try {
@@ -70,14 +72,14 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
         const valid = await window.proqDesktop.validateInstall(fullProqPath)
         if (!valid) {
           setError("Not a valid proq installation. Make sure the directory contains proq's package.json.")
-          setLoading(false)
+          setLoadingAction(null)
           return
         }
       } else {
         const result = await window.proqDesktop.cloneRepo(fullProqPath, action === 'overwrite')
         if (!result.ok) {
           setError(result.error || 'Failed to clone repository')
-          setLoading(false)
+          setLoadingAction(null)
           return
         }
       }
@@ -88,7 +90,7 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
-      setLoading(false)
+      setLoadingAction(null)
     }
   }
 
@@ -143,7 +145,7 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
                 disabled={loading}
                 style={{ flex: 1 }}
               >
-                {loading ? 'Setting up...' : 'Use existing'}
+                Use existing
               </button>
               <button
                 className="btn-overwrite"
@@ -151,7 +153,7 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
                 disabled={loading}
                 style={{ flex: 1 }}
               >
-                {loading ? 'Cloning...' : 'Overwrite'}
+                Overwrite
               </button>
             </div>
           </div>
@@ -163,12 +165,18 @@ export function Location({ proqPath, setProqPath, onNext, onBack }: LocationProp
       </div>
 
       <div className="wizard-footer">
-        <button className="btn-ghost" onClick={onBack}>
+        <button className="btn-ghost" onClick={onBack} disabled={loading}>
           Back
         </button>
-        {!existingInstall && (
+        {(!existingInstall || loading) && (
           <button className="btn-accent" onClick={() => handleNext('clone')} disabled={loading || !installDir}>
-            {loading ? 'Cloning...' : 'Next'}
+            {loadingAction === 'overwrite'
+              ? 'Cloning...'
+              : loadingAction === 'use-existing'
+                ? 'Setting up...'
+                : loadingAction === 'clone'
+                  ? 'Cloning...'
+                  : 'Next'}
           </button>
         )}
       </div>
