@@ -466,7 +466,7 @@ You are working in the **Live Preview** tab of proq. Your primary job here is to
 4. Once you see the server is running, **immediately** set the live preview URL by making this API call:
 
 \`\`\`bash
-curl -s -X PATCH http://localhost:1337/api/projects/${projectId} \\
+curl -s -X PATCH http://localhost:${process.env.PORT || 1337}/api/projects/${projectId} \\
   -H 'Content-Type: application/json' \\
   -d '{"serverUrl":"<the-url-you-found>"}'
 \`\`\`

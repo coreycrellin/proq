@@ -12,7 +12,7 @@ const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");
 const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js");
 const { z } = require("zod");
 
-const API = "http://localhost:1337";
+const API = process.env.PROQ_API || "http://localhost:1337";
 
 // Parse --project flag
 let defaultProjectId = null;

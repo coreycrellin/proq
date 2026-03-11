@@ -29,7 +29,6 @@ import {
 } from "./agent-session";
 import { getClaudeBin } from "./claude-bin";
 
-const MC_API = "http://localhost:1337";
 
 /**
  * Write an MCP config JSON file that tells Claude to connect to the proq
@@ -152,7 +151,7 @@ export function scheduleCleanup(projectId: string, taskId: string) {
 
   const expiresAt = Date.now() + CLEANUP_DELAY_MS;
   const shortId = taskId.slice(0, 8);
-  const tmuxSession = `mc-${shortId}`;
+  const tmuxSession = `proq-${shortId}`;
 
   const timer = setTimeout(async () => {
     try {
@@ -244,7 +243,7 @@ export async function dispatchTask(
 
   const shortId = taskId.slice(0, 8);
   const terminalTabId = `task-${shortId}`;
-  const tmuxSession = `mc-${shortId}`;
+  const tmuxSession = `proq-${shortId}`;
 
   // Check if running in parallel mode — create worktree for parallel code tasks
   const executionMode = await getExecutionMode(projectId);
@@ -354,7 +353,8 @@ export async function dispatchTask(
     const socketPath = `/tmp/proq/${tmuxSession}.sock`;
 
     // Launch via tmux with bridge — session survives server restarts, bridge exposes PTY over unix socket
-    const tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' node '${bridgePath}' '${socketPath}' '${launcherFile}'`;
+    const proqApi = `http://localhost:${process.env.PORT || 1337}`;
+    const tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' -e PROQ_API='${proqApi}' node '${bridgePath}' '${socketPath}' '${launcherFile}'`;
 
     try {
       execSync(tmuxCmd, { timeout: 10_000 });
@@ -431,7 +431,7 @@ export async function abortTask(projectId: string, taskId: string) {
   if (task?.renderMode === "cli") {
     // CLI mode: kill tmux
     const shortId = taskId.slice(0, 8);
-    const tmuxSession = `mc-${shortId}`;
+    const tmuxSession = `proq-${shortId}`;
     try {
       execSync(`tmux kill-session -t '${tmuxSession}'`, { timeout: 5_000 });
       console.log(`[agent-dispatch] killed tmux session ${tmuxSession}`);
@@ -480,7 +480,7 @@ export function isSessionAlive(taskId: string): boolean {
 
   // Fall back to tmux check
   const shortId = taskId.slice(0, 8);
-  const tmuxSession = `mc-${shortId}`;
+  const tmuxSession = `proq-${shortId}`;
   try {
     execSync(`tmux has-session -t '${tmuxSession}'`, { timeout: 3_000 });
     return true;

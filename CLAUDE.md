@@ -78,7 +78,7 @@ Key functions:
 - `isSessionAlive()` — checks if a tmux session is alive for a task
 - `scheduleCleanup()` — deferred cleanup (1hr) to capture agent logs after completion
 
-**Launch:** `tmux new-session -d -s mc-{shortId} -c '{projectPath}'` running the agent via a bridge script that exposes a PTY over a unix socket.
+**Launch:** `tmux new-session -d -s proq-{shortId} -c '{projectPath}'` running the agent via a bridge script that exposes a PTY over a unix socket.
 
 **Callback:** Agent curls back when done:
 
@@ -204,5 +204,5 @@ Tasks have fields specifically for AI agent use:
 - `design-mock/` is a separate Vite prototype — not part of the main app
 - lowdb v7 uses ESM — all db operations are async
 - The app runs on port 1337 by default
-- Tmux sessions: `tmux attach -t mc-{first8ofTaskId}` to watch an agent work
+- Tmux sessions: `tmux attach -t proq-{first8ofTaskId}` to watch an agent work
 - Optional Slack notifications via OpenClaw CLI — set `OPENCLAW_BIN` and `SLACK_CHANNEL` in `.env.local`

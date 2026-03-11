@@ -11,7 +11,7 @@ const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio
 const { z } = require("zod");
 const { execSync } = require("child_process");
 
-const API = "http://localhost:1337";
+const API = process.env.PROQ_API || "http://localhost:1337";
 const [projectId, taskId] = process.argv.slice(2);
 
 if (!projectId || !taskId) {
