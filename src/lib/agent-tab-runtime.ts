@@ -46,6 +46,17 @@ function appendBlock(session: AgentTabSession, block: AgentBlock) {
 function processStreamEvent(session: AgentTabSession, event: Record<string, unknown>) {
   const type = event.type as string;
 
+  if (type === "stream_event") {
+    const inner = event.event as Record<string, unknown> | undefined;
+    if (inner?.type === "content_block_delta") {
+      const delta = inner.delta as Record<string, unknown> | undefined;
+      if (delta?.type === "text_delta" && typeof delta.text === "string") {
+        broadcast(session, { type: "stream_delta", text: delta.text });
+      }
+    }
+    return;
+  }
+
   if (type === "system") {
     const subtype = event.subtype as string | undefined;
     if (subtype === "init") {
@@ -283,6 +294,7 @@ export async function startAgentTabSession(
   const args: string[] = [
     "-p", text,
     "--output-format", "stream-json",
+    "--include-partial-messages",
     "--verbose",
     "--dangerously-skip-permissions",
     "--max-turns", "200",
@@ -386,6 +398,7 @@ export async function continueAgentTabSession(
     "--resume", session.sessionId!,
     "-p", promptText,
     "--output-format", "stream-json",
+    "--include-partial-messages",
     "--verbose",
     "--dangerously-skip-permissions",
     "--max-turns", "200",

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { AgentBlock, AgentWsServerMsg, TaskAttachment } from '@/lib/types';
+import { useStreamingBuffer } from './useStreamingBuffer';
 
 function getWsPort(): string {
   return (typeof window !== 'undefined' && (window as unknown as { __PROQ_WS_PORT?: string }).__PROQ_WS_PORT) || '42069';
@@ -11,6 +12,7 @@ const RETRY_DELAY_MS = 2000;
 
 interface UseAgentSessionResult {
   blocks: AgentBlock[];
+  streamingText: string;
   connected: boolean;
   sessionDone: boolean;
   sendFollowUp: (text: string, attachments?: TaskAttachment[]) => void;
@@ -27,6 +29,7 @@ export function useAgentSession(
   const [connected, setConnected] = useState(false);
   const [sessionDone, setSessionDone] = useState(!!staticLog);
   const wsRef = useRef<WebSocket | null>(null);
+  const { streamingText, appendDelta, hurryBuffer, clearBuffer } = useStreamingBuffer();
 
   // If static log, just use it directly
   useEffect(() => {
@@ -58,6 +61,7 @@ export function useAgentSession(
 
           if (msg.type === 'replay') {
             retryCount = 0; // successful — reset retries
+            clearBuffer();
             setBlocks(msg.blocks);
             // Check if session is done — look at last status block and user blocks
             // A user block after the last complete/error/abort means a follow-up is pending
@@ -69,8 +73,13 @@ export function useAgentSession(
             const hasUserAfter = msg.blocks.slice(lastStatusIdx + 1).some((b) => b.type === 'user');
             const isDone = lastStatus?.type === 'status' && lastStatus.subtype !== 'init' && !hasUserAfter;
             setSessionDone(isDone);
+          } else if (msg.type === 'stream_delta') {
+            appendDelta(msg.text);
           } else if (msg.type === 'block') {
             retryCount = 0;
+            if (msg.block.type === 'text' || msg.block.type === 'user') {
+              hurryBuffer();
+            }
             setBlocks((prev) => {
               // Dedup: if a tool_use block with the same toolId already exists, replace it
               // (e.g. server may re-broadcast an enriched ExitPlanMode block)
@@ -146,5 +155,5 @@ export function useAgentSession(
     }
   }, []);
 
-  return { blocks, connected, sessionDone, sendFollowUp, approvePlan, stop };
+  return { blocks, streamingText, connected, sessionDone, sendFollowUp, approvePlan, stop };
 }

@@ -35,7 +35,7 @@ interface StructuredPaneProps {
 }
 
 export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange }: StructuredPaneProps) {
-  const { blocks, sessionDone, sendFollowUp, approvePlan, stop } = useAgentSession(taskId, projectId, agentBlocks);
+  const { blocks, streamingText, sessionDone, sendFollowUp, approvePlan, stop } = useAgentSession(taskId, projectId, agentBlocks);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +62,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     if (!userScrolledUp && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [blocks, userScrolledUp]);
+  }, [blocks, streamingText, userScrolledUp]);
 
   // Track scroll position
   const handleScroll = () => {
@@ -208,7 +208,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
   // Check if agent is actively thinking (last non-status block has no result yet)
   const isRunning = !sessionDone;
   const lastBlock = blocks.length > 0 ? blocks[blocks.length - 1] : null;
-  const isThinking = isRunning && blocks.length > 0 && (
+  const isThinking = isRunning && !streamingText && blocks.length > 0 && (
     (lastBlock?.type === 'status' && lastBlock.subtype === 'init') ||
     (lastBlock?.type === 'tool_result') ||
     (lastBlock?.type === 'text') ||
@@ -449,16 +449,13 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
                     nextSteps={block.nextSteps}
                   />
                 );
-              case 'stream_delta':
-                return (
-                  <span key={idx} className="text-sm text-text-secondary">
-                    {block.text}
-                  </span>
-                );
               default:
                 return null;
             }
           })}
+
+          {/* Streaming text (live partial response) */}
+          {streamingText && <TextBlock text={streamingText} />}
 
           {/* Thinking indicator */}
           {isThinking && (

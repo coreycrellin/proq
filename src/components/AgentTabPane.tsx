@@ -38,7 +38,7 @@ interface AgentTabPaneProps {
 }
 
 export function AgentTabPane({ tabId, projectId, visible, context }: AgentTabPaneProps) {
-  const { blocks, sessionDone, loaded, sendMessage, stop, clear } = useAgentTabSession(tabId, projectId, context);
+  const { blocks, streamingText, sessionDone, loaded, sendMessage, stop, clear } = useAgentTabSession(tabId, projectId, context);
 
   // Listen for clear events from the tab dropdown
   useEffect(() => {
@@ -84,7 +84,7 @@ export function AgentTabPane({ tabId, projectId, visible, context }: AgentTabPan
     if (!userScrolledUp && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [blocks, userScrolledUp]);
+  }, [blocks, streamingText, userScrolledUp]);
 
   const handleScroll = () => {
     const el = scrollRef.current;
@@ -189,7 +189,7 @@ export function AgentTabPane({ tabId, projectId, visible, context }: AgentTabPan
 
   const isRunning = !sessionDone;
   const lastBlock = blocks.length > 0 ? blocks[blocks.length - 1] : null;
-  const isThinking = isRunning && blocks.length > 0 && (
+  const isThinking = isRunning && !streamingText && blocks.length > 0 && (
     (lastBlock?.type === 'status' && lastBlock.subtype === 'init') ||
     (lastBlock?.type === 'tool_result') ||
     (lastBlock?.type === 'text') ||
@@ -344,16 +344,13 @@ export function AgentTabPane({ tabId, projectId, visible, context }: AgentTabPan
                     error={block.error}
                   />
                 );
-              case 'stream_delta':
-                return (
-                  <span key={idx} className="text-sm text-text-secondary">
-                    {block.text}
-                  </span>
-                );
               default:
                 return null;
             }
           })}
+
+          {/* Streaming text (live partial response) */}
+          {streamingText && <TextBlock text={streamingText} />}
 
           {/* Thinking indicator */}
           {isThinking && (

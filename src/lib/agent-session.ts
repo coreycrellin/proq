@@ -272,6 +272,7 @@ export async function startSession(
     prompt,
     "--output-format",
     "stream-json",
+    "--include-partial-messages",
     "--verbose",
     "--max-turns",
     "200",
@@ -337,6 +338,17 @@ function processStreamEvent(
   event: Record<string, unknown>,
 ) {
   const type = event.type as string;
+
+  if (type === "stream_event") {
+    const inner = event.event as Record<string, unknown> | undefined;
+    if (inner?.type === "content_block_delta") {
+      const delta = inner.delta as Record<string, unknown> | undefined;
+      if (delta?.type === "text_delta" && typeof delta.text === "string") {
+        broadcast(session, { type: "stream_delta", text: delta.text });
+      }
+    }
+    return;
+  }
 
   if (type === "system") {
     const subtype = event.subtype as string | undefined;
@@ -561,6 +573,7 @@ export async function continueSession(
     promptText,
     "--output-format",
     "stream-json",
+    "--include-partial-messages",
     "--verbose",
     "--max-turns",
     "200",

@@ -317,12 +317,6 @@ export default function SupervisorPage() {
                       error={block.error}
                     />
                   );
-                case 'stream_delta':
-                  return (
-                    <span key={idx} className="text-sm text-text-secondary">
-                      {block.text}
-                    </span>
-                  );
                 default:
                   return null;
               }

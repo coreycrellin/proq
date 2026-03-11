@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { AgentBlock, AgentWsServerMsg, TaskAttachment } from '@/lib/types';
+import { useStreamingBuffer } from './useStreamingBuffer';
 
 function getWsPort(): string {
   return (typeof window !== 'undefined' && (window as unknown as { __PROQ_WS_PORT?: string }).__PROQ_WS_PORT) || '42069';
@@ -9,6 +10,7 @@ function getWsPort(): string {
 
 interface UseAgentTabSessionResult {
   blocks: AgentBlock[];
+  streamingText: string;
   connected: boolean;
   sessionDone: boolean;
   loaded: boolean;
@@ -27,6 +29,7 @@ export function useAgentTabSession(
   const [sessionDone, setSessionDone] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const { streamingText, appendDelta, hurryBuffer, clearBuffer } = useStreamingBuffer();
 
   useEffect(() => {
     const wsHost = window.location.hostname;
@@ -44,6 +47,7 @@ export function useAgentTabSession(
         const msg: AgentWsServerMsg = JSON.parse(event.data);
 
         if (msg.type === 'replay') {
+          clearBuffer();
           setBlocks(msg.blocks);
           // Determine session done state
           const statusBlocks = msg.blocks.filter(
@@ -55,7 +59,12 @@ export function useAgentTabSession(
           const isDone = !lastStatus || (lastStatus.type === 'status' && lastStatus.subtype !== 'init' && !hasUserAfter);
           setSessionDone(isDone);
           setLoaded(true);
+        } else if (msg.type === 'stream_delta') {
+          appendDelta(msg.text);
         } else if (msg.type === 'block') {
+          if (msg.block.type === 'text' || msg.block.type === 'user') {
+            hurryBuffer();
+          }
           setBlocks((prev) => [...prev, msg.block]);
           if (msg.block.type === 'status' && msg.block.subtype === 'init' || msg.block.type === 'user') {
             setSessionDone(false);
@@ -105,5 +114,5 @@ export function useAgentTabSession(
     }
   }, []);
 
-  return { blocks, connected, sessionDone, loaded, sendMessage, stop, clear };
+  return { blocks, streamingText, connected, sessionDone, loaded, sendMessage, stop, clear };
 }
