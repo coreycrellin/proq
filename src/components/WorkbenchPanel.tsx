@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useState,
 } from 'react';
-import { Plus, TerminalIcon, SquareChevronUpIcon, ChevronUp, ChevronDown, MoreHorizontal, PencilIcon, Trash2Icon } from 'lucide-react';
+import { Plus, TerminalIcon, SquareChevronUpIcon, ChevronUp, ChevronDown, MoreHorizontal, PencilIcon, Trash2Icon, EraserIcon } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   DndContext,
@@ -63,12 +63,13 @@ interface SortableTabProps {
   onCancelRename: () => void;
   onRenameStart: () => void;
   onRemove: () => void;
+  onClear: () => void;
 }
 
 function SortableTab({
   tab, isActive, isRenaming, renameValue, setRenameValue,
   renameInputRef, onSelect, onDoubleClick, onSubmitRename,
-  onCancelRename, onRenameStart, onRemove,
+  onCancelRename, onRenameStart, onRemove, onClear,
 }: SortableTabProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tab.id });
   const style = {
@@ -127,6 +128,10 @@ function SortableTab({
             <DropdownMenuItem onSelect={onRenameStart}>
               <PencilIcon className="w-3.5 h-3.5" />
               Rename
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onClear}>
+              <EraserIcon className="w-3.5 h-3.5" />
+              Clear
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={onRemove}
@@ -210,6 +215,33 @@ export default function WorkbenchPanel({ projectId, projectPath, scope = 'projec
     [closeTab, projectId, scope]
   );
 
+  const clearTab = useCallback(
+    (tab: WorkbenchTab) => {
+      if (tab.type === 'agent') {
+        // Clear agent session server-side, then reset blocks via WS reconnect
+        fetch(`/api/agent-tab/${tab.id}?projectId=${projectId}`, { method: 'DELETE' }).catch(() => {});
+        // Dispatch event so the AgentTabPane resets
+        window.dispatchEvent(new CustomEvent('agent-tab-clear', { detail: { tabId: tab.id } }));
+      } else {
+        // Kill and respawn the terminal
+        fetch(`/api/shell/${tab.id}`, { method: 'DELETE' }).then(() => {
+          // Small delay to let tmux session die before respawn
+          setTimeout(() => {
+            fetch('/api/shell/spawn', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tabId: tab.id, cwd: projectPath }),
+            }).then(() => {
+              // Dispatch event so TerminalPane reconnects
+              window.dispatchEvent(new CustomEvent('terminal-clear', { detail: { tabId: tab.id } }));
+            }).catch(() => {});
+          }, 300);
+        }).catch(() => {});
+      }
+    },
+    [projectId, projectPath]
+  );
+
   // DnD sensors — require 5px movement before activating to avoid blocking clicks
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -286,6 +318,7 @@ export default function WorkbenchPanel({ projectId, projectPath, scope = 'projec
                   setRenameValue(tab.label);
                 }}
                 onRemove={() => removeTab(tab.id)}
+                onClear={() => clearTab(tab)}
               />
             ))}
           </SortableContext>
@@ -331,11 +364,17 @@ export default function WorkbenchPanel({ projectId, projectPath, scope = 'projec
       {/* Panes — each manages its own lifecycle */}
       {!collapsed && (
         <div className="flex-1 relative" style={{ minHeight: 0 }}>
-          {tabs.map((tab) =>
-            tab.type === 'agent' ? (
-              <AgentTabPane key={tab.id} tabId={tab.id} projectId={projectId} visible={activeTabId === tab.id} context={agentContext} />
-            ) : (
-              <TerminalPane key={tab.id} tabId={tab.id} visible={activeTabId === tab.id} cwd={projectPath} enableDrop />
+          {tabs.length === 0 ? (
+            <div className="absolute inset-0 flex items-center justify-center text-text-placeholder text-xs">
+              No open tabs
+            </div>
+          ) : (
+            tabs.map((tab) =>
+              tab.type === 'agent' ? (
+                <AgentTabPane key={tab.id} tabId={tab.id} projectId={projectId} visible={activeTabId === tab.id} context={agentContext} />
+              ) : (
+                <TerminalPane key={tab.id} tabId={tab.id} visible={activeTabId === tab.id} cwd={projectPath} enableDrop />
+              )
             )
           )}
         </div>

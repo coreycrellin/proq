@@ -24,6 +24,24 @@ export function useAgentTabSession(
   const [sessionDone, setSessionDone] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const [reconnectKey, setReconnectKey] = useState(0);
+
+  // Listen for clear events to trigger reconnect
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { tabId: targetId } = (e as CustomEvent).detail;
+      if (targetId === tabId) {
+        // Close existing WS and trigger reconnect with fresh state
+        wsRef.current?.close();
+        setBlocks([]);
+        setSessionDone(true);
+        setLoaded(false);
+        setReconnectKey((k) => k + 1);
+      }
+    };
+    window.addEventListener('agent-tab-clear', handler);
+    return () => window.removeEventListener('agent-tab-clear', handler);
+  }, [tabId]);
 
   useEffect(() => {
     const wsHost = window.location.hostname;
@@ -79,7 +97,7 @@ export function useAgentTabSession(
       ws.close();
       wsRef.current = null;
     };
-  }, [tabId, projectId, context]);
+  }, [tabId, projectId, context, reconnectKey]);
 
   const sendMessage = useCallback((text: string, attachments?: TaskAttachment[]) => {
     const ws = wsRef.current;
