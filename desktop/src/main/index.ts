@@ -239,8 +239,8 @@ function transitionToApp(): void {
   })
 
   // Retry loading if the page fails (e.g. Cmd-R while server is slow)
-  appWindow.webContents.on('did-fail-load', (_e, _code, _desc, url) => {
-    if (url.startsWith('http://localhost') && !appWindow.isDestroyed()) {
+  appWindow.webContents.on('did-fail-load', (_e, _code, _desc, url, isMainFrame) => {
+    if (isMainFrame && url.startsWith('http://localhost') && !appWindow.isDestroyed()) {
       setTimeout(() => {
         if (!appWindow.isDestroyed()) appWindow.loadURL(url)
       }, 1000)
