@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Gemunu_Libre } from "next/font/google";
+import { headers } from "next/headers";
 import { ClientShell } from "@/components/ClientShell";
 import "./globals.css";
 
@@ -26,17 +27,20 @@ export const metadata: Metadata = {
   description: "Project management dashboard",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await headers(); // Force dynamic rendering so env vars are read at runtime
+  const wsPort = process.env.PROQ_WS_PORT || "42069";
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');document.documentElement.classList.toggle('dark',t!=='light')}catch(e){document.documentElement.classList.add('dark')}})();window.__PROQ_WS_PORT=${JSON.stringify(process.env.PROQ_WS_PORT || "42069")};`,
+            __html: `(function(){try{var t=localStorage.getItem('theme');document.documentElement.classList.toggle('dark',t!=='light')}catch(e){document.documentElement.classList.add('dark')}})();window.__PROQ_WS_PORT=${JSON.stringify(wsPort)};`,
           }}
         />
       </head>
