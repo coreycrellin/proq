@@ -2,7 +2,7 @@ import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import fs from 'fs'
 import path from 'path'
-import { setConfig } from './config'
+import { getConfig, setConfig } from './config'
 
 const execFileAsync = promisify(execFile)
 
@@ -185,10 +185,16 @@ export function runNpmBuild(
   proqPath: string,
   onLog: (line: string) => void
 ): Promise<{ ok: boolean; error?: string }> {
+  const config = getConfig()
   return new Promise((resolve) => {
     const child = spawn('npm', ['run', 'build'], {
       cwd: proqPath,
-      env: { ...process.env, NODE_ENV: 'production', NEXT_PUBLIC_ELECTRON: '1' },
+      env: {
+        ...process.env,
+        NODE_ENV: 'production',
+        NEXT_PUBLIC_ELECTRON: '1',
+        PROQ_WS_PORT: String(config.wsPort),
+      },
       stdio: ['ignore', 'pipe', 'pipe']
     })
 
