@@ -194,16 +194,27 @@ function registerIpcHandlers(): void {
       })
       mainWindow = splashWindow
 
-      const result = await applyUpdate((line) => {
+      // Only forward friendly status lines to the splash — raw command
+      // output (build warnings, npm noise) is silently dropped so it
+      // doesn't flood the small splash window.
+      const sendStatus = (line: string): void => {
         mainWindow?.webContents.send('server:log', line)
+      }
+
+      sendStatus('Pulling updates...')
+      const result = await applyUpdate((line) => {
+        const t = line.trim()
+        if (t === 'Installing dependencies...' || t === 'Building...') {
+          sendStatus(t)
+        }
       })
 
       if (!result.ok) {
-        mainWindow?.webContents.send('server:error', result.error || 'Update failed')
+        mainWindow?.webContents.send('server:error', 'Update failed. Click Retry to try again.')
         return result
       }
 
-      // Restart server
+      // Restart server — startServer streams its own status via onLog
       const serverResult = await startServer((line) => {
         mainWindow?.webContents.send('server:log', line)
       })
@@ -218,7 +229,7 @@ function registerIpcHandlers(): void {
       return { ok: true }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
-      mainWindow?.webContents.send('server:error', message)
+      mainWindow?.webContents.send('server:error', 'Update failed. Click Retry to try again.')
       return { ok: false, error: message }
     }
   })

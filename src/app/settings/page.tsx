@@ -380,32 +380,44 @@ export default function SettingsPage() {
                   </Field>
                   <Field label="Check for updates">
                     <div className="flex items-center gap-3">
-                      <button
-                        onClick={async () => {
-                          setCheckingUpdates(true);
-                          setUpdateResult(null);
-                          try {
-                            const result = await window.proqDesktop!.checkUpdates();
-                            setUpdateResult({
-                              available: result.available,
-                              count: result.commits?.length || 0,
-                            });
-                          } catch {
+                      {updateResult?.available ? (
+                        <button
+                          onClick={() => {
+                            window.proqDesktop?.applyAndRestart();
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs bg-bronze-600 text-zinc-950 hover:bg-bronze-500 font-medium"
+                        >
+                          <DownloadIcon className="w-3.5 h-3.5" />
+                          Restart to update
+                        </button>
+                      ) : (
+                        <button
+                          onClick={async () => {
+                            setCheckingUpdates(true);
                             setUpdateResult(null);
-                          } finally {
-                            setCheckingUpdates(false);
-                          }
-                        }}
-                        disabled={checkingUpdates}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs bg-surface-base border border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-hover disabled:opacity-50"
-                      >
-                        {checkingUpdates ? (
-                          <LoaderIcon className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <SearchIcon className="w-3.5 h-3.5" />
-                        )}
-                        Check for Updates
-                      </button>
+                            try {
+                              const result = await window.proqDesktop!.checkUpdates();
+                              setUpdateResult({
+                                available: result.available,
+                                count: result.commits?.length || 0,
+                              });
+                            } catch {
+                              setUpdateResult(null);
+                            } finally {
+                              setCheckingUpdates(false);
+                            }
+                          }}
+                          disabled={checkingUpdates}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs bg-surface-base border border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-hover disabled:opacity-50"
+                        >
+                          {checkingUpdates ? (
+                            <LoaderIcon className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <SearchIcon className="w-3.5 h-3.5" />
+                          )}
+                          Check for Updates
+                        </button>
+                      )}
                       {updateResult && !updateResult.available && (
                         <span className="flex items-center gap-1 text-xs text-green-500">
                           <CheckIcon className="w-3.5 h-3.5" />
@@ -418,17 +430,6 @@ export default function SettingsPage() {
                         </span>
                       )}
                     </div>
-                    {updateResult?.available && (
-                      <button
-                        onClick={() => {
-                          window.proqDesktop?.applyAndRestart();
-                        }}
-                        className="mt-3 flex items-center gap-1.5 px-3 py-2 rounded-md text-xs bg-bronze-600 text-zinc-950 hover:bg-bronze-500 font-medium"
-                      >
-                        <DownloadIcon className="w-3.5 h-3.5" />
-                        Restart to update
-                      </button>
-                    )}
                   </Field>
                 </div>
               </section>
