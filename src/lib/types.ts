@@ -144,6 +144,9 @@ export interface ProqSettings {
   showCosts: boolean;
   codingAgent: string;
 
+  // Updates
+  autoUpdate: boolean;
+
   // Appearance
   theme: 'dark' | 'light';
 

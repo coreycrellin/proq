@@ -645,6 +645,9 @@ const DEFAULT_SETTINGS: ProqSettings = {
   showCosts: false,
   codingAgent: "claude-code",
 
+  // Updates
+  autoUpdate: true,
+
   // Appearance
   theme: "dark",
 

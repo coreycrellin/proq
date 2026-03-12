@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   BotIcon,
-
+  DownloadIcon,
   PaletteIcon,
   BellIcon,
   InfoIcon,
@@ -12,7 +12,9 @@ import {
   XIcon,
   SearchIcon,
   LoaderIcon,
+  CheckIcon,
 } from "lucide-react";
+import { isElectron } from "@/lib/utils";
 import type { ProqSettings } from "@/lib/types";
 import { Select } from "@/components/ui/select";
 
@@ -20,12 +22,14 @@ type SettingsSection =
   | "about"
   | "appearance"
   | "agent"
+  | "updates"
   | "notifications";
 
-const SECTIONS: {
+const BASE_SECTIONS: {
   id: SettingsSection;
   label: string;
   icon: React.ReactNode;
+  electronOnly?: boolean;
 }[] = [
   { id: "about", label: "About", icon: <InfoIcon className="w-4 h-4" /> },
   {
@@ -35,11 +39,19 @@ const SECTIONS: {
   },
   { id: "agent", label: "Agent", icon: <BotIcon className="w-4 h-4" /> },
   {
+    id: "updates",
+    label: "Updates",
+    icon: <DownloadIcon className="w-4 h-4" />,
+    electronOnly: true,
+  },
+  {
     id: "notifications",
     label: "Notifications",
     icon: <BellIcon className="w-4 h-4" />,
   },
 ];
+
+const SECTIONS = BASE_SECTIONS.filter((s) => !s.electronOnly || isElectron);
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<ProqSettings | null>(null);
@@ -47,6 +59,8 @@ export default function SettingsPage() {
     useState<SettingsSection>("about");
   const [detectingBin, setDetectingBin] = useState(false);
   const [detectMessage, setDetectMessage] = useState<string | null>(null);
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [updateResult, setUpdateResult] = useState<{ available: boolean; count: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const isScrollingTo = useRef(false);
@@ -341,6 +355,84 @@ export default function SettingsPage() {
                 )}
               </div>
             </section>
+
+            {/* Updates — Electron only */}
+            {isElectron && (
+              <section
+                ref={(el) => {
+                  sectionRefs.current.updates = el;
+                }}
+                id="settings-updates"
+              >
+                <SectionHeading
+                  icon={<DownloadIcon className="w-4 h-4" />}
+                  label="Updates"
+                />
+                <div className="space-y-4">
+                  <Field
+                    label="Auto-update"
+                    hint="Automatically check for updates in the background."
+                  >
+                    <Toggle
+                      checked={settings.autoUpdate}
+                      onChange={(v) => update("autoUpdate", v)}
+                    />
+                  </Field>
+                  <Field label="Check for updates">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={async () => {
+                          setCheckingUpdates(true);
+                          setUpdateResult(null);
+                          try {
+                            const result = await window.proqDesktop!.checkUpdates();
+                            setUpdateResult({
+                              available: result.available,
+                              count: result.commits?.length || 0,
+                            });
+                          } catch {
+                            setUpdateResult(null);
+                          } finally {
+                            setCheckingUpdates(false);
+                          }
+                        }}
+                        disabled={checkingUpdates}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs bg-surface-base border border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-hover disabled:opacity-50"
+                      >
+                        {checkingUpdates ? (
+                          <LoaderIcon className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <SearchIcon className="w-3.5 h-3.5" />
+                        )}
+                        Check for Updates
+                      </button>
+                      {updateResult && !updateResult.available && (
+                        <span className="flex items-center gap-1 text-xs text-green-500">
+                          <CheckIcon className="w-3.5 h-3.5" />
+                          You&apos;re up to date
+                        </span>
+                      )}
+                      {updateResult && updateResult.available && (
+                        <span className="text-xs text-text-secondary">
+                          {updateResult.count} update{updateResult.count !== 1 ? "s" : ""} available
+                        </span>
+                      )}
+                    </div>
+                    {updateResult?.available && (
+                      <button
+                        onClick={() => {
+                          window.proqDesktop?.applyAndRestart();
+                        }}
+                        className="mt-3 flex items-center gap-1.5 px-3 py-2 rounded-md text-xs bg-bronze-600 text-zinc-950 hover:bg-bronze-500 font-medium"
+                      >
+                        <DownloadIcon className="w-3.5 h-3.5" />
+                        Restart to update
+                      </button>
+                    )}
+                  </Field>
+                </div>
+              </section>
+            )}
 
             {/* Notifications */}
             <section

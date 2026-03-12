@@ -17,6 +17,7 @@ import {
 } from './setup'
 import { startServer, stopServer, tryConnectToExisting, restartServer, healthCheck, onServerExit } from './server'
 import { checkForUpdates, applyUpdate } from './updater'
+import { startUpdateScheduler, stopUpdateScheduler } from './update-scheduler'
 
 // Fix PATH for macOS GUI apps (they don't inherit shell PATH)
 try {
@@ -175,6 +176,52 @@ function registerIpcHandlers(): void {
   ipcMain.handle('updates:apply', () =>
     applyUpdate((line) => mainWindow?.webContents.send('setup:log', line))
   )
+  ipcMain.handle('updates:apply-and-restart', async () => {
+    try {
+      stopUpdateScheduler()
+      stopHealthMonitor()
+      await stopServer()
+
+      // Create splash window and close the app window
+      const splashWindow = createWindow('splash')
+      loadRendererPage(splashWindow, 'splash')
+
+      const previousWindow = mainWindow
+      splashWindow.webContents.once('did-finish-load', () => {
+        if (previousWindow && previousWindow !== splashWindow && !previousWindow.isDestroyed()) {
+          previousWindow.close()
+        }
+      })
+      mainWindow = splashWindow
+
+      const result = await applyUpdate((line) => {
+        mainWindow?.webContents.send('server:log', line)
+      })
+
+      if (!result.ok) {
+        mainWindow?.webContents.send('server:error', result.error || 'Update failed')
+        return result
+      }
+
+      // Restart server
+      const serverResult = await startServer((line) => {
+        mainWindow?.webContents.send('server:log', line)
+      })
+
+      if (serverResult.ok) {
+        await new Promise((r) => setTimeout(r, 1500))
+        transitionToApp()
+      } else {
+        mainWindow?.webContents.send('server:error', serverResult.error || 'Server failed to start')
+      }
+
+      return { ok: true }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      mainWindow?.webContents.send('server:error', message)
+      return { ok: false, error: message }
+    }
+  })
 
   // App info
   ipcMain.handle('app:version', () => app.getVersion())
@@ -235,6 +282,7 @@ function transitionToApp(): void {
     }
     mainWindow = appWindow
     startHealthMonitor()
+    startUpdateScheduler(appWindow)
     onServerExit(() => recoverServer())
   })
 
@@ -325,6 +373,23 @@ app.whenReady().then(() => {
                 app.showAboutPanel()
               }
             },
+            {
+              label: 'Check for Updates…',
+              click: async (): Promise<void> => {
+                const result = await checkForUpdates()
+                if (result.available && mainWindow && !mainWindow.isDestroyed()) {
+                  mainWindow.webContents.send('updates:available', result)
+                } else if (!result.available) {
+                  dialog.showMessageBox({
+                    type: 'info',
+                    icon: nativeImage.createFromPath(icon),
+                    buttons: ['OK'],
+                    message: 'You\'re up to date',
+                    detail: 'proq is running the latest version.'
+                  })
+                }
+              }
+            },
             { type: 'separator' },
             {
               label: 'Reset to Defaults…',
@@ -365,6 +430,7 @@ app.whenReady().then(() => {
   // Power monitor — handle sleep/wake
   powerMonitor.on('suspend', () => {
     stopHealthMonitor()
+    stopUpdateScheduler()
   })
 
   powerMonitor.on('resume', async () => {
@@ -375,6 +441,9 @@ app.whenReady().then(() => {
       recoverServer()
     }
     startHealthMonitor()
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      startUpdateScheduler(mainWindow)
+    }
   })
 
   registerIpcHandlers()
@@ -387,6 +456,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', async () => {
   stopHealthMonitor()
+  stopUpdateScheduler()
   await stopServer()
 })
 

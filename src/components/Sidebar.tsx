@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Fragment, useState, useRef, useCallback } from "react";
+import React, { Fragment, useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -32,7 +32,7 @@ import {
   SettingsIcon,
   FolderOpenIcon,
 } from "lucide-react";
-import type { Project, Task, TaskStatus, TaskColumns } from "@/lib/types";
+import type { Project, TaskStatus, TaskColumns } from "@/lib/types";
 import { useProjects } from "./ProjectsProvider";
 import {
   DropdownMenu,
@@ -341,6 +341,17 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
     useProjects();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [showBlockedModal, setShowBlockedModal] = useState(false);
+
+  // Listen for update notifications from Electron
+  useEffect(() => {
+    if (!isElectron || typeof window === "undefined" || !window.proqDesktop?.onUpdateAvailable) return;
+    const cleanup = window.proqDesktop.onUpdateAvailable(() => {
+      setUpdateAvailable(true);
+    });
+    return cleanup;
+  }, []);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -427,6 +438,18 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
     setRenamingId(null);
   }, []);
 
+  const handleUpdateClick = useCallback(() => {
+    // Check if any tasks are in-progress across all projects
+    const hasInProgress = Object.values(tasksByProject).some((cols) =>
+      cols["in-progress"]?.some((t) => t.status === "in-progress")
+    );
+    if (hasInProgress) {
+      setShowBlockedModal(true);
+      return;
+    }
+    window.proqDesktop?.applyAndRestart();
+  }, [tasksByProject]);
+
   if (collapsed) {
     return (
       <aside
@@ -435,7 +458,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
         onClick={onToggleCollapsed}
       >
         {isElectron && <div className="absolute top-0 left-0 right-0 h-[48px] electron-drag" />}
-        <div className="h-[48px] flex items-center justify-center">
+        <div className="h-[48px] flex items-center justify-center relative">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/proq-logo-vector.svg"
@@ -444,6 +467,9 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
             height={13}
             className="translate-y-[4px]"
           />
+          {isElectron && updateAvailable && (
+            <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-bronze-600" />
+          )}
         </div>
       </aside>
     );
@@ -548,6 +574,16 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
         </DndContext>
       </div>
 
+      {/* Update banner */}
+      {isElectron && updateAvailable && (
+        <button
+          onClick={handleUpdateClick}
+          className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-zinc-950 bg-bronze-600 hover:bg-bronze-500 cursor-pointer flex-shrink-0 transition-colors"
+        >
+          Restart for updates
+        </button>
+      )}
+
       {/* Fixed Settings at bottom */}
       <Link
         href="/settings"
@@ -562,6 +598,23 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
           Settings
         </span>
       </Link>
+
+      {/* Blocked modal — tasks in progress */}
+      {showBlockedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-surface-modal border border-border-default rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+            <p className="text-sm text-text-primary mb-4">
+              Wait for in-progress tasks to finish and try again.
+            </p>
+            <button
+              onClick={() => setShowBlockedModal(false)}
+              className="btn-primary w-full"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

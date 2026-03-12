@@ -12,6 +12,9 @@ function friendlyStatus(line: string, port: number, wsPort: number): string | nu
   if (t.includes('WS server')) return `WebSocket on port ${wsPort}`
   if (t.includes('Ready in') || t.includes('ready started')) return 'Ready'
   if (t.includes('Listening') || t.includes('started server')) return `Server on port ${port}`
+  if (t.includes('Pulling') || t.includes('git pull')) return 'Pulling updates'
+  if (t.includes('Installing dependencies') || t.includes('npm install')) return 'Installing dependencies'
+  if (t.includes('Building') || t.includes('npm run build')) return 'Building'
   if (t.includes('Compiling') || t.includes('compiling')) return 'Compiling'
   if (t.includes('Loading')) return 'Loading modules'
   if (t.includes('next dev') || t.includes('next start')) return 'Starting Next.js'
