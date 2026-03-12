@@ -13,7 +13,7 @@
 
 ---
 
-Proq is an agentic coding workspace. Not another AI — a process manager for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that keeps you focused while multiple agents work your codebase.
+Proq is an agentic development workspace. Not another AI — a process manager for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that keeps you focused while multiple agents work your codebase.
 
 Most agentic tools optimize for speed. Proq optimizes for quality. A kanban board, parallel git worktrees, branch previews, and a review step before anything touches main. You stay in control of what ships.
 
