@@ -2,7 +2,7 @@
   <img src="public/proq-badge.png" alt="proq" width="140" />
 </p>
 
-<h3 align="center">Build something you'll love.</h3>
+<h3 align="center">Build something you'll love</h3>
 
 <p align="center">
   <a href="#download">Download</a> &nbsp;&middot;&nbsp;
