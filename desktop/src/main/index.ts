@@ -210,8 +210,11 @@ function registerIpcHandlers(): void {
       })
 
       if (!result.ok) {
-        mainWindow?.webContents.send('server:error', 'Update failed. Click Retry to try again.')
-        return result
+        // Build may exit non-zero (e.g. lint warnings) but still produce
+        // working artifacts — attempt to start the server anyway.
+        sendStatus(`Build warning: ${result.error?.split('\n').pop() || 'unknown error'}`)
+        await new Promise((r) => setTimeout(r, 3000))
+        sendStatus('Starting server anyway...')
       }
 
       // Restart server — startServer streams its own status via onLog

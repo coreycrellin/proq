@@ -41,12 +41,21 @@ function run(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    const stderrTail: string[] = []
     child.stdout?.on('data', (d: Buffer) => onLog?.(d.toString()))
-    child.stderr?.on('data', (d: Buffer) => onLog?.(d.toString()))
+    child.stderr?.on('data', (d: Buffer) => {
+      const text = d.toString()
+      onLog?.(text)
+      stderrTail.push(text)
+      if (stderrTail.length > 20) stderrTail.shift()
+    })
     child.on('error', reject)
     child.on('close', (code) => {
       if (code === 0) resolve()
-      else reject(new Error(`${cmd} ${args[0]} exited with code ${code}`))
+      else {
+        const tail = stderrTail.join('').trim().slice(-500)
+        reject(new Error(`${cmd} ${args[0]} exited with code ${code}${tail ? `\n${tail}` : ''}`))
+      }
     })
   })
 }
