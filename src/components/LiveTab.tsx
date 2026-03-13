@@ -103,7 +103,7 @@ export function LiveTab({ project, workbenchCollapsed, workbenchHeight, isDraggi
 
   const activateTab = useCallback((type: 'agent' | 'shell') => {
     if (type === 'agent') {
-      workbenchRef.current?.addAgentTab({ initialInput: 'Start the dev environment', reuse: true });
+      workbenchRef.current?.addAgentTab({ reuse: true });
     } else {
       workbenchRef.current?.addShellTab({ reuse: true });
     }
