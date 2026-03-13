@@ -66,7 +66,11 @@ export async function applyUpdate(
   const { proqPath } = getConfig()
 
   try {
-    await run('git', ['pull', 'origin', 'main'], proqPath, onLog)
+    await run('git', ['stash', '--include-untracked'], proqPath, onLog)
+    await run('git', ['pull', '--rebase', 'origin', 'main'], proqPath, onLog)
+    await run('git', ['stash', 'pop'], proqPath, onLog).catch(() => {
+      // stash pop fails if there was nothing stashed — that's fine
+    })
 
     onLog?.('Installing dependencies...')
     await run('npm', ['install'], proqPath, onLog)
