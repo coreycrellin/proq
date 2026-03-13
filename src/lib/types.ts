@@ -148,7 +148,7 @@ export interface ProqSettings {
   autoUpdate: boolean;
 
   // Appearance
-  theme: 'dark' | 'light';
+  theme: 'dark' | 'light' | 'system';
 
   // Notifications
   soundNotifications: boolean;

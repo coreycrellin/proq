@@ -3,11 +3,31 @@
 import React, { useEffect, useState } from 'react';
 import { SunIcon, MoonIcon } from 'lucide-react';
 
+function resolveTheme(stored: string | null): boolean {
+  if (stored === 'dark') return true;
+  if (stored === 'light') return false;
+  // "system" or missing — use OS preference
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
 export function ThemeToggle() {
   const [dark, setDark] = useState(true);
 
   useEffect(() => {
     setDark(document.documentElement.classList.contains('dark'));
+
+    // Listen for OS theme changes when in system mode
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = () => {
+      const stored = localStorage.getItem('theme');
+      if (!stored || stored === 'system') {
+        const isDark = mq.matches;
+        setDark(isDark);
+        document.documentElement.classList.toggle('dark', isDark);
+      }
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
   }, []);
 
   const toggle = () => {

@@ -122,9 +122,9 @@ export default function SettingsPage() {
 
     // Apply theme immediately
     if (key === "theme") {
-      const isDark = value === "dark";
+      const isDark = value === "dark" || (value === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
       document.documentElement.classList.toggle("dark", isDark);
-      localStorage.setItem("theme", isDark ? "dark" : "light");
+      localStorage.setItem("theme", value as string);
     }
 
     // Persist to API
@@ -249,8 +249,9 @@ export default function SettingsPage() {
                 <Field label="Theme">
                   <Select
                     value={settings.theme}
-                    onChange={(v) => update("theme", v as "dark" | "light")}
+                    onChange={(v) => update("theme", v as "dark" | "light" | "system")}
                     options={[
+                      { value: "system", label: "System" },
                       { value: "dark", label: "Dark" },
                       { value: "light", label: "Light" },
                     ]}

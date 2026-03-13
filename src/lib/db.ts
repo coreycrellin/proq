@@ -649,7 +649,7 @@ const DEFAULT_SETTINGS: ProqSettings = {
   autoUpdate: true,
 
   // Appearance
-  theme: "dark",
+  theme: "system",
 
   // Notifications
   soundNotifications: false,
