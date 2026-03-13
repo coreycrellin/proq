@@ -19,7 +19,7 @@ import { useProjects } from '@/components/ProjectsProvider';
 import { emptyColumns } from '@/components/ProjectsProvider';
 import type { Task, TaskStatus, TaskColumns, ExecutionMode, FollowUpDraft, TaskAttachment, ViewType } from '@/lib/types';
 import { uploadFiles } from '@/lib/upload';
-import { useTaskEvents, type TaskUpdateEvent, type TaskCreatedEvent } from '@/hooks/useTaskEvents';
+import { useTaskEvents, type TaskUpdateEvent, type TaskCreatedEvent, type ProjectUpdateEvent } from '@/hooks/useTaskEvents';
 
 export default function ProjectPage() {
   const params = useParams();
@@ -220,7 +220,14 @@ export default function ProjectPage() {
     });
   }, [projectId, setTasksByProject]);
 
-  useTaskEvents(projectId, handleTaskUpdate, handleTaskCreated);
+  // Handle project-level SSE updates (e.g. agent sets live URL)
+  const handleProjectUpdate = useCallback((event: ProjectUpdateEvent) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === projectId ? { ...p, ...event.changes } : p))
+    );
+  }, [projectId, setProjects]);
+
+  useTaskEvents(projectId, handleTaskUpdate, handleTaskCreated, handleProjectUpdate);
 
   // 30s task poll as consistency backstop — SSE handles real-time updates.
   // Skips during active drags.

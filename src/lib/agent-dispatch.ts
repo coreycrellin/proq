@@ -72,7 +72,8 @@ You have MCP tools from the **proq** server for reporting progress. Use them ins
 ### Task Tools
 - \`read_task\` — Read current task state and any existing summary
 - \`update_task\` — Update summary and move task to Verify for review
-- \`commit_changes\` — Stage and commit all current changes with a message`,
+- \`commit_changes\` — Stage and commit all current changes with a message
+- \`set_live_url\` — Set the live preview URL (e.g. after starting a dev server)`,
   ];
 
   if (mode === "auto") {
