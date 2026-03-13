@@ -4,9 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GlobeIcon, MonitorIcon, TabletSmartphoneIcon, SmartphoneIcon, RotateCwIcon, TerminalIcon, SquareChevronUpIcon, XIcon } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { useProjects } from '@/components/ProjectsProvider';
-import WorkbenchPanel from '@/components/WorkbenchPanel';
-import { useWorkbenchTabs } from '@/components/WorkbenchTabsProvider';
-import { setAgentDraft } from '@/components/AgentTabPane';
+import WorkbenchPanel, { type WorkbenchPanelHandle } from '@/components/WorkbenchPanel';
 
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';
 
@@ -33,8 +31,8 @@ export function LiveTab({ project, workbenchCollapsed, workbenchHeight, isDraggi
   const [size, setSize] = useState(initialVp !== 'desktop' ? PRESETS[initialVp] : { w: 768, h: 1024 });
   const [iframeKey, setIframeKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const workbenchRef = useRef<WorkbenchPanelHandle>(null);
   const { refreshProjects } = useProjects();
-  const { setActiveTabId, getTabs } = useWorkbenchTabs();
   const prevServerUrl = useRef(project.serverUrl);
 
   // Auto-refresh iframe when serverUrl changes (e.g. agent sets it)
@@ -104,16 +102,13 @@ export function LiveTab({ project, workbenchCollapsed, workbenchHeight, isDraggi
   }, [size.w, size.h]);
 
   const activateTab = useCallback((type: 'agent' | 'shell') => {
-    const tabs = getTabs(project.id, 'live');
-    const target = tabs.find(t => t.type === type);
-    if (target) {
-      if (type === 'agent') {
-        setAgentDraft(target.id, 'Start the dev environment');
-      }
-      setActiveTabId(project.id, target.id, 'live');
+    if (type === 'agent') {
+      workbenchRef.current?.addAgentTab({ initialInput: 'Start the dev environment', reuse: true });
+    } else {
+      workbenchRef.current?.addShellTab({ reuse: true });
     }
     onExpand();
-  }, [project.id, getTabs, setActiveTabId, onExpand]);
+  }, [onExpand]);
 
   const isDevice = viewport !== 'desktop';
 
@@ -318,6 +313,7 @@ export function LiveTab({ project, workbenchCollapsed, workbenchHeight, isDraggi
       </div>
 
       <WorkbenchPanel
+        ref={workbenchRef}
         projectId={project.id}
         projectPath={project.path}
         scope="live"
