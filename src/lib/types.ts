@@ -170,11 +170,9 @@ export interface WorkbenchSessionData {
   sessionId?: string;
 }
 
-/** @deprecated Use WorkbenchSessionData instead */
-export type AgentTabData = WorkbenchSessionData;
 
 export interface ProjectState {
-  columns: TaskColumns;
+  tasks: TaskColumns;
   chatLog: ChatLogEntry[];
   agentSession?: AgentSession;
   executionMode?: ExecutionMode;
@@ -186,6 +184,4 @@ export interface ProjectState {
   liveWorkbenchActiveTabId?: string;
   projectWorkbenchSessions?: Record<string, WorkbenchSessionData>;
   recentlyDeleted?: DeletedTaskEntry[];
-  // Legacy field — present only in unmigrated files
-  tasks?: Task[];
 }

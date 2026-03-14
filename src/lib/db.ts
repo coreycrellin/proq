@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { renameSync, existsSync as fsExists, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "fs";
+import { existsSync as fsExists, mkdirSync, readFileSync, writeFileSync, unlinkSync, renameSync } from "fs";
 import path from "path";
 import type {
   WorkspaceData,
@@ -13,24 +13,10 @@ import type {
   DeletedTaskEntry,
   ProqSettings,
   AgentBlock,
-  WorkbenchTabInfo,
-  WorkbenchSessionData,
 } from "./types";
 import { slugify } from "./utils";
 
 const DATA_DIR = path.join(process.cwd(), "data");
-
-// ── Auto-migration from old naming ──
-const oldConfigPath = path.join(DATA_DIR, "config.json");
-const newWorkspacePath = path.join(DATA_DIR, "workspace.json");
-if (fsExists(oldConfigPath) && !fsExists(newWorkspacePath)) {
-  renameSync(oldConfigPath, newWorkspacePath);
-}
-const oldStateDir = path.join(DATA_DIR, "state");
-const newProjectsDir = path.join(DATA_DIR, "projects");
-if (fsExists(oldStateDir) && !fsExists(newProjectsDir)) {
-  renameSync(oldStateDir, newProjectsDir);
-}
 
 // Ensure data directories exist on first access (idempotent)
 mkdirSync(path.join(DATA_DIR, "projects"), { recursive: true });
@@ -88,142 +74,19 @@ function writeWorkspace(ws: WorkspaceData): void {
   writeJSON(filePath, ws);
 }
 
-// ── Project DB (per-project columns + chat) ────────────────
+// ── Project DB (per-project tasks + chat) ────────────────
 function getProjectData(projectId: string): ProjectState {
   const filePath = path.join(DATA_DIR, "projects", `${projectId}.json`);
-  const raw = readJSON<ProjectState & { tasks?: Task[] }>(filePath, {
-    columns: emptyColumns(),
+  const raw = readJSON<ProjectState>(filePath, {
+    tasks: emptyColumns(),
     chatLog: [],
   });
 
-  // Auto-migration: old flat tasks[] → column-oriented
-  if (raw.tasks && !raw.columns) {
-    const columns = emptyColumns();
-    const sorted = [...raw.tasks].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    for (const task of sorted) {
-      const col = columns[task.status];
-      if (col) {
-        delete task.order;
-        col.push(task);
-      }
-    }
-    raw.columns = columns;
-    delete raw.tasks;
-    // Write migrated data back immediately
-    writeJSON(filePath, raw);
-  }
+  // ── Migrations ──
+  // Add future migrations here. Each should be idempotent and write back if changed.
 
-  // ── Auto-migration: old naming → new naming ──
-  const r = raw as ProjectState & Record<string, unknown>;
-  let migrated = false;
-
-  // Workbench state: terminalOpen/Height/Tabs/ActiveTabId → workbench* → projectWorkbench*
-  if ('terminalOpen' in r && r.projectWorkbenchOpen === undefined) {
-    r.projectWorkbenchOpen = r.terminalOpen as boolean;
-    delete r.terminalOpen;
-    migrated = true;
-  }
-  if ('terminalHeight' in r && r.projectWorkbenchHeight === undefined) {
-    r.projectWorkbenchHeight = r.terminalHeight as number;
-    delete r.terminalHeight;
-    migrated = true;
-  }
-  if ('terminalTabs' in r && r.projectWorkbenchTabs === undefined) {
-    r.projectWorkbenchTabs = r.terminalTabs as WorkbenchTabInfo[];
-    delete r.terminalTabs;
-    migrated = true;
-  }
-  if ('terminalActiveTabId' in r && r.projectWorkbenchActiveTabId === undefined) {
-    r.projectWorkbenchActiveTabId = r.terminalActiveTabId as string;
-    delete r.terminalActiveTabId;
-    migrated = true;
-  }
-
-  // Workbench state: workbench* → projectWorkbench*
-  if ('workbenchOpen' in r && r.projectWorkbenchOpen === undefined) {
-    r.projectWorkbenchOpen = r.workbenchOpen as boolean;
-    delete r.workbenchOpen;
-    migrated = true;
-  }
-  if ('workbenchHeight' in r && r.projectWorkbenchHeight === undefined) {
-    r.projectWorkbenchHeight = r.workbenchHeight as number;
-    delete r.workbenchHeight;
-    migrated = true;
-  }
-  if ('workbenchTabs' in r && r.projectWorkbenchTabs === undefined) {
-    r.projectWorkbenchTabs = r.workbenchTabs as WorkbenchTabInfo[];
-    delete r.workbenchTabs;
-    migrated = true;
-  }
-  if ('workbenchActiveTabId' in r && r.projectWorkbenchActiveTabId === undefined) {
-    r.projectWorkbenchActiveTabId = r.workbenchActiveTabId as string;
-    delete r.workbenchActiveTabId;
-    migrated = true;
-  }
-
-  // agentTabs → projectWorkbenchSessions
-  if ('agentTabs' in r && r.projectWorkbenchSessions === undefined) {
-    r.projectWorkbenchSessions = r.agentTabs as Record<string, WorkbenchSessionData>;
-    delete r.agentTabs;
-    migrated = true;
-  }
-
-  // Task fields: prettyLog → agentBlocks, renderMode values "pretty"→"structured", "terminal"→"cli"
-  // Also migrate embedded agentBlocks to separate files
-  if (r.columns) {
-    for (const status of ["todo", "in-progress", "verify", "done"] as TaskStatus[]) {
-      for (const task of r.columns[status] || []) {
-        const t = task as Task & Record<string, unknown>;
-        if ('prettyLog' in t) {
-          t.agentBlocks = t.prettyLog as AgentBlock[];
-          delete t.prettyLog;
-          migrated = true;
-        }
-        if (t.renderMode === 'pretty' as string) {
-          t.renderMode = 'structured';
-          migrated = true;
-        }
-        if (t.renderMode === 'terminal' as string) {
-          t.renderMode = 'cli';
-          migrated = true;
-        }
-        if ('findings' in t && !('summary' in t)) {
-          t.summary = t.findings as string;
-          delete t.findings;
-          migrated = true;
-        }
-        // Migrate embedded agentBlocks to separate file
-        if (t.agentBlocks && Array.isArray(t.agentBlocks) && t.agentBlocks.length > 0) {
-          const blockFile = agentBlocksPath(t.id);
-          if (!fsExists(blockFile)) {
-            writeJSON(blockFile, { blocks: t.agentBlocks, sessionId: t.sessionId });
-          }
-          delete t.agentBlocks;
-          migrated = true;
-        }
-      }
-    }
-  }
-
-  // Agent tab data: prettyLog → agentBlocks
-  if (r.projectWorkbenchSessions) {
-    for (const [tabId, tabData] of Object.entries(r.projectWorkbenchSessions)) {
-      const td = tabData as unknown as Record<string, unknown>;
-      if ('prettyLog' in td && !('agentBlocks' in td)) {
-        td.agentBlocks = td.prettyLog;
-        delete td.prettyLog;
-        r.projectWorkbenchSessions[tabId] = td as unknown as WorkbenchSessionData;
-        migrated = true;
-      }
-    }
-  }
-
-  if (migrated) {
-    writeJSON(filePath, r);
-  }
-
-  // Ensure columns exist even if file was empty
-  if (!raw.columns) raw.columns = emptyColumns();
+  // Ensure tasks exist even if file was empty
+  if (!raw.tasks) raw.tasks = emptyColumns();
   if (!raw.chatLog) raw.chatLog = [];
   if (!raw.recentlyDeleted) raw.recentlyDeleted = [];
 
@@ -235,10 +98,10 @@ function writeProject(projectId: string, data: ProjectState): void {
   writeJSON(filePath, data);
 }
 
-// Helper: find a task across all columns, returns [task, columnKey, index]
+// Helper: find a task across all status lists, returns [task, status, index]
 function findTask(data: ProjectState, taskId: string): [Task, TaskStatus, number] | null {
   for (const status of ["todo", "in-progress", "verify", "done"] as TaskStatus[]) {
-    const col = data.columns[status];
+    const col = data.tasks[status];
     const idx = col.findIndex((t) => t.id === taskId);
     if (idx !== -1) return [col[idx], status, idx];
   }
@@ -352,7 +215,7 @@ export async function reorderProjects(
 
 export async function getAllTasks(projectId: string): Promise<TaskColumns> {
   const data = getProjectData(projectId);
-  return data.columns;
+  return data.tasks;
 }
 
 export async function getTask(
@@ -381,7 +244,7 @@ export async function createTask(
       createdAt: now,
       updatedAt: now,
     };
-    state.columns.todo.unshift(task);
+    state.tasks.todo.unshift(task);
     writeProject(projectId, state);
     return task;
   });
@@ -401,14 +264,14 @@ export async function moveTask(
     const [task, fromColumn, fromIndex] = found;
 
     // Splice from source
-    state.columns[fromColumn].splice(fromIndex, 1);
+    state.tasks[fromColumn].splice(fromIndex, 1);
 
     // Update status
     task.status = toColumn;
     task.updatedAt = new Date().toISOString();
 
     // Insert at target index (clamped)
-    const targetCol = state.columns[toColumn];
+    const targetCol = state.tasks[toColumn];
     const clampedIndex = Math.max(0, Math.min(toIndex, targetCol.length));
     targetCol.splice(clampedIndex, 0, task);
 
@@ -429,11 +292,11 @@ export async function updateTask(
 
     const [task, currentColumn, currentIndex] = found;
 
-    // If status is changing, move between columns
+    // If status is changing, move between lists
     if (data.status && data.status !== currentColumn) {
-      state.columns[currentColumn].splice(currentIndex, 1);
+      state.tasks[currentColumn].splice(currentIndex, 1);
       task.status = data.status;
-      state.columns[data.status].unshift(task);
+      state.tasks[data.status].unshift(task);
     }
 
     Object.assign(task, data, { updatedAt: new Date().toISOString() });
@@ -468,7 +331,7 @@ export async function deleteTask(
       (e) => new Date(e.deletedAt).getTime() > cutoff
     );
 
-    state.columns[column].splice(index, 1);
+    state.tasks[column].splice(index, 1);
     writeProject(projectId, state);
     return true;
   });
@@ -508,7 +371,7 @@ export async function restoreDeletedTask(
     const entry = state.recentlyDeleted.splice(recentIdx, 1)[0];
 
     // Restore task into its original column
-    const col = state.columns[entry.column];
+    const col = state.tasks[entry.column];
     const insertIdx = Math.min(entry.index, col.length);
     col.splice(insertIdx, 0, entry.task);
 
