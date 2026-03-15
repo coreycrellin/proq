@@ -492,7 +492,7 @@ export function gitStatusFiles(projectPath: string): { path: string; status: str
     const output = execSync(
       `git -C '${projectPath}' status --porcelain`,
       { timeout: 10_000, encoding: "utf-8" },
-    ).trim();
+    ).trimEnd();
     if (!output) return [];
     return output.split("\n").filter(Boolean).map((line) => {
       const status = line.slice(0, 2).trim();
