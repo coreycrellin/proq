@@ -25,11 +25,8 @@ import { checkForUpdates, applyUpdate } from './updater'
 import { startUpdateScheduler, stopUpdateScheduler } from './update-scheduler'
 
 // Fix PATH for macOS GUI apps (they don't inherit shell PATH)
-try {
-  require('fix-path')()
-} catch {
-  // fix-path may fail in some environments, proceed without it
-}
+import { ensurePath } from './shell-path'
+ensurePath()
 
 let mainWindow: BrowserWindow | null = null
 let isResetting = false
