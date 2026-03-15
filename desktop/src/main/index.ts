@@ -453,6 +453,15 @@ app.whenReady().then(() => {
     const healthy = await healthCheck(config.port)
     if (!healthy) {
       recoverServer()
+    } else if (mainWindow && !mainWindow.isDestroyed()) {
+      try {
+        const alive = await mainWindow.webContents.executeJavaScript(
+          'document.body?.children.length > 0'
+        )
+        if (!alive) mainWindow.loadURL(`http://localhost:${config.port}`)
+      } catch {
+        mainWindow.loadURL(`http://localhost:${config.port}`)
+      }
     }
     startHealthMonitor()
     if (mainWindow && !mainWindow.isDestroyed()) {
