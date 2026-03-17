@@ -1,5 +1,7 @@
 import { app, BrowserWindow, Menu, nativeImage, ipcMain, dialog, shell, powerMonitor } from 'electron'
 import { join } from 'path'
+import fs from 'fs'
+import os from 'os'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { getConfig, setConfig, resetConfig } from './config'
@@ -34,6 +36,13 @@ let isQuitting = false
 let healthInterval: ReturnType<typeof setInterval> | null = null
 let consecutiveFailures = 0
 let isRecovering = false
+
+const LOG_PATH = join(os.homedir(), '.proq-desktop.log')
+
+function log(msg: string): void {
+  const line = `[${new Date().toISOString()}] ${msg}\n`
+  try { fs.appendFileSync(LOG_PATH, line) } catch { /* */ }
+}
 
 function safeSend(channel: string, ...args: unknown[]): void {
   if (!isQuitting && mainWindow && !mainWindow.isDestroyed()) {
@@ -336,6 +345,8 @@ function transitionToApp(): void {
 
 async function launchApp(): Promise<void> {
   const config = getConfig()
+  log(`launchApp: setupComplete=${config.setupComplete} proqPath=${config.proqPath} port=${config.port} devMode=${config.devMode}`)
+  log(`launchApp: PATH=${process.env.PATH}`)
 
   if (!config.setupComplete) {
     // First run — show wizard
@@ -345,6 +356,7 @@ async function launchApp(): Promise<void> {
     // Check if server is already running (e.g. orphan from previous session)
     const alreadyHealthy = await tryConnectToExisting(config.port)
     if (alreadyHealthy) {
+      log('launchApp: existing server healthy, transitioning')
       transitionToApp()
       return
     }
@@ -353,11 +365,20 @@ async function launchApp(): Promise<void> {
     mainWindow = createWindow('splash')
     loadRendererPage(mainWindow, 'splash')
 
+    // Wait for renderer to be ready before starting server,
+    // otherwise IPC messages (errors, logs) are lost
+    await new Promise<void>((resolve) => {
+      mainWindow!.webContents.once('did-finish-load', () => resolve())
+    })
+    log('launchApp: splash ready, starting server')
+
     try {
       const result = await startServer((line) => {
+        log(`server: ${line.trim()}`)
         safeSend('server:log', line)
       })
 
+      log(`launchApp: startServer result ok=${result.ok} error=${result.error}`)
       if (result.ok) {
         // Brief pause so "Projecting..." is visible on the splash
         await new Promise((r) => setTimeout(r, 1500))
@@ -367,6 +388,7 @@ async function launchApp(): Promise<void> {
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
+      log(`launchApp: startServer exception: ${message}`)
       safeSend('server:error', message)
     }
   }
