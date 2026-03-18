@@ -922,6 +922,7 @@ export default function ProjectPage() {
                   onResumeEditing={async (taskId) => {
                     await updateTask(taskId, { status: 'verify' });
                   }}
+                  onUpdateTitle={(taskId, title) => updateTask(taskId, { title })}
                 />
               )}
             </div>

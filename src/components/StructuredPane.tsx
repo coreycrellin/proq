@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { SquareIcon, ArrowDownIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, Loader2Icon } from 'lucide-react';
+import { SquareIcon, ArrowDownIcon, SendIcon, PaperclipIcon, XIcon, FileIcon, Loader2Icon, SettingsIcon } from 'lucide-react';
 import type { AgentBlock, TaskAttachment, FollowUpDraft } from '@/lib/types';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
 import { handleChatCommand } from '@/lib/chat-commands';
@@ -52,6 +52,20 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
   const [showCosts, setShowCosts] = useState(false);
+  const [showFontSettings, setShowFontSettings] = useState(false);
+  const [userFontSize, setUserFontSize] = useState(() => {
+    if (typeof window === 'undefined') return 14;
+    const v = parseInt(localStorage.getItem('proq-structured-userFontSize') ?? '', 10);
+    return isNaN(v) ? 14 : v;
+  });
+  const [responseFontSize, setResponseFontSize] = useState(() => {
+    if (typeof window === 'undefined') return 14;
+    const v = parseInt(localStorage.getItem('proq-structured-responseFontSize') ?? '', 10);
+    return isNaN(v) ? 14 : v;
+  });
+  // Persist font sizes
+  useEffect(() => { localStorage.setItem('proq-structured-userFontSize', String(userFontSize)); }, [userFontSize]);
+  useEffect(() => { localStorage.setItem('proq-structured-responseFontSize', String(responseFontSize)); }, [responseFontSize]);
   // Track user-originated input changes to avoid external sync overwriting them
   const localChangeRef = useRef(false);
 
@@ -515,11 +529,11 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
 
             switch (block.type) {
               case 'text':
-                return <TextBlock key={idx} text={block.text} />;
+                return <TextBlock key={idx} text={block.text} fontSize={responseFontSize !== 14 ? responseFontSize : undefined} />;
               case 'thinking':
                 return <ThinkingBlock key={idx} thinking={block.thinking} forceCollapsed={undefined} />;
               case 'user':
-                return <UserBlock key={idx} text={block.text} attachments={block.attachments} />;
+                return <UserBlock key={idx} text={block.text} attachments={block.attachments} fontSize={userFontSize !== 14 ? userFontSize : undefined} />;
               case 'status':
                 return (
                   <StatusBlock
@@ -547,7 +561,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
           })}
 
           {/* Streaming text (live partial response) */}
-          {streamingText && <TextBlock text={streamingText} />}
+          {streamingText && <TextBlock text={streamingText} fontSize={responseFontSize !== 14 ? responseFontSize : undefined} />}
 
           {/* Thinking indicator */}
           {isThinking && (
@@ -671,16 +685,68 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
               className="w-full min-h-[36px] max-h-[160px] resize-none overflow-hidden bg-transparent px-3 pt-3 pb-2 text-sm leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none"
             />
 
+            {/* Font size settings row */}
+            {showFontSettings && (
+              <div className="flex items-center gap-3 px-3 py-1.5 border-t border-border-strong/20">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-text-placeholder">User</span>
+                  <input
+                    type="number"
+                    min={8}
+                    max={32}
+                    value={userFontSize}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 8 && v <= 32) setUserFontSize(v);
+                    }}
+                    className="w-10 px-1 py-0.5 rounded text-[10px] text-text-secondary bg-surface-secondary border border-border-default text-center focus:outline-none focus:border-blue-500"
+                    title="User message text size (px)"
+                  />
+                  <span className="text-[10px] text-text-placeholder">px</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-text-placeholder">Response</span>
+                  <input
+                    type="number"
+                    min={8}
+                    max={32}
+                    value={responseFontSize}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 8 && v <= 32) setResponseFontSize(v);
+                    }}
+                    className="w-10 px-1 py-0.5 rounded text-[10px] text-text-secondary bg-surface-secondary border border-border-default text-center focus:outline-none focus:border-blue-500"
+                    title="Response text size (px)"
+                  />
+                  <span className="text-[10px] text-text-placeholder">px</span>
+                </div>
+              </div>
+            )}
+
             {/* Bottom bar: attach left, send right */}
             <div className="flex items-center justify-between px-1.5 pb-1.5">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-text-tertiary hover:text-text-chrome-hover hover:bg-surface-hover"
-                title="Attach file"
-              >
-                <PaperclipIcon className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-text-tertiary hover:text-text-chrome-hover hover:bg-surface-hover"
+                  title="Attach file"
+                >
+                  <PaperclipIcon className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFontSettings((v) => !v)}
+                  className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+                    showFontSettings
+                      ? 'text-blue-400 bg-blue-500/10'
+                      : 'text-text-tertiary hover:text-text-chrome-hover hover:bg-surface-hover'
+                  }`}
+                  title="Text size settings"
+                >
+                  <SettingsIcon className="w-4 h-4" />
+                </button>
+              </div>
               <div className="flex items-center gap-1">
                 {isRunning && (
                   <button

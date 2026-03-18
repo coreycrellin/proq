@@ -374,9 +374,13 @@ export function StreamsView({
       return result;
     }
 
-    // Different set — use the new sorted order and save it
-    stableOrderRef.current = sorted.map((t) => t.id);
-    return sorted;
+    // Different set — prepend new tasks to the front, keep existing order for the rest
+    const taskMap = new Map(sorted.map((t) => [t.id, t]));
+    const addedIds = [...newIds].filter((id) => !prevIds.has(id));
+    const keptIds = prevOrder.filter((id) => newIds.has(id));
+    const mergedOrder = [...addedIds, ...keptIds];
+    stableOrderRef.current = mergedOrder;
+    return mergedOrder.map((id) => taskMap.get(id)!).filter(Boolean);
   }, [tasks, validPinnedIds, validHiddenIds]);
 
   // Done tasks available to add (not already pinned)
@@ -654,6 +658,7 @@ export function StreamsView({
           onRemove={() => handleRemoveStream(expandedTask.id)}
           onComplete={onComplete}
           onResumeEditing={onResumeEditing}
+          onUpdateTitle={onUpdateTitle}
           followUpDraft={followUpDraftsRef?.current.get(expandedTask.id)}
           onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(expandedTask.id, draft)}
         />
@@ -731,6 +736,7 @@ export function StreamsView({
                         onRemove={() => handleRemoveStream(task.id)}
                         onComplete={onComplete}
                         onResumeEditing={onResumeEditing}
+                        onUpdateTitle={onUpdateTitle}
                         followUpDraft={followUpDraftsRef?.current.get(task.id)}
                         onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
                       />
@@ -760,6 +766,7 @@ export function StreamsView({
                         onRemove={() => handleRemoveStream(task.id)}
                         onComplete={onComplete}
                         onResumeEditing={onResumeEditing}
+                        onUpdateTitle={onUpdateTitle}
                         followUpDraft={followUpDraftsRef?.current.get(task.id)}
                         onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
                       />
@@ -796,6 +803,7 @@ export function StreamsView({
               onRemove={() => handleRemoveStream(task.id)}
               onComplete={onComplete}
               onResumeEditing={onResumeEditing}
+              onUpdateTitle={onUpdateTitle}
               followUpDraft={followUpDraftsRef?.current.get(task.id)}
               onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
             />

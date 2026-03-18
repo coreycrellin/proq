@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm';
 
 export function TextBlock({ text, fontSize }: { text: string; fontSize?: number }) {
   return (
-    <div className="text-sm leading-relaxed text-text-secondary py-2 px-1">
+    <div className="text-sm leading-relaxed text-text-secondary py-2 px-1" style={fontSize ? { fontSize: `${fontSize}px` } : undefined}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
