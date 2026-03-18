@@ -4,12 +4,19 @@ import { getAllProjects, getSupervisorAgentBlocks, setSupervisorAgentBlocks, get
 import { getClaudeBin } from "./claude-bin";
 import type WebSocket from "ws";
 
+export interface SupervisorPendingFollowUp {
+  text: string;
+  attachments?: TaskAttachment[];
+  userBlockAlreadyAppended?: boolean;
+}
+
 export interface SupervisorSession {
   sessionId?: string;
   queryHandle: ChildProcess | null;
   blocks: AgentBlock[];
   clients: Set<WebSocket>;
   status: "running" | "done" | "error" | "aborted";
+  pendingFollowUp?: SupervisorPendingFollowUp;
 }
 
 // ── Singleton on globalThis to survive HMR ──
@@ -248,6 +255,24 @@ function wireProcess(session: SupervisorSession, proc: ChildProcess, startTime: 
       return;
     }
 
+    // Check for queued follow-up messages — process them before finalizing
+    if (session.pendingFollowUp && session.status === "running") {
+      const pending = session.pendingFollowUp;
+      session.pendingFollowUp = undefined;
+      session.status = "done";
+      session.queryHandle = null;
+      try {
+        await continueSupervisorSession(
+          pending.text,
+          undefined,
+          pending.attachments,
+        );
+        return;
+      } catch (err) {
+        console.error("[supervisor] Failed to process pending follow-up:", err);
+      }
+    }
+
     // When killed with SIGTERM (e.g. ExitPlanMode, AskUserQuestion), code is null — not an error
     const intentionalKill = code === null && signal === "SIGTERM";
 
@@ -365,7 +390,18 @@ export async function continueSupervisorSession(
   }
 
   if (session.status === "running") {
-    throw new Error("Session is already running");
+    // Queue the follow-up — it will be sent after the current turn finishes
+    session.pendingFollowUp = {
+      text,
+      attachments: attachments?.length ? attachments : undefined,
+      userBlockAlreadyAppended: true,
+    };
+    appendBlock(session, {
+      type: "user",
+      text,
+      attachments: attachments?.length ? attachments : undefined,
+    });
+    return;
   }
 
   appendBlock(session, { type: "user", text, attachments: attachments?.length ? attachments : undefined });

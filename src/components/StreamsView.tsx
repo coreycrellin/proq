@@ -18,6 +18,7 @@ import {
   LayersIcon,
   PlayIcon,
   TypeIcon,
+  TagIcon,
 } from 'lucide-react';
 import type { Task, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { StructuredPane } from './StructuredPane';
@@ -270,6 +271,7 @@ export function StreamsView({
   // Stable ordering ref: preserves task positions when only status changes,
   // preventing grid remounts that cause WebSocket reconnects and visual jumps
   const stableOrderRef = useRef<string[]>([]);
+  const [hideLabels, setHideLabels] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -544,6 +546,19 @@ export function StreamsView({
         />
         <span className="text-[10px] text-text-placeholder">px</span>
       </div>
+      {/* Hide labels toggle */}
+      <button
+        onClick={() => setHideLabels((v) => !v)}
+        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+          hideLabels
+            ? 'text-blue-400 bg-blue-500/10'
+            : 'text-text-tertiary hover:text-text-secondary hover:bg-surface-hover'
+        }`}
+        title={hideLabels ? 'Show task labels' : 'Hide task labels'}
+      >
+        <TagIcon className="w-3 h-3" />
+        <span>{hideLabels ? 'Labels hidden' : 'Labels'}</span>
+      </button>
       {extra}
       <div className="flex-1 min-w-0">{todoQueue}</div>
       <div className="flex items-center gap-1 shrink-0">
@@ -581,6 +596,7 @@ export function StreamsView({
           projectId={projectId}
           fontSize={streamFontSize}
           hideLeftBorder
+          hideLabel={hideLabels}
           onCollapse={() => setExpandedTaskId(null)}
           onRemove={() => handleRemoveStream(expandedTask.id)}
           onComplete={onComplete}
@@ -656,6 +672,7 @@ export function StreamsView({
                         compact
                         fontSize={streamFontSize}
                         hideLeftBorder={i === 0}
+                        hideLabel={hideLabels}
                         onExpand={() => setExpandedTaskId(task.id)}
                         onRemove={() => handleRemoveStream(task.id)}
                         onComplete={onComplete}
@@ -683,6 +700,7 @@ export function StreamsView({
                         compact
                         fontSize={streamFontSize}
                         hideLeftBorder={i === 0}
+                        hideLabel={hideLabels}
                         onExpand={() => setExpandedTaskId(task.id)}
                         onRemove={() => handleRemoveStream(task.id)}
                         onComplete={onComplete}
@@ -717,6 +735,7 @@ export function StreamsView({
               compact
               fontSize={streamFontSize}
               hideLeftBorder={i % gridCols === 0}
+              hideLabel={hideLabels}
               onExpand={() => setExpandedTaskId(task.id)}
               onRemove={() => handleRemoveStream(task.id)}
               onComplete={onComplete}
@@ -738,6 +757,7 @@ interface StreamCellFullProps {
   projectId: string;
   compact?: boolean;
   hideLeftBorder?: boolean;
+  hideLabel?: boolean;
   fontSize?: number;
   onExpand?: () => void;
   onCollapse?: () => void;
@@ -753,6 +773,7 @@ function StreamCellFull({
   projectId,
   compact,
   hideLeftBorder,
+  hideLabel,
   fontSize,
   onExpand,
   onCollapse,
@@ -772,39 +793,41 @@ function StreamCellFull({
   return (
     <div className={`flex flex-col min-h-0 h-full bg-surface-deep ${hideLeftBorder ? '' : `border-l-[3px] ${statusBorderColor(task)}`}`}>
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0">
-        {statusIcon(task)}
-        <span className="text-sm font-medium text-text-secondary truncate flex-1">
-          {task.title || task.description?.slice(0, 50) || 'Untitled'}
-        </span>
-        {onExpand && (
-          <button
-            onClick={onExpand}
-            className="p-1 rounded text-text-placeholder hover:text-text-chrome hover:bg-surface-hover"
-            title="Expand"
-          >
-            <MaximizeIcon className="w-3 h-3" />
-          </button>
-        )}
-        {onCollapse && (
-          <button
-            onClick={onCollapse}
-            className="p-1 rounded text-text-placeholder hover:text-text-chrome hover:bg-surface-hover"
-            title="Back to grid"
-          >
-            <MinimizeIcon className="w-3 h-3" />
-          </button>
-        )}
-        {onRemove && (
-          <button
-            onClick={onRemove}
-            className="p-1 rounded text-text-placeholder hover:text-red-400 hover:bg-red-500/10"
-            title="Remove from streams"
-          >
-            <XIcon className="w-3 h-3" />
-          </button>
-        )}
-      </div>
+      {!hideLabel && (
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0">
+          {statusIcon(task)}
+          <span className="text-sm font-medium text-text-secondary truncate flex-1">
+            {task.title || task.description?.slice(0, 50) || 'Untitled'}
+          </span>
+          {onExpand && (
+            <button
+              onClick={onExpand}
+              className="p-1 rounded text-text-placeholder hover:text-text-chrome hover:bg-surface-hover"
+              title="Expand"
+            >
+              <MaximizeIcon className="w-3 h-3" />
+            </button>
+          )}
+          {onCollapse && (
+            <button
+              onClick={onCollapse}
+              className="p-1 rounded text-text-placeholder hover:text-text-chrome hover:bg-surface-hover"
+              title="Back to grid"
+            >
+              <MinimizeIcon className="w-3 h-3" />
+            </button>
+          )}
+          {onRemove && (
+            <button
+              onClick={onRemove}
+              className="p-1 rounded text-text-placeholder hover:text-red-400 hover:bg-red-500/10"
+              title="Remove from streams"
+            >
+              <XIcon className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Full StructuredPane — scrollable stream + input area */}
       <div className="flex-1 min-h-0" style={fontSize && fontSize !== 13 ? { zoom: fontSize / 13 } : undefined}>

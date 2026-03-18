@@ -155,7 +155,6 @@ export function AgentTabPane({ tabId, projectId, visible, context }: AgentTabPan
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (isRunning) return;
       handleSend();
     }
   };
@@ -467,15 +466,16 @@ export function AgentTabPane({ tabId, projectId, visible, context }: AgentTabPan
             >
               <PaperclipIcon className="w-4 h-4" />
             </button>
-            {isRunning ? (
-              <button
-                onClick={stop}
-                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20"
-                title="Stop agent"
-              >
-                <SquareIcon className="w-3.5 h-3.5 text-red-400 fill-red-400" />
-              </button>
-            ) : (
+            <div className="flex items-center gap-1">
+              {isRunning && (
+                <button
+                  onClick={stop}
+                  className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20"
+                  title="Stop agent"
+                >
+                  <SquareIcon className="w-3.5 h-3.5 text-red-400 fill-red-400" />
+                </button>
+              )}
               <button
                 onClick={handleSend}
                 disabled={!inputValue.trim() && attachments.length === 0}
@@ -484,7 +484,7 @@ export function AgentTabPane({ tabId, projectId, visible, context }: AgentTabPan
               >
                 <SendIcon className="w-4 h-4" />
               </button>
-            )}
+            </div>
           </div>
         </div>
         <input
