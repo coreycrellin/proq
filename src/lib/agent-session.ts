@@ -13,6 +13,13 @@ import { autoCommitIfDirty } from "./worktree";
 import { getClaudeBin } from "./claude-bin";
 import type WebSocket from "ws";
 
+export interface PendingFollowUp {
+  text: string;
+  attachments?: TaskAttachment[];
+  planApproved?: boolean;
+  userBlockAlreadyAppended?: boolean;
+}
+
 export interface AgentRuntimeSession {
   taskId: string;
   projectId: string;
@@ -22,6 +29,7 @@ export interface AgentRuntimeSession {
   blocks: AgentBlock[];
   clients: Set<WebSocket>;
   status: "running" | "done" | "error" | "aborted";
+  pendingFollowUp?: PendingFollowUp;
 }
 
 // ── Singleton attached to globalThis to survive HMR ──
@@ -125,6 +133,33 @@ function wireProcess(
     if (session.status === "aborted") {
       await setTaskAgentBlocks(taskId, session.blocks);
       return;
+    }
+
+    // Check for queued follow-up messages — process them before finalizing
+    if (session.pendingFollowUp && session.status === "running") {
+      const pending = session.pendingFollowUp;
+      session.pendingFollowUp = undefined;
+      session.status = "done"; // Reset so continueSession doesn't re-queue
+      session.queryHandle = null;
+      try {
+        const task = await getTask(projectId, taskId);
+        const project = await getProject(projectId);
+        const projectPath = project?.path.replace(/^~/, process.env.HOME || "~") || ".";
+        const effectiveCwd = task?.worktreePath || projectPath;
+        await continueSession(
+          projectId,
+          taskId,
+          pending.text,
+          effectiveCwd,
+          undefined,
+          pending.attachments,
+          { planApproved: pending.planApproved, skipUserBlock: pending.userBlockAlreadyAppended },
+        );
+        return; // Don't finalize — the new session will handle that
+      } catch (err) {
+        console.error("[agent-session] Failed to process pending follow-up:", err);
+        // Fall through to normal finalization
+      }
     }
 
     // Check if this was an intentional SIGTERM kill (e.g. ExitPlanMode or AskUserQuestion)
@@ -513,7 +548,7 @@ export async function continueSession(
   cwd: string,
   preAttachClient?: WebSocket,
   attachments?: TaskAttachment[],
-  options?: { planApproved?: boolean },
+  options?: { planApproved?: boolean; skipUserBlock?: boolean },
 ): Promise<void> {
   let session = sessions.get(taskId);
   let taskMode: string | undefined;
@@ -550,15 +585,30 @@ export async function continueSession(
   }
 
   if (session.status === "running") {
-    throw new Error("Session is already running");
+    // Queue the follow-up — it will be sent after the current turn finishes
+    session.pendingFollowUp = {
+      text,
+      attachments: attachments?.length ? attachments : undefined,
+      planApproved: options?.planApproved,
+      userBlockAlreadyAppended: true,
+    };
+    // Append user block immediately so the user sees their message in the stream
+    appendBlock(session, {
+      type: "user",
+      text,
+      attachments: attachments?.length ? attachments : undefined,
+    });
+    return;
   }
 
-  // Append user block so it renders immediately
-  appendBlock(session, {
-    type: "user",
-    text,
-    attachments: attachments?.length ? attachments : undefined,
-  });
+  // Append user block so it renders immediately (skip if already appended by pending queue)
+  if (!options?.skipUserBlock) {
+    appendBlock(session, {
+      type: "user",
+      text,
+      attachments: attachments?.length ? attachments : undefined,
+    });
+  }
 
   const settings = await getSettings();
   session.status = "running";

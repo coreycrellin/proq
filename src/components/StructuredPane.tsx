@@ -224,7 +224,6 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (isRunning) return;
       handleSend();
     }
   };
@@ -640,7 +639,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
                 style={{ height: '24px' }}
                 className="flex-1 min-h-[24px] max-h-[60px] resize-none overflow-hidden bg-transparent text-xs leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none py-0.5"
               />
-              {isRunning ? (
+              {isRunning && (
                 <button
                   onClick={stop}
                   className="shrink-0 w-6 h-6 flex items-center justify-center rounded bg-red-500/10 hover:bg-red-500/20"
@@ -648,16 +647,15 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
                 >
                   <SquareIcon className="w-3 h-3 text-red-400 fill-red-400" />
                 </button>
-              ) : (
-                <button
-                  onClick={handleSend}
-                  disabled={!inputValue.trim() && attachments.length === 0}
-                  className={`shrink-0 w-6 h-6 flex items-center justify-center rounded ${inputValue.trim() || attachments.length > 0 ? 'text-text-chrome bg-bronze-400/30 dark:bg-surface-hover' : 'text-text-tertiary disabled:opacity-30'}`}
-                  title="Send message"
-                >
-                  <SendIcon className="w-3 h-3" />
-                </button>
               )}
+              <button
+                onClick={handleSend}
+                disabled={!inputValue.trim() && attachments.length === 0}
+                className={`shrink-0 w-6 h-6 flex items-center justify-center rounded ${inputValue.trim() || attachments.length > 0 ? 'text-text-chrome bg-bronze-400/30 dark:bg-surface-hover' : 'text-text-tertiary disabled:opacity-30'}`}
+                title="Send message"
+              >
+                <SendIcon className="w-3 h-3" />
+              </button>
             </div>
           ) : (
             /* Normal: multi-line textarea with separate button bar */
@@ -683,15 +681,16 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
               >
                 <PaperclipIcon className="w-4 h-4" />
               </button>
-              {isRunning ? (
-                <button
-                  onClick={stop}
-                  className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20"
-                  title="Stop agent"
-                >
-                  <SquareIcon className="w-3.5 h-3.5 text-red-400 fill-red-400" />
-                </button>
-              ) : (
+              <div className="flex items-center gap-1">
+                {isRunning && (
+                  <button
+                    onClick={stop}
+                    className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20"
+                    title="Stop agent"
+                  >
+                    <SquareIcon className="w-3.5 h-3.5 text-red-400 fill-red-400" />
+                  </button>
+                )}
                 <button
                   onClick={handleSend}
                   disabled={!inputValue.trim() && attachments.length === 0}
@@ -700,7 +699,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
                 >
                   <SendIcon className="w-4 h-4" />
                 </button>
-              )}
+              </div>
             </div>
             </>
           )}
