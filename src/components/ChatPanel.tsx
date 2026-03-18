@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ChatLogEntry, ToolCall, TaskAttachment } from '@/lib/types';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
+import { handleChatCommand } from '@/lib/chat-commands';
 import { ScrambleText } from './ScrambleText';
 
 export interface StreamingMessage {
@@ -326,8 +327,18 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
             type="text"
             value={inputValue}
             onChange={(e) => {
-              setInputValue(e.target.value);
-              onDraftChange?.(e.target.value);
+              const val = e.target.value;
+              const trimmed = val.trim().toLowerCase();
+              if (trimmed === '/atr' || trimmed === '/att') {
+                setInputValue('');
+                onDraftChange?.('');
+                handleChatCommand(trimmed, (newAtts) => {
+                  setAttachments((prev) => [...prev, ...newAtts]);
+                });
+                return;
+              }
+              setInputValue(val);
+              onDraftChange?.(val);
             }}
             placeholder={isLoading ? "waiting for response..." : "message..."}
             disabled={isLoading}

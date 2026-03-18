@@ -212,6 +212,18 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
   };
 
   const handleDescriptionChange = (val: string) => {
+    const trimmed = val.trim().toLowerCase();
+    if (trimmed === '/atr' || trimmed === '/att') {
+      setDescription('');
+      handleChatCommand(trimmed, (newAtts) => {
+        setAttachments((prev) => {
+          const updated = [...prev, ...newAtts];
+          autosave(title, description, updated, mode);
+          return updated;
+        });
+      });
+      return;
+    }
     setDescription(val);
     autosave(title, val, attachments, mode);
     if (!title) triggerAutoTitle(val);
