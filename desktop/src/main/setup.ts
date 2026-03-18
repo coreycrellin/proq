@@ -21,10 +21,10 @@ export async function checkNodeVersion(): Promise<CheckResult> {
     const { stdout } = await execFileAsync('node', ['-v'])
     const version = stdout.trim().replace(/^v/, '')
     const major = parseInt(version.split('.')[0], 10)
-    if (major >= 18) {
+    if (major >= 20) {
       return { ok: true, version }
     }
-    return { ok: false, version, error: `Node.js ${version} found — v18+ required` }
+    return { ok: false, version, error: `Node.js ${version} found — v20+ required` }
   } catch {
     return { ok: false, error: 'Node.js not found' }
   }

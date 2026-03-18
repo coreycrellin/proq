@@ -35,7 +35,7 @@ Just open it and start cooking.
 
 # Run Locally
 
-Requires **Node.js 18+** and the [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) on your PATH.
+Requires **Node.js 20+** and the [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) on your PATH.
 
 ```bash
 git clone https://github.com/0xc00010ff/proq.git
