@@ -265,6 +265,7 @@ export function StreamsView({
   // Stable ordering ref: preserves task positions when only status changes,
   // preventing grid remounts that cause WebSocket reconnects and visual jumps
   const stableOrderRef = useRef<string[]>([]);
+  const [labelFontSize, setLabelFontSize] = useState(14);
   const [hideLabels, setHideLabels] = useState(false);
   const [showToolbarSettings, setShowToolbarSettings] = useState(true);
   const [showAddMenu, setShowAddMenu] = useState(false);
@@ -554,6 +555,23 @@ export function StreamsView({
             />
             <span className="text-[10px] text-text-placeholder">px</span>
           </div>
+          {/* Label text size input */}
+          <div className="flex items-center gap-1 shrink-0">
+            <TagIcon className="w-3 h-3 text-text-placeholder" />
+            <input
+              type="number"
+              min={8}
+              max={32}
+              value={labelFontSize}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v) && v >= 8 && v <= 32) setLabelFontSize(v);
+              }}
+              className="w-10 px-1 py-0.5 rounded text-[10px] text-text-secondary bg-surface-secondary border border-border-default text-center focus:outline-none focus:border-blue-500"
+              title="Label text size (px)"
+            />
+            <span className="text-[10px] text-text-placeholder">px</span>
+          </div>
           {/* Hide labels toggle */}
           <button
             onClick={() => setHideLabels((v) => !v)}
@@ -608,6 +626,7 @@ export function StreamsView({
           fontSize={streamFontSize}
           hideLeftBorder
           hideLabel={hideLabels}
+          labelFontSize={labelFontSize}
           onCollapse={() => setExpandedTaskId(null)}
           onRemove={() => handleRemoveStream(expandedTask.id)}
           onComplete={onComplete}
@@ -684,6 +703,7 @@ export function StreamsView({
                         fontSize={streamFontSize}
                         hideLeftBorder={i === 0}
                         hideLabel={hideLabels}
+                        labelFontSize={labelFontSize}
                         onExpand={() => setExpandedTaskId(task.id)}
                         onRemove={() => handleRemoveStream(task.id)}
                         onComplete={onComplete}
@@ -712,6 +732,7 @@ export function StreamsView({
                         fontSize={streamFontSize}
                         hideLeftBorder={i === 0}
                         hideLabel={hideLabels}
+                        labelFontSize={labelFontSize}
                         onExpand={() => setExpandedTaskId(task.id)}
                         onRemove={() => handleRemoveStream(task.id)}
                         onComplete={onComplete}
@@ -747,6 +768,7 @@ export function StreamsView({
               fontSize={streamFontSize}
               hideLeftBorder={i % gridCols === 0}
               hideLabel={hideLabels}
+              labelFontSize={labelFontSize}
               onExpand={() => setExpandedTaskId(task.id)}
               onRemove={() => handleRemoveStream(task.id)}
               onComplete={onComplete}
@@ -770,6 +792,7 @@ interface StreamCellFullProps {
   hideLeftBorder?: boolean;
   hideLabel?: boolean;
   fontSize?: number;
+  labelFontSize?: number;
   onExpand?: () => void;
   onCollapse?: () => void;
   onRemove?: () => void;
@@ -786,6 +809,7 @@ function StreamCellFull({
   hideLeftBorder,
   hideLabel,
   fontSize,
+  labelFontSize,
   onExpand,
   onCollapse,
   onRemove,
@@ -807,7 +831,10 @@ function StreamCellFull({
       {!hideLabel && (
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0">
           {statusIcon(task)}
-          <span className="text-sm font-medium text-text-secondary truncate flex-1">
+          <span
+            className="font-medium text-text-secondary truncate flex-1"
+            style={{ fontSize: labelFontSize ? `${labelFontSize}px` : undefined }}
+          >
             {task.title || task.description?.slice(0, 50) || 'Untitled'}
           </span>
           {onExpand && (

@@ -318,7 +318,7 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
     setSubmittingDescription(true);
     try {
       const desc = taskDescription.trim();
-      const title = desc ? generateTitle(desc) : (composeAttachments.length > 0 ? `Task with ${composeAttachments.length} attachment(s)` : '');
+      const title = ''; // Title auto-generated when task starts
       const body: Record<string, unknown> = { title, description: desc };
       if (composeAttachments.length > 0) {
         body.attachments = composeAttachments;

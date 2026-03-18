@@ -35,9 +35,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
   const [isDragOver, setIsDragOver] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [modalHeight, setModalHeight] = useState(MIN_MODAL_HEIGHT);
-  const [titleGenerating, setTitleGenerating] = useState(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoTitleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -84,16 +82,6 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
 
   const handleClose = useCallback(() => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    // If auto-title was pending (2s delay not yet elapsed), fire it now before closing
-    if (autoTitleTimeout.current && !title.trim() && description.trim()) {
-      clearTimeout(autoTitleTimeout.current);
-      autoTitleTimeout.current = null;
-      fetch(`/api/projects/${projectId}/tasks/${task.id}/auto-title`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description }),
-      }).catch(() => {});
-    }
     const isEmpty = !title.trim() && !description.trim();
     if (!isEmpty) {
       onSave(task.id, {
@@ -120,47 +108,8 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
   useEffect(() => {
     return () => {
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
-      if (autoTitleTimeout.current) clearTimeout(autoTitleTimeout.current);
     };
   }, []);
-
-  // Auto-title: 2s after description stops changing, if title is still empty
-  const triggerAutoTitle = useCallback(
-    (desc: string) => {
-      if (autoTitleTimeout.current) clearTimeout(autoTitleTimeout.current);
-      if (!desc.trim()) return;
-      setTitleGenerating(true);
-      autoTitleTimeout.current = setTimeout(async () => {
-        try {
-          const res = await fetch(
-            `/api/projects/${projectId}/tasks/${task.id}/auto-title`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ description: desc }),
-            },
-          );
-          if (res.ok) {
-            const { title: generated } = await res.json();
-            if (generated) {
-              setTitle((cur) => {
-                if (!cur) {
-                  autosave(generated, desc, attachments, mode);
-                  return generated;
-                }
-                return cur;
-              });
-            }
-          }
-        } catch {
-          // ignore
-        } finally {
-          setTitleGenerating(false);
-        }
-      }, 2000);
-    },
-    [projectId, task.id, autosave, attachments, mode],
-  );
 
   // Cmd+Enter to trigger "Start Now"
   useEffect(() => {
@@ -203,12 +152,6 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
   const handleTitleChange = (val: string) => {
     setTitle(val);
     autosave(val, description, attachments, mode);
-    // User is typing a title manually — cancel any pending auto-title
-    if (val && autoTitleTimeout.current) {
-      clearTimeout(autoTitleTimeout.current);
-      autoTitleTimeout.current = null;
-      setTitleGenerating(false);
-    }
   };
 
   const handleDescriptionChange = (val: string) => {
@@ -226,7 +169,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
     }
     setDescription(val);
     autosave(title, val, attachments, mode);
-    if (!title) triggerAutoTitle(val);
+    // Title auto-generated on task start, not during drafting
   };
 
   const MODES: TaskMode[] = ['auto', 'answer', 'plan', 'build'];
@@ -355,7 +298,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
             }}
             onPaste={handlePaste}
             className="w-full bg-transparent text-xl font-semibold text-text-primary placeholder-text-placeholder focus:outline-none mb-1 pr-8"
-            placeholder={titleGenerating ? 'Generating title...' : '(Auto title)'}
+            placeholder="Title (generated on start)"
           />
         </div>
 
