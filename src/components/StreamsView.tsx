@@ -702,6 +702,8 @@ export function StreamsView({
           hideLeftBorder
           hideLabel={hideLabels}
           labelFontSize={labelFontSize}
+          userFontSize={userFontSize}
+          responseFontSize={responseFontSize}
           onCollapse={() => setExpandedTaskId(null)}
           onRemove={() => handleRemoveStream(expandedTask.id)}
           onComplete={onComplete}
@@ -780,6 +782,8 @@ export function StreamsView({
                         hideLeftBorder={i === 0}
                         hideLabel={hideLabels}
                         labelFontSize={labelFontSize}
+                        userFontSize={userFontSize}
+                        responseFontSize={responseFontSize}
                         onExpand={() => setExpandedTaskId(task.id)}
                         onRemove={() => handleRemoveStream(task.id)}
                         onComplete={onComplete}
@@ -810,6 +814,8 @@ export function StreamsView({
                         hideLeftBorder={i === 0}
                         hideLabel={hideLabels}
                         labelFontSize={labelFontSize}
+                        userFontSize={userFontSize}
+                        responseFontSize={responseFontSize}
                         onExpand={() => setExpandedTaskId(task.id)}
                         onRemove={() => handleRemoveStream(task.id)}
                         onComplete={onComplete}
@@ -847,6 +853,8 @@ export function StreamsView({
               hideLeftBorder={i % gridCols === 0}
               hideLabel={hideLabels}
               labelFontSize={labelFontSize}
+              userFontSize={userFontSize}
+              responseFontSize={responseFontSize}
               onExpand={() => setExpandedTaskId(task.id)}
               onRemove={() => handleRemoveStream(task.id)}
               onComplete={onComplete}
@@ -872,6 +880,8 @@ interface StreamCellFullProps {
   hideLabel?: boolean;
   fontSize?: number;
   labelFontSize?: number;
+  userFontSize?: number;
+  responseFontSize?: number;
   onExpand?: () => void;
   onCollapse?: () => void;
   onRemove?: () => void;
@@ -890,6 +900,8 @@ function StreamCellFull({
   hideLabel,
   fontSize,
   labelFontSize,
+  userFontSize,
+  responseFontSize,
   onExpand,
   onCollapse,
   onRemove,
@@ -1010,6 +1022,8 @@ function StreamCellFull({
             if (status === 'verify' && onResumeEditing) onResumeEditing(task.id);
           }}
           compact={compact}
+          userFontSize={userFontSize}
+          responseFontSize={responseFontSize}
         />
       </div>
     </div>
