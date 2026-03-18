@@ -32,10 +32,10 @@ import { startUpdateScheduler, stopUpdateScheduler } from './update-scheduler'
 import { ensurePath } from './shell-path'
 ensurePath()
 
-function getIcon(): string {
+function getIcon(): Electron.NativeImage {
   const dark = nativeTheme.shouldUseDarkColors
-  if (is.dev) return dark ? iconDevDark : iconDevLight
-  return dark ? iconDark : iconLight
+  const path = is.dev ? (dark ? iconDevDark : iconDevLight) : (dark ? iconDark : iconLight)
+  return nativeImage.createFromPath(path)
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -464,8 +464,7 @@ app.whenReady().then(() => {
                   applicationVersion: app.getVersion(),
                   version: '',
                   copyright: 'Build beautiful things',
-                  iconPath: getIcon(),
-                  icons: [nativeImage.createFromPath(getIcon())]
+                  icons: [getIcon()]
                 })
                 app.showAboutPanel()
               }
@@ -479,7 +478,7 @@ app.whenReady().then(() => {
                 } else if (!result.available) {
                   dialog.showMessageBox({
                     type: 'info',
-                    icon: nativeImage.createFromPath(getIcon()),
+                    icon: getIcon(),
                     buttons: ['OK'],
                     message: 'You\'re up to date',
                     detail: 'proq is running the latest version.'
@@ -493,7 +492,7 @@ app.whenReady().then(() => {
               click: async (): Promise<void> => {
                 const { response } = await dialog.showMessageBox({
                   type: 'warning',
-                  icon: nativeImage.createFromPath(getIcon()),
+                  icon: getIcon(),
                   buttons: ['Cancel', 'Reset'],
                   defaultId: 0,
                   message: 'Reset proq Desktop?',
