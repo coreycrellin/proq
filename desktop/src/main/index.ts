@@ -490,13 +490,14 @@ app.whenReady().then(() => {
             {
               label: 'Reset to Defaults…',
               click: async (): Promise<void> => {
+                const config = getConfig()
                 const { response } = await dialog.showMessageBox({
                   type: 'warning',
                   icon: getIcon(),
                   buttons: ['Cancel', 'Reset'],
                   defaultId: 0,
                   message: 'Reset proq Desktop?',
-                  detail: 'This will clear all settings and restart the setup wizard.'
+                  detail: `This resets the desktop app and restarts the setup wizard. Your project data at ${config.proqPath} will not be affected.\n\nUse this to switch to dev mode or change your proq installation path.`
                 })
                 if (response === 1) {
                   isResetting = true
@@ -509,8 +510,8 @@ app.whenReady().then(() => {
                     win.destroy()
                   }
                   mainWindow = null
+                  await launchApp()
                   isResetting = false
-                  launchApp()
                 }
               }
             },
