@@ -301,17 +301,6 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
     }
   }, [newTaskTitle, creating, projectId, onTaskCreated]);
 
-  // Auto-generate title from description (first meaningful chunk)
-  const generateTitle = useCallback((description: string): string => {
-    const trimmed = description.trim();
-    const firstLine = trimmed.split('\n')[0].trim();
-    if (firstLine.length <= 80) return firstLine;
-    // Truncate at word boundary
-    const truncated = firstLine.slice(0, 80);
-    const lastSpace = truncated.lastIndexOf(' ');
-    return (lastSpace > 40 ? truncated.slice(0, lastSpace) : truncated) ;
-  }, []);
-
   const handleSubmitDescription = useCallback(async (task: Task) => {
     if (!taskDescription.trim() && composeAttachments.length === 0) return;
     if (submittingDescription) return;
@@ -336,7 +325,7 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
     } finally {
       setSubmittingDescription(false);
     }
-  }, [taskDescription, submittingDescription, projectId, generateTitle, onTaskCreated, composeAttachments]);
+  }, [taskDescription, submittingDescription, projectId, onTaskCreated, composeAttachments]);
 
   const handleMarkDone = useCallback(async (task: Task) => {
     if (completing) return;
