@@ -121,6 +121,15 @@ function GridCell({
                 {task.branch}
               </span>
             )
+          ) : onSwitchBranch ? (
+            <button
+              onClick={() => onSwitchBranch(defaultBranch || 'main')}
+              title={`Switch to ${defaultBranch || 'main'}`}
+              className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-border-hover/40 bg-surface-hover/60 text-text-chrome hover:border-lazuli/30 hover:text-lazuli"
+            >
+              <GitBranchIcon className="w-2.5 h-2.5" />
+              {defaultBranch || 'main'}
+            </button>
           ) : (
             <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-border-hover/40 bg-surface-hover/60 text-text-tertiary">
               <GitBranchIcon className="w-2.5 h-2.5" />
