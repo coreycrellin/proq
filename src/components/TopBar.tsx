@@ -625,7 +625,7 @@ const BranchPopover = React.forwardRef<HTMLDivElement, {
             value={branchFilter}
             onChange={(e) => onFilterChange(e.target.value)}
             placeholder={onCreateBranch ? 'Find or create a branch...' : 'Find a branch...'}
-            className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface-inset border border-border-strong rounded-md text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-border-hover"
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface-inset border border-border-strong rounded-md text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-border-strong"
             onKeyDown={(e) => {
               if (e.key === 'Escape') onClose();
               if (e.key === 'Enter' && showCreate && totalFiltered === 0) {
