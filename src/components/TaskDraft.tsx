@@ -341,7 +341,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
             ))}
           </div>
 
-          <div className="relative flex items-center mb-1">
+          <div className="relative mb-1">
             <input
               ref={titleRef}
               type="text"
@@ -357,21 +357,26 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
                 }
               }}
               onPaste={handlePaste}
-              className="w-full bg-transparent text-xl font-semibold text-text-primary placeholder-text-placeholder focus:outline-none pr-8"
-              placeholder={titleGenerating ? 'Titling...' : 'Auto-title'}
+              className="w-full bg-transparent text-xl font-semibold text-text-primary focus:outline-none"
+              placeholder=""
             />
-            {!title && description.trim() && !titleGenerating && (
-              <button
-                onClick={() => fireAutoTitle(description)}
-                className="absolute right-0 p-1 text-text-placeholder hover:text-text-secondary"
-                title="Generate title"
-              >
-                <RefreshCwIcon className="w-3.5 h-3.5" />
-              </button>
-            )}
-            {titleGenerating && (
-              <div className="absolute right-0 p-1 text-text-placeholder">
-                <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+            {!title && (
+              <div className="absolute inset-0 flex items-center pointer-events-none">
+                <span className="text-xl font-semibold text-text-placeholder">
+                  {titleGenerating ? 'Titling...' : 'Auto-title'}
+                </span>
+                {titleGenerating && (
+                  <Loader2Icon className="w-4 h-4 text-text-placeholder animate-spin ml-1.5 shrink-0" />
+                )}
+                {!titleGenerating && description.trim() && (
+                  <button
+                    onClick={() => fireAutoTitle(description)}
+                    className="pointer-events-auto p-1 text-text-placeholder hover:text-text-secondary ml-1 shrink-0"
+                    title="Generate title"
+                  >
+                    <RefreshCwIcon className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             )}
           </div>
