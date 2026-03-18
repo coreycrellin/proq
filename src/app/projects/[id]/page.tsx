@@ -9,6 +9,7 @@ import { StreamsView } from '@/components/StreamsView';
 import WorkbenchPanel from '@/components/WorkbenchPanel';
 import { LiveTab } from '@/components/LiveTab';
 import { CodeTab } from '@/components/CodeTab';
+import { DocsTab } from '@/components/DocsTab';
 import { TaskDraft } from '@/components/TaskDraft';
 import { TaskAgentModal } from '@/components/TaskAgentModal';
 import { UndoModal } from '@/components/UndoModal';
@@ -954,6 +955,7 @@ export default function ProjectPage() {
           />
         )}
         {activeTab === 'code' && project && <CodeTab project={project} />}
+        {activeTab === 'docs' && project && <DocsTab project={project} />}
       </main>
 
       {(isDragging || liveIsDragging) && <div className="fixed inset-0 z-50 cursor-grabbing" />}
