@@ -22,14 +22,14 @@ export function TaskUpdateBlock({ summary, nextSteps }: TaskUpdateBlockProps) {
       </div>
       <div className="text-[11px] text-text-secondary font-mono whitespace-pre-wrap">
         {expanded ? lines.join('\n') : preview}
-        {hasMore && (
-          <span
+        {hasMore && (<>
+          {' '}<span
             className="text-text-placeholder hover:underline cursor-pointer"
             onClick={() => setExpanded(!expanded)}
           >
-            {' '}{expanded ? '(show less)' : `(+${lines.length - 2} more)`}
+            {expanded ? '(show less)' : `(+${lines.length - 2} more)`}
           </span>
-        )}
+        </>)}
       </div>
       {nextSteps && (
         <div className="mt-1.5 pt-1.5 border-t border-lazuli/15 text-[11px] text-lazuli-dark dark:text-lazuli/80 font-mono whitespace-pre-wrap">
