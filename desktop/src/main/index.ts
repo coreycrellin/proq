@@ -482,7 +482,32 @@ app.whenReady().then(() => {
         },
         { role: 'editMenu' },
         { role: 'viewMenu' },
-        { role: 'windowMenu' }
+        {
+          label: 'Window',
+          submenu: [
+            {
+              label: 'New Window',
+              accelerator: 'CmdOrCtrl+Shift+N',
+              click: (): void => {
+                const config = getConfig()
+                if (!config.setupComplete) return
+                const win = createWindow('app')
+                win.loadURL(`http://localhost:${config.port}`)
+                win.webContents.setWindowOpenHandler(({ url }) => {
+                  if (url.startsWith('http')) shell.openExternal(url)
+                  return { action: 'deny' }
+                })
+              }
+            },
+            { type: 'separator' },
+            { role: 'minimize' },
+            { role: 'zoom' },
+            { type: 'separator' },
+            { role: 'front' },
+            { type: 'separator' },
+            { role: 'window' }
+          ]
+        }
       ])
     )
   }
