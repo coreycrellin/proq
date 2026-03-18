@@ -56,14 +56,14 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
   const [showCosts, setShowCosts] = useState(false);
   const [showFontSettings, setShowFontSettings] = useState(false);
   const [userFontSize, setUserFontSize] = useState(() => {
-    if (typeof window === 'undefined') return 14;
+    if (typeof window === 'undefined') return 15;
     const v = parseInt(localStorage.getItem('proq-structured-userFontSize') ?? '', 10);
-    return isNaN(v) ? 14 : v;
+    return isNaN(v) ? 15 : v;
   });
   const [responseFontSize, setResponseFontSize] = useState(() => {
-    if (typeof window === 'undefined') return 14;
+    if (typeof window === 'undefined') return 19;
     const v = parseInt(localStorage.getItem('proq-structured-responseFontSize') ?? '', 10);
-    return isNaN(v) ? 14 : v;
+    return isNaN(v) ? 19 : v;
   });
   // Persist font sizes
   useEffect(() => { localStorage.setItem('proq-structured-userFontSize', String(userFontSize)); }, [userFontSize]);
@@ -557,12 +557,12 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
             switch (block.type) {
               case 'text': {
                 const isFinalText = ri > lastNonTextRenderIdx;
-                return <TextBlock key={idx} text={block.text} fontSize={isFinalText && effectiveResponseFontSize !== 14 ? effectiveResponseFontSize : undefined} />;
+                return <TextBlock key={idx} text={block.text} fontSize={isFinalText ? effectiveResponseFontSize : undefined} />;
               }
               case 'thinking':
                 return <ThinkingBlock key={idx} thinking={block.thinking} forceCollapsed={undefined} />;
               case 'user':
-                return <UserBlock key={idx} text={block.text} attachments={block.attachments} fontSize={effectiveUserFontSize !== 14 ? effectiveUserFontSize : undefined} />;
+                return <UserBlock key={idx} text={block.text} attachments={block.attachments} fontSize={effectiveUserFontSize} />;
               case 'status':
                 return (
                   <StatusBlock
@@ -590,7 +590,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
           })}
 
           {/* Streaming text (live partial response) */}
-          {streamingText && <TextBlock text={streamingText} fontSize={effectiveResponseFontSize !== 14 ? effectiveResponseFontSize : undefined} />}
+          {streamingText && <TextBlock text={streamingText} fontSize={effectiveResponseFontSize} />}
 
           {/* Thinking indicator */}
           {isThinking && (
@@ -679,7 +679,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
                 onKeyDown={handleKeyDown}
                 placeholder={taskStatus === 'done' ? "Send a follow-up..." : "Send a message..."}
                 rows={1}
-                style={{ height: '24px', fontSize: effectiveUserFontSize !== 14 ? `${effectiveUserFontSize}px` : undefined }}
+                style={{ height: '24px', fontSize: `${effectiveUserFontSize}px` }}
                 className="flex-1 min-h-[24px] max-h-[60px] resize-none overflow-hidden bg-transparent text-xs leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none py-0.5"
               />
               {isRunning && (
@@ -710,7 +710,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
               onKeyDown={handleKeyDown}
               placeholder={taskStatus === 'done' ? "Send a follow-up..." : "Send a message..."}
               rows={1}
-              style={{ height: '36px', fontSize: effectiveUserFontSize !== 14 ? `${effectiveUserFontSize}px` : undefined }}
+              style={{ height: '36px', fontSize: `${effectiveUserFontSize}px` }}
               className="w-full min-h-[36px] max-h-[160px] resize-none overflow-hidden bg-transparent px-3 pt-3 pb-2 text-sm leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none"
             />
 

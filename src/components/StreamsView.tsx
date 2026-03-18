@@ -264,9 +264,9 @@ export function StreamsView({
 }: StreamsViewProps) {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [streamFontSize, setStreamFontSize] = useState(() => {
-    if (typeof window === 'undefined') return 13;
+    if (typeof window === 'undefined') return 9;
     const v = parseInt(localStorage.getItem('proq-stream-fontSize') ?? '', 10);
-    return isNaN(v) ? 13 : v;
+    return isNaN(v) ? 9 : v;
   });
   const [pinnedDoneIds, setPinnedDoneIds] = useState<Set<string>>(new Set());
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
@@ -274,19 +274,19 @@ export function StreamsView({
   // preventing grid remounts that cause WebSocket reconnects and visual jumps
   const stableOrderRef = useRef<string[]>([]);
   const [labelFontSize, setLabelFontSize] = useState(() => {
-    if (typeof window === 'undefined') return 14;
+    if (typeof window === 'undefined') return 10;
     const v = parseInt(localStorage.getItem('proq-stream-labelFontSize') ?? '', 10);
-    return isNaN(v) ? 14 : v;
+    return isNaN(v) ? 10 : v;
   });
   const [userFontSize, setUserFontSize] = useState(() => {
-    if (typeof window === 'undefined') return 14;
+    if (typeof window === 'undefined') return 15;
     const v = parseInt(localStorage.getItem('proq-structured-userFontSize') ?? '', 10);
-    return isNaN(v) ? 14 : v;
+    return isNaN(v) ? 15 : v;
   });
   const [responseFontSize, setResponseFontSize] = useState(() => {
-    if (typeof window === 'undefined') return 14;
+    if (typeof window === 'undefined') return 19;
     const v = parseInt(localStorage.getItem('proq-structured-responseFontSize') ?? '', 10);
-    return isNaN(v) ? 14 : v;
+    return isNaN(v) ? 19 : v;
   });
   const [hideLabels, setHideLabels] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -1009,7 +1009,7 @@ function StreamCellFull({
       )}
 
       {/* Full StructuredPane — scrollable stream + input area */}
-      <div className="flex-1 min-h-0 flex flex-col" style={fontSize && fontSize !== 13 ? { zoom: fontSize / 13 } : undefined}>
+      <div className="flex-1 min-h-0 flex flex-col" style={fontSize && fontSize !== 9 ? { zoom: fontSize / 9 } : undefined}>
         <StructuredPane
           taskId={task.id}
           projectId={projectId}
