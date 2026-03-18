@@ -20,6 +20,8 @@ import {
   TypeIcon,
   TagIcon,
   SettingsIcon,
+  UserIcon,
+  MessageSquareIcon,
 } from 'lucide-react';
 import type { Task, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { StructuredPane } from './StructuredPane';
@@ -276,6 +278,16 @@ export function StreamsView({
     const v = parseInt(localStorage.getItem('proq-stream-labelFontSize') ?? '', 10);
     return isNaN(v) ? 14 : v;
   });
+  const [userFontSize, setUserFontSize] = useState(() => {
+    if (typeof window === 'undefined') return 14;
+    const v = parseInt(localStorage.getItem('proq-structured-userFontSize') ?? '', 10);
+    return isNaN(v) ? 14 : v;
+  });
+  const [responseFontSize, setResponseFontSize] = useState(() => {
+    if (typeof window === 'undefined') return 14;
+    const v = parseInt(localStorage.getItem('proq-structured-responseFontSize') ?? '', 10);
+    return isNaN(v) ? 14 : v;
+  });
   const [hideLabels, setHideLabels] = useState(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('proq-stream-hideLabels') === 'true';
@@ -295,6 +307,8 @@ export function StreamsView({
   useEffect(() => { localStorage.setItem('proq-stream-fontSize', String(streamFontSize)); }, [streamFontSize]);
   useEffect(() => { localStorage.setItem('proq-stream-labelFontSize', String(labelFontSize)); }, [labelFontSize]);
   useEffect(() => { localStorage.setItem('proq-stream-hideLabels', String(hideLabels)); }, [hideLabels]);
+  useEffect(() => { localStorage.setItem('proq-structured-userFontSize', String(userFontSize)); }, [userFontSize]);
+  useEffect(() => { localStorage.setItem('proq-structured-responseFontSize', String(responseFontSize)); }, [responseFontSize]);
   useEffect(() => { localStorage.setItem('proq-stream-showSettings', String(showToolbarSettings)); }, [showToolbarSettings]);
 
   // Close add menu when clicking outside
@@ -596,6 +610,40 @@ export function StreamsView({
               }}
               className="w-10 px-1 py-0.5 rounded text-[10px] text-text-secondary bg-surface-secondary border border-border-default text-center focus:outline-none focus:border-blue-500"
               title="Label text size (px)"
+            />
+            <span className="text-[10px] text-text-placeholder">px</span>
+          </div>
+          {/* User text size input */}
+          <div className="flex items-center gap-1 shrink-0">
+            <UserIcon className="w-3 h-3 text-text-placeholder" />
+            <input
+              type="number"
+              min={8}
+              max={32}
+              value={userFontSize}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v) && v >= 8 && v <= 32) setUserFontSize(v);
+              }}
+              className="w-10 px-1 py-0.5 rounded text-[10px] text-text-secondary bg-surface-secondary border border-border-default text-center focus:outline-none focus:border-blue-500"
+              title="User message text size (px)"
+            />
+            <span className="text-[10px] text-text-placeholder">px</span>
+          </div>
+          {/* Response text size input */}
+          <div className="flex items-center gap-1 shrink-0">
+            <MessageSquareIcon className="w-3 h-3 text-text-placeholder" />
+            <input
+              type="number"
+              min={8}
+              max={32}
+              value={responseFontSize}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v) && v >= 8 && v <= 32) setResponseFontSize(v);
+              }}
+              className="w-10 px-1 py-0.5 rounded text-[10px] text-text-secondary bg-surface-secondary border border-border-default text-center focus:outline-none focus:border-blue-500"
+              title="Response text size (px)"
             />
             <span className="text-[10px] text-text-placeholder">px</span>
           </div>

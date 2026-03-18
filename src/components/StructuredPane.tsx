@@ -38,9 +38,11 @@ interface StructuredPaneProps {
   sendRef?: React.MutableRefObject<((text: string) => void) | null>;
   attachRef?: React.MutableRefObject<(() => void) | null>;
   onNewText?: (text: string) => void;
+  userFontSize?: number;
+  responseFontSize?: number;
 }
 
-export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly, sendRef, attachRef, onNewText }: StructuredPaneProps) {
+export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly, sendRef, attachRef, onNewText, userFontSize: userFontSizeProp, responseFontSize: responseFontSizeProp }: StructuredPaneProps) {
   const { blocks, streamingText, connected, sessionDone, sendFollowUp, approvePlan, stop } = useAgentSession(taskId, projectId, agentBlocks);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -66,6 +68,9 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
   // Persist font sizes
   useEffect(() => { localStorage.setItem('proq-structured-userFontSize', String(userFontSize)); }, [userFontSize]);
   useEffect(() => { localStorage.setItem('proq-structured-responseFontSize', String(responseFontSize)); }, [responseFontSize]);
+  // Use props when provided, otherwise fall back to internal state
+  const effectiveUserFontSize = userFontSizeProp ?? userFontSize;
+  const effectiveResponseFontSize = responseFontSizeProp ?? responseFontSize;
   // Track user-originated input changes to avoid external sync overwriting them
   const localChangeRef = useRef(false);
 
@@ -244,6 +249,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     dragCounterRef.current = 0;
     setIsDragOver(false);
     if (e.dataTransfer.files.length > 0) {
@@ -253,16 +259,19 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     dragCounterRef.current++;
     setIsDragOver(true);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     dragCounterRef.current--;
     if (dragCounterRef.current <= 0) {
       dragCounterRef.current = 0;
@@ -529,11 +538,11 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
 
             switch (block.type) {
               case 'text':
-                return <TextBlock key={idx} text={block.text} fontSize={responseFontSize !== 14 ? responseFontSize : undefined} />;
+                return <TextBlock key={idx} text={block.text} fontSize={effectiveResponseFontSize !== 14 ? effectiveResponseFontSize : undefined} />;
               case 'thinking':
                 return <ThinkingBlock key={idx} thinking={block.thinking} forceCollapsed={undefined} />;
               case 'user':
-                return <UserBlock key={idx} text={block.text} attachments={block.attachments} fontSize={userFontSize !== 14 ? userFontSize : undefined} />;
+                return <UserBlock key={idx} text={block.text} attachments={block.attachments} fontSize={effectiveUserFontSize !== 14 ? effectiveUserFontSize : undefined} />;
               case 'status':
                 return (
                   <StatusBlock
@@ -561,7 +570,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
           })}
 
           {/* Streaming text (live partial response) */}
-          {streamingText && <TextBlock text={streamingText} fontSize={responseFontSize !== 14 ? responseFontSize : undefined} />}
+          {streamingText && <TextBlock text={streamingText} fontSize={effectiveResponseFontSize !== 14 ? effectiveResponseFontSize : undefined} />}
 
           {/* Thinking indicator */}
           {isThinking && (
