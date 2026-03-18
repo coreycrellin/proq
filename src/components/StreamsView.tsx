@@ -122,7 +122,7 @@ function ResizeHandle({
     return (
       <div
         onMouseDown={handleMouseDown}
-        className="w-px shrink-0 white/10 hover:white/30 cursor-col-resize transition-colors relative group"
+        className="w-px shrink-0 bg-white/10 hover:bg-white/30 cursor-col-resize transition-colors relative group"
         title="Drag to resize"
       />
     );
@@ -131,7 +131,7 @@ function ResizeHandle({
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="h-px shrink-0 white/10 hover:white/30 cursor-row-resize transition-colors relative group"
+      className="h-px shrink-0 bg-white/10 hover:bg-white/30 cursor-row-resize transition-colors relative group"
       title="Drag to resize"
     />
   );
@@ -227,13 +227,6 @@ function ResizableGrid({
       ))}
     </div>
   );
-}
-
-function statusBorderColor(task: Task): string {
-  if (task.agentStatus === 'running' || task.agentStatus === 'starting' || task.status === 'verify') {
-    return 'border-l-zinc-500';
-  }
-  return 'border-l-zinc-600';
 }
 
 function statusIcon(task: Task): React.ReactNode {
@@ -791,7 +784,7 @@ function StreamCellFull({
       : undefined;
 
   return (
-    <div className={`flex flex-col min-h-0 h-full bg-surface-deep ${hideLeftBorder ? '' : `border-l-[3px] ${statusBorderColor(task)}`}`}>
+    <div className={`flex flex-col min-h-0 h-full bg-surface-deep`}>
       {/* Header */}
       {!hideLabel && (
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0">
