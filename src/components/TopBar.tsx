@@ -195,14 +195,16 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
   const isOnPreviewBranch = currentBranch?.startsWith('proq/') ?? false;
   const hasGit = gitStatus?.hasGit !== false;
 
-  // Sort branches: main first, then proq/* branches, then others
+  // Sort branches: proq/* first, then main, then others
   const sortedBranches = branches ? [...branches].sort((a, b) => {
-    if (a === 'main' || a === 'master') return -1;
-    if (b === 'main' || b === 'master') return 1;
     const aIsProq = a.startsWith('proq/');
     const bIsProq = b.startsWith('proq/');
     if (aIsProq && !bIsProq) return -1;
     if (!aIsProq && bIsProq) return 1;
+    const aIsMain = a === 'main' || a === 'master';
+    const bIsMain = b === 'main' || b === 'master';
+    if (aIsMain && !bIsMain) return -1;
+    if (!aIsMain && bIsMain) return 1;
     return a.localeCompare(b);
   }) : [];
 
@@ -639,24 +641,24 @@ const BranchPopover = React.forwardRef<HTMLDivElement, {
 
       {/* Branch list */}
       <div className="max-h-[280px] overflow-y-auto">
-        {filteredMain.map((branch) => (
-          <BranchRow
-            key={branch}
-            branch={branch}
-            isCurrent={branch === currentBranch}
-            isDefault
-            onSelect={() => onSwitchBranch(branch)}
-          />
-        ))}
-        {filteredProq.length > 0 && filteredMain.length > 0 && (
-          <div className="border-t border-border-default" />
-        )}
         {filteredProq.map((branch) => (
           <BranchRow
             key={branch}
             branch={branch}
             isCurrent={branch === currentBranch}
             taskTitle={taskBranchMap?.[branch]}
+            onSelect={() => onSwitchBranch(branch)}
+          />
+        ))}
+        {filteredMain.length > 0 && filteredProq.length > 0 && (
+          <div className="border-t border-border-default" />
+        )}
+        {filteredMain.map((branch) => (
+          <BranchRow
+            key={branch}
+            branch={branch}
+            isCurrent={branch === currentBranch}
+            isDefault
             onSelect={() => onSwitchBranch(branch)}
           />
         ))}
