@@ -123,7 +123,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
       if (!desc.trim()) return;
       autoTitleTimeout.current = setTimeout(() => {
         fireAutoTitle(desc);
-      }, 10000);
+      }, 5000);
     },
     [fireAutoTitle],
   );
@@ -363,7 +363,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
             {!title && (
               <div className="absolute inset-0 flex items-center pointer-events-none">
                 <span className="text-xl font-semibold text-text-placeholder">
-                  {titleGenerating ? 'Titling...' : 'Auto-title'}
+                  {titleGenerating ? 'Generating title...' : 'Auto-title'}
                 </span>
                 {titleGenerating && (
                   <Loader2Icon className="w-4 h-4 text-text-placeholder animate-spin ml-1.5 shrink-0" />
