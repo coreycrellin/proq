@@ -60,7 +60,12 @@ function getStreamTasks(
         : t.agentStatus === 'queued' ? 2
         : t.status === 'verify' ? 3
         : 4;
-      return score(a) - score(b);
+      const diff = score(a) - score(b);
+      if (diff !== 0) return diff;
+      // Stable tiebreaker: older tasks first, then by id
+      const timeA = a.createdAt || '';
+      const timeB = b.createdAt || '';
+      return timeA.localeCompare(timeB) || a.id.localeCompare(b.id);
     });
 }
 
@@ -115,7 +120,7 @@ function ResizeHandle({
     return (
       <div
         onMouseDown={handleMouseDown}
-        className="w-[1.5px] shrink-0 bg-zinc-700 hover:bg-zinc-400 cursor-col-resize transition-colors relative group"
+        className="w-px shrink-0 bg-zinc-800 hover:bg-zinc-400 cursor-col-resize transition-colors relative group"
         title="Drag to resize"
       />
     );
@@ -260,6 +265,9 @@ export function StreamsView({
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [pinnedDoneIds, setPinnedDoneIds] = useState<Set<string>>(new Set());
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  // Stable ordering ref: preserves task positions when only status changes,
+  // preventing grid remounts that cause WebSocket reconnects and visual jumps
+  const stableOrderRef = useRef<string[]>([]);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -326,10 +334,27 @@ export function StreamsView({
     return valid;
   }, [tasks, hiddenIds]);
 
-  const streamTasks = useMemo(
-    () => getStreamTasks(tasks, validPinnedIds, validHiddenIds),
-    [tasks, validPinnedIds, validHiddenIds],
-  );
+  const streamTasks = useMemo(() => {
+    const sorted = getStreamTasks(tasks, validPinnedIds, validHiddenIds);
+    const prevOrder = stableOrderRef.current;
+    const newIds = new Set(sorted.map((t) => t.id));
+    const prevIds = new Set(prevOrder);
+
+    // If same set of task IDs, preserve previous order (just update task objects)
+    // This prevents grid position swaps when only agentStatus changes
+    const sameSet =
+      newIds.size === prevIds.size && [...newIds].every((id) => prevIds.has(id));
+
+    if (sameSet && prevOrder.length > 0) {
+      const taskMap = new Map(sorted.map((t) => [t.id, t]));
+      const result = prevOrder.map((id) => taskMap.get(id)!).filter(Boolean);
+      return result;
+    }
+
+    // Different set — use the new sorted order and save it
+    stableOrderRef.current = sorted.map((t) => t.id);
+    return sorted;
+  }, [tasks, validPinnedIds, validHiddenIds]);
 
   // Done tasks available to add (not already pinned)
   const addableDoneTasks = useMemo(
