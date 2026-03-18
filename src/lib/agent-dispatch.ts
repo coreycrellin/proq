@@ -78,7 +78,6 @@ You have MCP tools from the **proq** server for reporting progress. Use them ins
 
   if (mode === "auto") {
     sections.push(`### Workflow
-If you make code changes, use \`commit_changes\` to commit them before reporting.
 When the task is complete, use \`read_task\` to check existing summary, then \`update_task\` to report and move to Verify.`);
   } else if (mode === "answer") {
     sections.push(`### Research Mode
@@ -90,21 +89,8 @@ When finished, use the \`read_task\` tool to check for any existing summary, the
     sections.push(`### Reporting Results
 When finished, use the \`read_task\` tool to check for any existing summary, then use \`update_task\` with a cumulative summary incorporating prior work.`);
   } else {
-    sections.push(`### Code Changes
-Use the \`commit_changes\` tool to commit after each logical unit of work. Always commit your code changes before reporting — don't leave uncommitted work behind.
-
-### Reporting Progress
-After making substantial changes (committing code, completing a phase of work), use the \`update_task\` tool to update the task board and move the task to Verify for human review. Before reporting, use \`read_task\` to see existing summary so you can write a cumulative summary.
-
-**When to report:**
-- After committing code changes
-- After completing the main request or a significant phase
-- After substantial follow-up work that changes the scope of what was done
-
-**When NOT to report:**
-- Simple clarifying responses or short answers
-- Asking questions back to the user
-- Minor adjustments that don't change the overall summary`);
+    sections.push(`### Reporting Progress
+When the task is complete, use \`read_task\` to check existing summary, then \`update_task\` to report and move to Verify for human review.`);
   }
 
   sections.push(`### Asking Questions
@@ -275,12 +261,10 @@ export async function dispatchTask(
   if (renderMode === "cli") {
     let prompt: string;
 
-    if (mode === "plan") {
-      prompt = heading;
-    } else if (mode === "answer") {
+    if (mode === "answer") {
       prompt = `${heading}\n\nIMPORTANT: Do NOT make any code changes. Do NOT create, edit, or delete any files. Do NOT commit anything. Only research and answer the question. Provide your answer as a summary.`;
     } else {
-      prompt = `${heading}\n\nWhen completely finished, use the commit_changes tool to commit your changes with a descriptive message.`;
+      prompt = heading;
     }
 
     const proqSystemPrompt = buildProqSystemPrompt(projectId, taskId, mode, project.name);
@@ -349,12 +333,10 @@ export async function dispatchTask(
   // ── Default: dispatch via SDK (structured mode) ──
 
   let prompt: string;
-  if (mode === "plan") {
-    prompt = heading;
-  } else if (mode === "answer") {
+  if (mode === "answer") {
     prompt = `${heading}\n\nIMPORTANT: Do NOT make any code changes. Do NOT create, edit, or delete any files. Do NOT commit anything. Only research and answer the question.`;
   } else {
-    prompt = `${heading}\n\nWhen completely finished, use the commit_changes tool to commit your changes with a descriptive message.`;
+    prompt = heading;
   }
 
   // Append file attachment paths to prompt

@@ -12,6 +12,7 @@ import type { Project } from '@/lib/types';
 
 interface ShellActions {
   addProject: () => Promise<void>;
+  sidebarHidden: boolean;
 }
 
 const ShellActionsContext = createContext<ShellActions | null>(null);
@@ -103,7 +104,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ShellActionsContext.Provider value={{ addProject: handleAddProject }}>
+    <ShellActionsContext.Provider value={{ addProject: handleAddProject, sidebarHidden }}>
       <div className="flex h-screen w-full bg-surface-base text-text-primary overflow-hidden font-sans">
         <Sidebar
           onAddProject={handleAddProject}
@@ -113,13 +114,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
           hidden={sidebarHidden}
           onToggleHidden={() => setSidebarHidden((h) => !h)}
         />
-        <div
-          className="flex-1 flex flex-col min-w-0 relative"
-          style={isElectron && sidebarHidden ? { paddingLeft: 72 } : undefined}
-        >
-          {isElectron && sidebarHidden && (
-            <div className="absolute top-0 left-0 w-[72px] h-[48px] electron-drag z-40" />
-          )}
+        <div className="flex-1 flex flex-col min-w-0">
           {children}
         </div>
         {missingProject && (

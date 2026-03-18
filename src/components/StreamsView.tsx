@@ -727,14 +727,6 @@ function StreamCellFull({
         <span className="text-sm font-medium text-text-secondary truncate flex-1">
           {task.title || task.description?.slice(0, 50) || 'Untitled'}
         </span>
-        {task.status === 'verify' && onComplete && (
-          <button
-            onClick={() => onComplete(task.id)}
-            className="text-[10px] px-2 py-0.5 rounded border border-emerald/40 text-emerald hover:bg-emerald/10"
-          >
-            Complete
-          </button>
-        )}
         {onExpand && (
           <button
             onClick={onExpand}

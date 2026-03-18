@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, RadioTowerIcon, SettingsIcon, GitCommitHorizontalIcon, PlusIcon, XIcon } from 'lucide-react';
 import type { Project, ProjectTab, ViewType } from '@/lib/types';
+import { useShellActions } from '@/components/ClientShell';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -49,6 +50,8 @@ interface TopBarProps {
 }
 
 export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onInitGit, viewType = 'kanban', onViewTypeChange, onOpenSettings, onCommit, onCreateBranch, hidden, onToggleHidden, contentHidden, onToggleContentHidden }: TopBarProps) {
+  const { sidebarHidden } = useShellActions();
+  const needsTrafficLightPadding = isElectron && sidebarHidden;
   // New branch creation
   const [newBranchMode, setNewBranchMode] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
@@ -224,7 +227,8 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
 
   return (
     <header
-      className={`h-[48px] bg-surface-topbar flex items-center px-6 flex-shrink-0 border-b border-border-default${isElectron ? ' electron-drag' : ''}`}
+      className={`h-[48px] bg-surface-topbar flex items-center flex-shrink-0 border-b border-border-default${isElectron ? ' electron-drag' : ''}`}
+      style={{ paddingLeft: needsTrafficLightPadding ? 80 : 24, paddingRight: 24 }}
       onDoubleClick={(e) => {
         // Don't hide if double-clicking interactive elements
         const target = e.target as HTMLElement;
