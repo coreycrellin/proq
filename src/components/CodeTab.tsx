@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import 'highlight.js/styles/github-dark.css';
 import dynamic from 'next/dynamic';
+import type { editor as MonacoEditorType } from 'monaco-editor';
 import {
   ExternalLink,
   Eye,
@@ -10,6 +11,10 @@ import {
   Loader2,
   Check,
   Copy,
+  X,
+  Save,
+  Undo2,
+  Search,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -26,34 +31,86 @@ interface CodeTabProps {
   project: Project;
 }
 
+interface OpenTab {
+  path: string;
+  name: string;
+  language: string;
+  dirty: boolean;
+  content: string;          // current content in editor
+  savedContent: string;     // last saved content
+  viewState: MonacoEditorType.ICodeEditorViewState | null;
+}
 
 const DEFAULT_TREE_WIDTH = 260;
 const MIN_TREE_WIDTH = 140;
 const MAX_TREE_WIDTH = 600;
-const SAVE_DEBOUNCE_MS = 1000;
 
 type SaveStatus = 'idle' | 'saving' | 'saved';
 
+function flattenTree(nodes: TreeNode[]): TreeNode[] {
+  const result: TreeNode[] = [];
+  for (const node of nodes) {
+    if (node.type === 'file') result.push(node);
+    if (node.children) result.push(...flattenTree(node.children));
+  }
+  return result;
+}
+
+function fuzzyMatch(query: string, target: string): boolean {
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
+  let qi = 0;
+  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) qi++;
+  }
+  return qi === q.length;
+}
+
 export function CodeTab({ project }: CodeTabProps) {
   const [tree, setTree] = useState<TreeNode[]>([]);
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [fileContent, setFileContent] = useState<string>('');
+  const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
+  const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
   const [fileLanguage, setFileLanguage] = useState<string>('plaintext');
   const [mdView, setMdView] = useState<'raw' | 'pretty'>('pretty');
   const [treeWidth, setTreeWidth] = useState(DEFAULT_TREE_WIDTH);
   const [isDragging, setIsDragging] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+  const [showPalette, setShowPalette] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorRef = useRef<MonacoEditorType.IStandaloneCodeEditor | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSavedContentRef = useRef<string>('');
+  const isLoadingFileRef = useRef(false);
+  const paletteInputRef = useRef<HTMLInputElement>(null);
+  const tabsRef = useRef<OpenTab[]>([]);
+  const activeTabPathRef = useRef<string | null>(null);
+
+  // Keep refs in sync
+  tabsRef.current = openTabs;
+  activeTabPathRef.current = activeTabPath;
+
+  const activeTab = useMemo(
+    () => openTabs.find((t) => t.path === activeTabPath) ?? null,
+    [openTabs, activeTabPath]
+  );
+
+  const isDirty = activeTab?.dirty ?? false;
 
   const isMarkdown = useMemo(() => {
-    if (!selectedPath) return false;
-    const ext = selectedPath.split('.').pop()?.toLowerCase();
+    if (!activeTabPath) return false;
+    const ext = activeTabPath.split('.').pop()?.toLowerCase();
     return ext === 'md' || ext === 'mdx';
-  }, [selectedPath]);
+  }, [activeTabPath]);
+
+  const fileContent = activeTab?.content ?? '';
+
+  // Flatten tree for Cmd+P palette
+  const allFiles = useMemo(() => flattenTree(tree), [tree]);
+  const filteredFiles = useMemo(() => {
+    if (!paletteQuery) return allFiles.slice(0, 50);
+    return allFiles.filter((f) => fuzzyMatch(paletteQuery, f.name)).slice(0, 50);
+  }, [allFiles, paletteQuery]);
 
   // Resize drag handling
   useEffect(() => {
@@ -84,6 +141,29 @@ export function CodeTab({ project }: CodeTabProps) {
       .catch(console.error);
   }, [project.path]);
 
+  // Cmd+P global shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
+        e.preventDefault();
+        setShowPalette((v) => !v);
+        setPaletteQuery('');
+      }
+      if (e.key === 'Escape' && showPalette) {
+        setShowPalette(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPalette]);
+
+  // Focus palette input when shown
+  useEffect(() => {
+    if (showPalette) {
+      setTimeout(() => paletteInputRef.current?.focus(), 0);
+    }
+  }, [showPalette]);
+
   // Save file
   const saveFile = useCallback(async (filePath: string, content: string) => {
     setSaveStatus('saving');
@@ -93,7 +173,14 @@ export function CodeTab({ project }: CodeTabProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: filePath, content }),
       });
-      lastSavedContentRef.current = content;
+      // Update tab saved content
+      setOpenTabs((tabs) =>
+        tabs.map((t) =>
+          t.path === filePath
+            ? { ...t, savedContent: content, dirty: false }
+            : t
+        )
+      );
       setSaveStatus('saved');
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
@@ -102,65 +189,184 @@ export function CodeTab({ project }: CodeTabProps) {
     }
   }, []);
 
-  // Debounced auto-save on content change
-  const handleEditorChange = useCallback(
-    (value: string | undefined) => {
-      if (value === undefined || !selectedPath) return;
-      setFileContent(value);
-      if (value !== lastSavedContentRef.current) {
-        setSaveStatus('saving');
-      }
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        if (value !== lastSavedContentRef.current) {
-          saveFile(selectedPath, value);
+  // Save active file
+  const handleSave = useCallback(() => {
+    if (!activeTab || !activeTab.dirty) return;
+    saveFile(activeTab.path, activeTab.content);
+  }, [activeTab, saveFile]);
+
+  // Discard changes in active file
+  const handleDiscard = useCallback(() => {
+    if (!activeTab) return;
+    const restored = activeTab.savedContent;
+    setOpenTabs((tabs) =>
+      tabs.map((t) =>
+        t.path === activeTab.path
+          ? { ...t, content: restored, dirty: false }
+          : t
+      )
+    );
+    // Set editor content imperatively
+    if (editorRef.current) {
+      isLoadingFileRef.current = true;
+      editorRef.current.setValue(restored);
+      isLoadingFileRef.current = false;
+    }
+    setSaveStatus('idle');
+  }, [activeTab]);
+
+  // Save/restore view state when switching tabs
+  const saveCurrentViewState = useCallback(() => {
+    if (!editorRef.current || !activeTabPath) return;
+    const viewState = editorRef.current.saveViewState();
+    setOpenTabs((tabs) =>
+      tabs.map((t) =>
+        t.path === activeTabPath ? { ...t, viewState } : t
+      )
+    );
+  }, [activeTabPath]);
+
+  // Switch to a tab
+  const switchToTab = useCallback(
+    (path: string) => {
+      if (path === activeTabPath) return;
+      saveCurrentViewState();
+      setActiveTabPath(path);
+      const tab = tabsRef.current.find((t) => t.path === path);
+      if (tab) {
+        setFileLanguage(tab.language);
+        setSaveStatus(tab.dirty ? 'idle' : 'idle');
+        // Set editor content imperatively
+        if (editorRef.current) {
+          isLoadingFileRef.current = true;
+          editorRef.current.setValue(tab.content);
+          // Restore view state after a tick
+          setTimeout(() => {
+            if (editorRef.current && tab.viewState) {
+              editorRef.current.restoreViewState(tab.viewState);
+            }
+            isLoadingFileRef.current = false;
+          }, 0);
         }
-      }, SAVE_DEBOUNCE_MS);
+      }
     },
-    [selectedPath, saveFile]
+    [activeTabPath, saveCurrentViewState]
   );
 
-  // Load file content
-  const loadFile = useCallback(async (filePath: string) => {
-    // Clear pending save for previous file
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-    setSaveStatus('idle');
-
-    setSelectedPath(filePath);
-    try {
-      const res = await fetch(
-        `/api/files/read?path=${encodeURIComponent(filePath)}`
-      );
-      const data = await res.json();
-      if (data.error) {
-        setFileContent(`// Error: ${data.error}`);
-        setFileLanguage('plaintext');
-        lastSavedContentRef.current = '';
-      } else {
-        setFileContent(data.content);
-        setFileLanguage(data.language);
-        lastSavedContentRef.current = data.content;
+  // Load file (open or switch to tab)
+  const loadFile = useCallback(
+    async (filePath: string) => {
+      // If already open, switch to it
+      const existing = tabsRef.current.find((t) => t.path === filePath);
+      if (existing) {
+        switchToTab(filePath);
+        return;
       }
-    } catch {
-      setFileContent('// Failed to load file');
-      setFileLanguage('plaintext');
-      lastSavedContentRef.current = '';
-    }
-  }, []);
+
+      // Save current view state before switching
+      saveCurrentViewState();
+      setSaveStatus('idle');
+
+      try {
+        const res = await fetch(
+          `/api/files/read?path=${encodeURIComponent(filePath)}`
+        );
+        const data = await res.json();
+        const name = filePath.split('/').pop() || filePath;
+        let content: string;
+        let language: string;
+
+        if (data.error) {
+          content = `// Error: ${data.error}`;
+          language = 'plaintext';
+        } else {
+          content = data.content;
+          language = data.language;
+        }
+
+        const newTab: OpenTab = {
+          path: filePath,
+          name,
+          language,
+          dirty: false,
+          content,
+          savedContent: content,
+          viewState: null,
+        };
+
+        setOpenTabs((tabs) => [...tabs, newTab]);
+        setActiveTabPath(filePath);
+        setFileLanguage(language);
+
+        // Set editor content imperatively
+        if (editorRef.current) {
+          isLoadingFileRef.current = true;
+          editorRef.current.setValue(content);
+          isLoadingFileRef.current = false;
+        }
+      } catch {
+        // Failed to load — don't open a tab
+      }
+    },
+    [switchToTab, saveCurrentViewState]
+  );
+
+  // Close a tab
+  const closeTab = useCallback(
+    (path: string, e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      setOpenTabs((tabs) => {
+        const idx = tabs.findIndex((t) => t.path === path);
+        const newTabs = tabs.filter((t) => t.path !== path);
+        // If closing active tab, switch to adjacent
+        if (path === activeTabPath && newTabs.length > 0) {
+          const newIdx = Math.min(idx, newTabs.length - 1);
+          const nextTab = newTabs[newIdx];
+          setActiveTabPath(nextTab.path);
+          setFileLanguage(nextTab.language);
+          if (editorRef.current) {
+            isLoadingFileRef.current = true;
+            editorRef.current.setValue(nextTab.content);
+            setTimeout(() => {
+              if (editorRef.current && nextTab.viewState) {
+                editorRef.current.restoreViewState(nextTab.viewState);
+              }
+              isLoadingFileRef.current = false;
+            }, 0);
+          }
+        } else if (newTabs.length === 0) {
+          setActiveTabPath(null);
+        }
+        return newTabs;
+      });
+      setSaveStatus('idle');
+    },
+    [activeTabPath]
+  );
+
+  // Handle middle-click on tab
+  const handleTabMouseDown = useCallback(
+    (path: string, e: React.MouseEvent) => {
+      if (e.button === 1) {
+        e.preventDefault();
+        closeTab(path);
+      }
+    },
+    [closeTab]
+  );
 
   // Cleanup timers
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
     };
   }, []);
 
   const handleCopyFile = useCallback(async () => {
-    if (!fileContent) return;
+    const content = editorRef.current?.getValue() || fileContent;
+    if (!content) return;
     try {
-      await navigator.clipboard.writeText(fileContent);
+      await navigator.clipboard.writeText(content);
       setCopyStatus('copied');
       setTimeout(() => setCopyStatus('idle'), 2000);
     } catch {
@@ -180,12 +386,70 @@ export function CodeTab({ project }: CodeTabProps) {
     }
   }, [project.path]);
 
+  // Monaco editor mount handler — uses refs to avoid stale closures
+  const handleEditorMount = useCallback(
+    (editor: MonacoEditorType.IStandaloneCodeEditor) => {
+      editorRef.current = editor;
+
+      // If a tab was already loaded before editor mounted, set its content now
+      const currentPath = activeTabPathRef.current;
+      if (currentPath) {
+        const tab = tabsRef.current.find((t) => t.path === currentPath);
+        if (tab) {
+          isLoadingFileRef.current = true;
+          editor.setValue(tab.content);
+          isLoadingFileRef.current = false;
+        }
+      }
+
+      // Cmd+S to save
+      editor.addCommand(
+        // eslint-disable-next-line no-bitwise
+        (window as unknown as { monaco: typeof import('monaco-editor') }).monaco?.KeyMod.CtrlCmd | (window as unknown as { monaco: typeof import('monaco-editor') }).monaco?.KeyCode.KeyS,
+        () => {
+          const currentPath = activeTabPathRef.current;
+          if (!currentPath) return;
+          const tab = tabsRef.current.find((t) => t.path === currentPath);
+          if (tab && tab.dirty) {
+            saveFile(currentPath, editor.getValue());
+          }
+        }
+      );
+
+      // Track content changes for dirty state (no auto-save)
+      editor.onDidChangeModelContent(() => {
+        if (isLoadingFileRef.current) return;
+        const currentPath = activeTabPathRef.current;
+        if (!currentPath) return;
+        const value = editor.getValue();
+        setOpenTabs((tabs) =>
+          tabs.map((t) => {
+            if (t.path !== currentPath) return t;
+            const dirty = value !== t.savedContent;
+            return { ...t, content: value, dirty };
+          })
+        );
+      });
+    },
+    [saveFile]
+  );
+
+  // Palette file selection
+  const handlePaletteSelect = useCallback(
+    (filePath: string) => {
+      setShowPalette(false);
+      setPaletteQuery('');
+      loadFile(filePath);
+    },
+    [loadFile]
+  );
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-deep">
       {/* Sub-header bar */}
       <div className="h-10 flex-shrink-0 flex items-center justify-between px-3 border-b border-border-default bg-surface-base/80">
         <div className="flex items-center gap-2">
-          {isMarkdown && selectedPath && (
+          {isMarkdown && activeTabPath && (
             <div className="flex items-center bg-surface-hover rounded-md p-0.5 border border-border-strong">
               <button
                 onClick={() => setMdView('raw')}
@@ -211,10 +475,33 @@ export function CodeTab({ project }: CodeTabProps) {
               </button>
             </div>
           )}
-          {selectedPath && (
+          {activeTabPath && (
             <span className="text-xs text-text-tertiary font-mono truncate max-w-md">
-              {selectedPath.replace(project.path + '/', '')}
+              {activeTabPath.replace(project.path + '/', '')}
+              {isDirty && <span className="text-zinc-500 ml-1">(modified)</span>}
             </span>
+          )}
+
+          {/* Save/Discard buttons — only when dirty */}
+          {isDirty && (
+            <div className="flex items-center gap-1 ml-1">
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-text-secondary hover:text-text-primary bg-surface-hover hover:bg-border-strong rounded-md border border-border-strong transition-colors"
+                title="Save (Cmd+S)"
+              >
+                <Save className="w-3 h-3" />
+                Save
+              </button>
+              <button
+                onClick={handleDiscard}
+                className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-text-tertiary hover:text-text-secondary hover:bg-surface-hover rounded-md transition-colors"
+                title="Discard changes"
+              >
+                <Undo2 className="w-3 h-3" />
+                Discard
+              </button>
+            </div>
           )}
 
           {/* Save status indicator */}
@@ -233,7 +520,16 @@ export function CodeTab({ project }: CodeTabProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {selectedPath && (
+          <button
+            onClick={() => { setShowPalette(true); setPaletteQuery(''); }}
+            className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-text-tertiary hover:text-text-secondary hover:bg-surface-hover rounded-md transition-colors"
+            title="Quick Open (Cmd+P)"
+          >
+            <Search className="w-3 h-3" />
+            <span className="text-[10px] text-text-tertiary/60 font-mono">&#8984;P</span>
+          </button>
+
+          {activeTabPath && (
             <button
               onClick={handleCopyFile}
               className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-text-secondary bg-surface-hover hover:bg-border-strong rounded-md border border-border-strong"
@@ -262,6 +558,40 @@ export function CodeTab({ project }: CodeTabProps) {
         </div>
       </div>
 
+      {/* Tab bar */}
+      {openTabs.length > 0 && (
+        <div className="h-[33px] flex-shrink-0 flex items-end border-b border-border-default bg-surface-base/50 overflow-x-auto">
+          {openTabs.map((tab) => {
+            const isActive = tab.path === activeTabPath;
+            return (
+              <div
+                key={tab.path}
+                onClick={() => switchToTab(tab.path)}
+                onMouseDown={(e) => handleTabMouseDown(tab.path, e)}
+                className={`group flex items-center gap-1.5 px-3 h-[32px] text-xs cursor-pointer border-r border-border-default select-none shrink-0 ${
+                  isActive
+                    ? 'bg-surface-deep text-text-primary border-b border-b-transparent -mb-px'
+                    : 'bg-surface-base/30 text-text-tertiary hover:text-text-secondary hover:bg-surface-hover/30'
+                }`}
+              >
+                {tab.dirty && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 flex-shrink-0" />
+                )}
+                <span className="truncate max-w-[140px] font-mono text-[11px]">{tab.name}</span>
+                <button
+                  onClick={(e) => closeTab(tab.path, e)}
+                  className={`flex-shrink-0 p-0.5 rounded hover:bg-surface-hover ${
+                    isActive ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover:opacity-60 hover:!opacity-100'
+                  }`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Main content: file tree + editor */}
       <div ref={containerRef} className="flex-1 flex min-h-0 overflow-hidden">
         {/* File tree */}
@@ -271,7 +601,7 @@ export function CodeTab({ project }: CodeTabProps) {
         >
           <FileTree
             nodes={tree}
-            selectedPath={selectedPath}
+            selectedPath={activeTabPath}
             onSelectFile={loadFile}
           />
         </div>
@@ -288,9 +618,10 @@ export function CodeTab({ project }: CodeTabProps) {
 
         {/* Editor */}
         <div className="flex-1 min-w-0 h-full overflow-hidden">
-          {!selectedPath ? (
-            <div className="h-full flex items-center justify-center text-text-tertiary text-sm">
-              Select a file to view
+          {!activeTabPath ? (
+            <div className="h-full flex flex-col items-center justify-center text-text-tertiary text-sm gap-2">
+              <span>Select a file to view</span>
+              <span className="text-[11px] text-text-tertiary/50 font-mono">&#8984;P to quick open</span>
             </div>
           ) : isMarkdown && mdView === 'pretty' ? (
             <div className="h-full overflow-y-auto p-6">
@@ -307,9 +638,9 @@ export function CodeTab({ project }: CodeTabProps) {
             <MonacoEditor
               height="100%"
               language={fileLanguage}
-              value={fileContent}
+              defaultValue=""
               theme="vs-dark"
-              onChange={handleEditorChange}
+              onMount={handleEditorMount}
               options={{
                 minimap: { enabled: true },
                 fontSize: 13,
@@ -327,6 +658,59 @@ export function CodeTab({ project }: CodeTabProps) {
 
       {/* Drag overlay to prevent iframe/editor stealing mouse events */}
       {isDragging && <div className="fixed inset-0 z-50 cursor-col-resize" />}
+
+      {/* Cmd+P Quick Open Palette */}
+      {showPalette && (
+        <div
+          className="fixed inset-0 z-[60] flex items-start justify-center pt-[15vh]"
+          onClick={() => setShowPalette(false)}
+        >
+          <div
+            className="w-[500px] max-h-[400px] flex flex-col bg-surface-primary border border-border-strong rounded-lg shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-border-default">
+              <Search className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+              <input
+                ref={paletteInputRef}
+                type="text"
+                value={paletteQuery}
+                onChange={(e) => setPaletteQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setShowPalette(false);
+                  if (e.key === 'Enter' && filteredFiles.length > 0) {
+                    handlePaletteSelect(filteredFiles[0].path);
+                  }
+                }}
+                placeholder="Search files by name..."
+                className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary/50 outline-none"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </div>
+            <div className="overflow-y-auto max-h-[340px]">
+              {filteredFiles.length === 0 ? (
+                <div className="px-3 py-4 text-xs text-text-tertiary text-center">
+                  No files found
+                </div>
+              ) : (
+                filteredFiles.map((file) => (
+                  <button
+                    key={file.path}
+                    onClick={() => handlePaletteSelect(file.path)}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-surface-hover/60 transition-colors"
+                  >
+                    <span className="text-text-primary font-medium truncate">{file.name}</span>
+                    <span className="text-text-tertiary/50 font-mono text-[10px] truncate ml-auto">
+                      {file.path.replace(project.path + '/', '')}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
