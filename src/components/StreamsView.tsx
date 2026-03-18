@@ -909,6 +909,15 @@ function StreamCellFull({
               {task.title || task.description?.slice(0, 50) || 'Untitled'}
             </span>
           )}
+          {onComplete && task.status !== 'done' && (
+            <button
+              onClick={() => onComplete(task.id)}
+              className="p-1 rounded text-text-placeholder hover:text-emerald hover:bg-emerald/10"
+              title="Mark as done"
+            >
+              <CheckCircle2Icon className="w-3 h-3" />
+            </button>
+          )}
           {onExpand && (
             <button
               onClick={onExpand}
