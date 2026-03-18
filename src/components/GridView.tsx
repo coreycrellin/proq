@@ -95,30 +95,31 @@ function GridCell({
         <span className="flex-1 text-xs font-medium text-text-secondary truncate">
           {task.title}
         </span>
-        {/* Branch preview button (parallel mode) */}
+        {/* Branch preview (parallel mode) */}
         {parallelMode && task.branch && onSwitchBranch && (
           isPreviewActive ? (
-            <button
-              onClick={() => onSwitchBranch(task.baseBranch || defaultBranch || 'main')}
-              className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-lazuli/30 bg-lazuli/10 text-lazuli hover:bg-lazuli/20"
-            >
-              <GitBranchIcon className="w-2.5 h-2.5" />
-              {task.branch}
-            </button>
+            <>
+              <span className="shrink-0 text-[10px] font-medium text-lazuli">viewing</span>
+              <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-lazuli/30 bg-lazuli/10 text-lazuli">
+                <GitBranchIcon className="w-2.5 h-2.5" />
+                {task.branch}
+              </span>
+            </>
           ) : (
             <button
               onClick={() => onSwitchBranch(task.branch!)}
-              className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium text-lazuli hover:text-lazuli/80 px-1.5 py-0.5 rounded border border-lazuli/30 hover:bg-lazuli/10"
+              title={`Preview branch ${task.branch}`}
+              className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-border-hover/40 bg-surface-hover/60 text-text-chrome hover:border-lazuli/30 hover:text-lazuli"
             >
               <GitBranchIcon className="w-2.5 h-2.5" />
-              Preview
+              {task.branch}
             </button>
           )
         )}
         <button
           onClick={onExpand}
           className="shrink-0 p-1 rounded hover:bg-surface-hover text-text-tertiary hover:text-text-secondary"
-          title="Expand task details"
+          title={`Open full details for ${task.title || 'task'}`}
         >
           <Maximize2Icon className="w-3.5 h-3.5" />
         </button>
@@ -191,6 +192,7 @@ export function GridView({
         {onAddTask && (
           <button
             onClick={onAddTask}
+            title="Create a new task"
             className="flex items-center gap-1 px-2 py-1 rounded text-xs text-text-tertiary hover:text-text-secondary hover:bg-surface-hover border border-border-default"
           >
             <PlusIcon className="w-3.5 h-3.5" />
@@ -201,7 +203,7 @@ export function GridView({
         {onExecutionModeChange && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-medium text-text-tertiary hover:text-text-secondary hover:bg-surface-hover">
+              <button title="Switch execution mode" className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-medium text-text-tertiary hover:text-text-secondary hover:bg-surface-hover">
                 {executionMode === 'sequential' ? (
                   <ListOrderedIcon className="w-3 h-3" />
                 ) : (
