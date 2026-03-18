@@ -96,11 +96,12 @@ function createWindow(mode: 'wizard' | 'splash' | 'app'): BrowserWindow {
 
     case 'app': {
       const bounds = config.windowBounds
+      const validBounds = bounds && bounds.width >= 800 && bounds.height >= 600 ? bounds : null
       Object.assign(windowOptions, {
-        width: bounds?.width || 1400,
-        height: bounds?.height || 900,
-        x: bounds?.x,
-        y: bounds?.y,
+        width: validBounds?.width || 1400,
+        height: validBounds?.height || 900,
+        x: validBounds?.x,
+        y: validBounds?.y,
         minWidth: 800,
         minHeight: 600,
         titleBarStyle: 'hiddenInset' as const,
@@ -283,9 +284,11 @@ function registerIpcHandlers(): void {
 
 async function recoverServer(): Promise<void> {
   if (isRecovering) return
+  // Don't recover if setup isn't complete (wizard is showing)
+  const config = getConfig()
+  if (!config.setupComplete) return
   isRecovering = true
   try {
-    const config = getConfig()
     const result = await restartServer()
     if (result.ok && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.loadURL(`http://localhost:${config.port}`)
@@ -483,6 +486,8 @@ app.whenReady().then(() => {
                 })
                 if (response === 1) {
                   isResetting = true
+                  stopHealthMonitor()
+                  stopUpdateScheduler()
                   await stopServer()
                   resetConfig()
                   // Close all existing windows before relaunching

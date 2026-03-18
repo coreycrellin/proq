@@ -107,19 +107,18 @@ export function Welcome({ onNext }: WelcomeProps): React.JSX.Element {
             software.
           </p>
         </div>
-      </div>
 
-      <div
-        className="wizard-footer"
-        style={{
-          justifyContent: 'center',
-          borderTop: 'none',
-          opacity: phase === 'reveal' ? 1 : 0,
-          transform: phase === 'reveal' ? 'translateY(0)' : 'translateY(8px)',
-          transition: 'opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s'
-        }}
-      >
-        <button className="btn-accent" onClick={onNext} style={{ minWidth: 160 }}>
+        <button
+          className="btn-accent"
+          onClick={onNext}
+          style={{
+            minWidth: 160,
+            marginTop: 48,
+            opacity: phase === 'reveal' ? 1 : 0,
+            transform: phase === 'reveal' ? 'translateY(0)' : 'translateY(8px)',
+            transition: 'opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s'
+          }}
+        >
           Get Started
         </button>
       </div>
