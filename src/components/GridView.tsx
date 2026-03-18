@@ -85,7 +85,7 @@ function GridCell({
 }) {
   const isStructured = task.renderMode !== 'cli';
   const terminalTabId = `task-${task.id.slice(0, 8)}`;
-  const isPreviewActive = parallelMode && task.branch && currentBranch === task.branch;
+  const isPreviewActive = task.branch && currentBranch === task.branch;
 
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden bg-surface-deep">
@@ -95,8 +95,8 @@ function GridCell({
         <span className="flex-1 text-xs font-medium text-text-secondary truncate">
           {task.title}
         </span>
-        {/* Branch preview (parallel mode) */}
-        {parallelMode && task.branch && onSwitchBranch && (
+        {/* Branch preview */}
+        {task.branch && onSwitchBranch && (
           isPreviewActive ? (
             <>
               <span className="shrink-0 text-[10px] font-medium text-lazuli">viewing</span>
