@@ -340,6 +340,34 @@ export default function ProjectPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [projectId, undoEntry]);
 
+  // Cmd+Option+Left/Right to navigate between tabs
+  useEffect(() => {
+    const tabOrder: TabOption[] = ['project', 'live', 'code', 'docs'];
+    const handleTabNav = (e: KeyboardEvent) => {
+      if (!e.metaKey || !e.altKey) return;
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      e.preventDefault();
+      setActiveTab(prev => {
+        const idx = tabOrder.indexOf(prev);
+        const next = e.key === 'ArrowLeft'
+          ? tabOrder[(idx - 1 + tabOrder.length) % tabOrder.length]
+          : tabOrder[(idx + 1) % tabOrder.length];
+        // Persist tab change
+        fetch(`/api/projects/${projectId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ activeTab: next }),
+        }).catch(() => {});
+        setProjects(prev2 => prev2.map(p => p.id === projectId ? { ...p, activeTab: next } : p));
+        return next;
+      });
+    };
+    window.addEventListener('keydown', handleTabNav);
+    return () => window.removeEventListener('keydown', handleTabNav);
+  }, [projectId, setProjects]);
+
   // Keep agent modal in sync with polled task data
   useEffect(() => {
     if (agentModalTask) {
