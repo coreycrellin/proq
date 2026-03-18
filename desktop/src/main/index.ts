@@ -101,7 +101,7 @@ function createWindow(mode: 'wizard' | 'splash' | 'app'): BrowserWindow {
         height: bounds?.height || 900,
         x: bounds?.x,
         y: bounds?.y,
-        minWidth: 800,
+        minWidth: 360,
         minHeight: 600,
         titleBarStyle: 'hiddenInset' as const,
         trafficLightPosition: { x: 16, y: 18 }
