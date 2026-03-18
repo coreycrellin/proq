@@ -538,8 +538,8 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                 >
                   <GitBranchIcon className={`w-3.5 h-3.5 ${isOnPreviewBranch ? 'text-lazuli' : ''}`} />
                   <span className="max-w-[180px] truncate">
-                    {isOnPreviewBranch
-                      ? `Previewing${taskBranchMap?.[currentBranch!] ? ` ${taskBranchMap[currentBranch!].split(/\s+/).slice(0, 4).join(' ')}` : ''}`
+                    {isOnPreviewBranch && taskBranchMap?.[currentBranch!]
+                      ? taskBranchMap[currentBranch!].split(/\s+/).slice(0, 4).join(' ')
                       : currentBranch}
                   </span>
                   <ChevronDownIcon className="w-3 h-3 opacity-50" />
@@ -558,7 +558,6 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                     searchRef={branchSearchRef}
                     onSwitchBranch={(branch) => { onSwitchBranch?.(branch); setBranchPopoverOpen(false); }}
                     onClose={() => setBranchPopoverOpen(false)}
-                    defaultBranch={defaultBranch}
                     onCreateBranch={onCreateBranch ? async (name) => { await onCreateBranch(name); setBranchPopoverOpen(false); } : undefined}
                   />
                 )}
@@ -581,14 +580,13 @@ const BranchPopover = React.forwardRef<HTMLDivElement, {
   branchFilter: string;
   onFilterChange: (v: string) => void;
   searchRef: React.RefObject<HTMLInputElement | null>;
-  defaultBranch?: string;
   onSwitchBranch: (branch: string) => void;
   onClose: () => void;
   onCreateBranch?: (name: string) => Promise<void>;
 }>(function BranchPopover(props, ref) {
   const {
     branches, defaultBranches, proqBranches, otherBranches, currentBranch, taskBranchMap,
-    branchFilter, onFilterChange, searchRef, onSwitchBranch, onClose, onCreateBranch, defaultBranch,
+    branchFilter, onFilterChange, searchRef, onSwitchBranch, onClose, onCreateBranch,
   } = props;
   const [creating, setCreating] = useState(false);
 
@@ -654,20 +652,15 @@ const BranchPopover = React.forwardRef<HTMLDivElement, {
 
       {/* Branch list */}
       <div className="max-h-[280px] overflow-y-auto">
-        {filteredProq.map((branch) => {
-          const isPreviewing = branch === currentBranch;
-          return (
-            <BranchRow
-              key={branch}
-              branch={branch}
-              isCurrent={false}
-              isPreview
-              isPreviewing={isPreviewing}
-              taskTitle={taskBranchMap?.[branch]}
-              onSelect={() => onSwitchBranch(isPreviewing && defaultBranch ? defaultBranch : branch)}
-            />
-          );
-        })}
+        {filteredProq.map((branch) => (
+          <BranchRow
+            key={branch}
+            branch={branch}
+            isCurrent={branch === currentBranch}
+            taskTitle={taskBranchMap?.[branch]}
+            onSelect={() => onSwitchBranch(branch)}
+          />
+        ))}
         {filteredDefault.length > 0 && filteredProq.length > 0 && (
           <div className="border-t border-border-default" />
         )}
@@ -734,31 +727,29 @@ const BranchPopover = React.forwardRef<HTMLDivElement, {
   );
 });
 
-function BranchRow({ branch, isCurrent, isDefault, isPreview, isPreviewing, taskTitle, onSelect }: {
+function BranchRow({ branch, isCurrent, isDefault, taskTitle, onSelect }: {
   branch: string;
   isCurrent: boolean;
   isDefault?: boolean;
-  isPreview?: boolean;
-  isPreviewing?: boolean;
   taskTitle?: string;
   onSelect: () => void;
 }) {
   return (
     <button
-      onClick={onSelect}
+      onClick={() => { if (!isCurrent) onSelect(); }}
       className={`flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-surface-hover transition-colors ${
-        isCurrent ? 'text-text-chrome-active' : isPreviewing ? 'text-lazuli' : 'text-text-secondary'
+        isCurrent ? 'text-text-chrome-active' : 'text-text-secondary'
       }`}
     >
       <span className="w-4 shrink-0 flex justify-center">
         {isCurrent && <CheckIcon className="w-3.5 h-3.5" />}
       </span>
-      {isPreview ? (
+      {taskTitle ? (
         <>
-          <span className={`shrink-0 ${isPreviewing ? 'text-lazuli' : 'text-text-tertiary'}`}>
-            {isPreviewing ? 'Previewing' : 'Preview'}
+          <span className="truncate">{taskTitle}</span>
+          <span className="ml-auto text-[10px] font-mono text-text-tertiary truncate max-w-[100px]">
+            {branch.replace('proq/', '')}
           </span>
-          {taskTitle && <span className="truncate">{taskTitle}</span>}
         </>
       ) : (
         <span className="font-mono truncate">{branch}</span>
