@@ -110,7 +110,7 @@ function GridCell({
               <button
                 onClick={() => onSwitchBranch(task.branch!)}
                 title={`Preview branch ${task.branch}`}
-                className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-border-hover/40 bg-surface-hover/60 text-text-chrome hover:border-lazuli/30 hover:text-lazuli"
+                className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-border-hover/40 bg-surface-hover/60 text-text-chrome hover:border-bronze-500/40 hover:text-bronze-500"
               >
                 <GitBranchIcon className="w-2.5 h-2.5" />
                 {task.branch}
@@ -125,7 +125,7 @@ function GridCell({
             <button
               onClick={() => onSwitchBranch(defaultBranch || 'main')}
               title={`Switch to ${defaultBranch || 'main'}`}
-              className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-border-hover/40 bg-surface-hover/60 text-text-chrome hover:border-lazuli/30 hover:text-lazuli"
+              className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-border-hover/40 bg-surface-hover/60 text-text-chrome hover:border-bronze-500/40 hover:text-bronze-500"
             >
               <GitBranchIcon className="w-2.5 h-2.5" />
               {defaultBranch || 'main'}
