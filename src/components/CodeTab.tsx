@@ -7,14 +7,13 @@ import type { editor as MonacoEditorType } from 'monaco-editor';
 import {
   ExternalLink,
   Eye,
-  Code,
+  Pencil,
   Loader2,
   Check,
   Copy,
   X,
-  Save,
-  Undo2,
   Search,
+  ChevronRight,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -78,6 +77,7 @@ export function CodeTab({ project }: CodeTabProps) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const [showPalette, setShowPalette] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIndex, setPaletteIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<MonacoEditorType.IStandaloneCodeEditor | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -148,6 +148,7 @@ export function CodeTab({ project }: CodeTabProps) {
         e.preventDefault();
         setShowPalette((v) => !v);
         setPaletteQuery('');
+        setPaletteIndex(0);
       }
       if (e.key === 'Escape' && showPalette) {
         setShowPalette(false);
@@ -448,9 +449,30 @@ export function CodeTab({ project }: CodeTabProps) {
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-deep">
       {/* Sub-header bar */}
       <div className="h-10 flex-shrink-0 flex items-center justify-between px-3 border-b border-border-default bg-surface-base/80">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Breadcrumb path */}
+          {activeTabPath && (() => {
+            const rel = activeTabPath.replace(project.path + '/', '');
+            const parts = rel.split('/');
+            return (
+              <div className="flex items-center gap-0.5 text-xs font-mono truncate min-w-0">
+                <span className="text-lazuli font-medium shrink-0">{project.name}</span>
+                {parts.map((part, i) => (
+                  <React.Fragment key={i}>
+                    <ChevronRight className="w-3 h-3 text-text-tertiary/40 shrink-0" />
+                    <span className={i === parts.length - 1 ? 'text-text-primary font-medium' : 'text-text-tertiary'}>
+                      {part}
+                    </span>
+                  </React.Fragment>
+                ))}
+                {isDirty && <span className="w-2 h-2 rounded-full bg-zinc-500 ml-1.5 shrink-0" />}
+              </div>
+            );
+          })()}
+
+          {/* Edit / Preview toggle for markdown */}
           {isMarkdown && activeTabPath && (
-            <div className="flex items-center bg-surface-hover rounded-md p-0.5 border border-border-strong">
+            <div className="flex items-center bg-surface-hover rounded-md p-0.5 border border-border-strong ml-2">
               <button
                 onClick={() => setMdView('raw')}
                 className={`flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded ${
@@ -459,8 +481,8 @@ export function CodeTab({ project }: CodeTabProps) {
                     : 'text-text-tertiary hover:text-text-secondary'
                 }`}
               >
-                <Code className="w-3 h-3" />
-                Raw
+                <Pencil className="w-3 h-3" />
+                Edit
               </button>
               <button
                 onClick={() => setMdView('pretty')}
@@ -471,89 +493,65 @@ export function CodeTab({ project }: CodeTabProps) {
                 }`}
               >
                 <Eye className="w-3 h-3" />
-                Pretty
-              </button>
-            </div>
-          )}
-          {activeTabPath && (
-            <span className="text-xs text-text-tertiary font-mono truncate max-w-md">
-              {activeTabPath.replace(project.path + '/', '')}
-              {isDirty && <span className="text-zinc-500 ml-1">(modified)</span>}
-            </span>
-          )}
-
-          {/* Save/Discard buttons — only when dirty */}
-          {isDirty && (
-            <div className="flex items-center gap-1 ml-1">
-              <button
-                onClick={handleSave}
-                className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-text-secondary hover:text-text-primary bg-surface-hover hover:bg-border-strong rounded-md border border-border-strong transition-colors"
-                title="Save (Cmd+S)"
-              >
-                <Save className="w-3 h-3" />
-                Save
-              </button>
-              <button
-                onClick={handleDiscard}
-                className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-text-tertiary hover:text-text-secondary hover:bg-surface-hover rounded-md transition-colors"
-                title="Discard changes"
-              >
-                <Undo2 className="w-3 h-3" />
-                Discard
+                Preview
               </button>
             </div>
           )}
 
           {/* Save status indicator */}
           {saveStatus === 'saving' && (
-            <span className="flex items-center gap-1 text-xs text-text-tertiary">
+            <span className="flex items-center gap-1 text-xs text-text-tertiary ml-2">
               <Loader2 className="w-3 h-3 animate-spin" />
-              Saving...
             </span>
           )}
           {saveStatus === 'saved' && (
-            <span className="flex items-center gap-1 text-xs text-text-tertiary">
+            <span className="flex items-center gap-1 text-xs text-text-tertiary ml-2">
               <Check className="w-3 h-3" />
-              Saved
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => { setShowPalette(true); setPaletteQuery(''); }}
-            className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-text-tertiary hover:text-text-secondary hover:bg-surface-hover rounded-md transition-colors"
-            title="Quick Open (Cmd+P)"
-          >
-            <Search className="w-3 h-3" />
-            <span className="text-[10px] text-text-tertiary/60 font-mono">&#8984;P</span>
-          </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Cancel / Save changes — GitHub style, right-aligned */}
+          {isDirty && (
+            <>
+              <button
+                onClick={handleDiscard}
+                className="px-3 py-1 text-xs font-medium text-text-secondary hover:text-text-primary bg-surface-hover hover:bg-border-strong rounded-md border border-border-strong transition-colors"
+                title="Discard changes"
+              >
+                Cancel changes
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-3 py-1 text-xs font-medium text-white bg-emerald/80 hover:bg-emerald rounded-md transition-colors"
+                title="Save (Cmd+S)"
+              >
+                Save changes
+              </button>
+            </>
+          )}
 
           {activeTabPath && (
             <button
               onClick={handleCopyFile}
-              className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-text-secondary bg-surface-hover hover:bg-border-strong rounded-md border border-border-strong"
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-text-tertiary hover:text-text-secondary hover:bg-surface-hover rounded-md transition-colors"
+              title="Copy file contents"
             >
               {copyStatus === 'copied' ? (
-                <>
-                  <Check className="w-3 h-3 text-emerald" />
-                  Copied
-                </>
+                <Check className="w-3.5 h-3.5 text-emerald" />
               ) : (
-                <>
-                  <Copy className="w-3 h-3" />
-                  Copy
-                </>
+                <Copy className="w-3.5 h-3.5" />
               )}
             </button>
           )}
 
           <button
             onClick={handleOpenWith}
-            className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-text-secondary bg-surface-hover hover:bg-border-strong rounded-md border border-border-strong"
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-text-tertiary hover:text-text-secondary hover:bg-surface-hover rounded-md transition-colors"
+            title="Open in external editor"
           >
-            <ExternalLink className="w-3 h-3" />
-            Open with...
+            <ExternalLink className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -596,14 +594,26 @@ export function CodeTab({ project }: CodeTabProps) {
       <div ref={containerRef} className="flex-1 flex min-h-0 overflow-hidden">
         {/* File tree */}
         <div
-          className="h-full overflow-y-auto border-r border-border-default bg-surface-base/50 flex-shrink-0"
+          className="h-full flex flex-col border-r border-border-default bg-surface-base/50 flex-shrink-0"
           style={{ width: treeWidth }}
         >
-          <FileTree
-            nodes={tree}
-            selectedPath={activeTabPath}
-            onSelectFile={loadFile}
-          />
+          {/* Go to file search */}
+          <div className="p-2 border-b border-border-default shrink-0">
+            <button
+              onClick={() => { setShowPalette(true); setPaletteQuery(''); setPaletteIndex(0); }}
+              className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-text-tertiary/60 bg-surface-inset rounded-md border border-border-default hover:border-border-strong transition-colors"
+            >
+              <Search className="w-3 h-3" />
+              Go to file
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <FileTree
+              nodes={tree}
+              selectedPath={activeTabPath}
+              onSelectFile={loadFile}
+            />
+          </div>
         </div>
 
         {/* Resize handle */}
@@ -619,9 +629,14 @@ export function CodeTab({ project }: CodeTabProps) {
         {/* Editor */}
         <div className="flex-1 min-w-0 h-full overflow-hidden">
           {!activeTabPath ? (
-            <div className="h-full flex flex-col items-center justify-center text-text-tertiary text-sm gap-2">
+            <div className="h-full flex flex-col items-center justify-center text-text-tertiary text-sm gap-1.5">
               <span>Select a file to view</span>
-              <span className="text-[11px] text-text-tertiary/50 font-mono">&#8984;P to quick open</span>
+              <button
+                onClick={() => { setShowPalette(true); setPaletteQuery(''); setPaletteIndex(0); }}
+                className="text-[11px] text-text-tertiary/50 font-mono hover:text-text-tertiary transition-colors"
+              >
+                &#8984;P to go to file
+              </button>
             </div>
           ) : isMarkdown && mdView === 'pretty' ? (
             <div className="h-full overflow-y-auto p-6">
@@ -675,14 +690,22 @@ export function CodeTab({ project }: CodeTabProps) {
                 ref={paletteInputRef}
                 type="text"
                 value={paletteQuery}
-                onChange={(e) => setPaletteQuery(e.target.value)}
+                onChange={(e) => { setPaletteQuery(e.target.value); setPaletteIndex(0); }}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') setShowPalette(false);
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setPaletteIndex((i) => Math.min(i + 1, filteredFiles.length - 1));
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setPaletteIndex((i) => Math.max(i - 1, 0));
+                  }
                   if (e.key === 'Enter' && filteredFiles.length > 0) {
-                    handlePaletteSelect(filteredFiles[0].path);
+                    handlePaletteSelect(filteredFiles[paletteIndex].path);
                   }
                 }}
-                placeholder="Search files by name..."
+                placeholder="Go to file..."
                 className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary/50 outline-none"
                 autoComplete="off"
                 spellCheck={false}
@@ -694,11 +717,13 @@ export function CodeTab({ project }: CodeTabProps) {
                   No files found
                 </div>
               ) : (
-                filteredFiles.map((file) => (
+                filteredFiles.map((file, i) => (
                   <button
                     key={file.path}
                     onClick={() => handlePaletteSelect(file.path)}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-surface-hover/60 transition-colors"
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
+                      i === paletteIndex ? 'bg-surface-hover/80' : 'hover:bg-surface-hover/40'
+                    }`}
                   >
                     <span className="text-text-primary font-medium truncate">{file.name}</span>
                     <span className="text-text-tertiary/50 font-mono text-[10px] truncate ml-auto">
