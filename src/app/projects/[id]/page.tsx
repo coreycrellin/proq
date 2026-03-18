@@ -852,6 +852,10 @@ export default function ProjectPage() {
                     if (draft) followUpDraftsRef.current.set(taskId, draft);
                     else followUpDraftsRef.current.delete(taskId);
                   }}
+                  parallelMode={executionMode === 'parallel'}
+                  currentBranch={currentBranch}
+                  onSwitchBranch={handleSwitchBranch}
+                  defaultBranch={project?.defaultBranch || 'main'}
                 />
               ) : (project.viewType || 'kanban') === 'kanban' ? (
                 <KanbanBoard

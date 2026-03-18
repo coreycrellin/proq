@@ -6,11 +6,12 @@ import {
   ListOrderedIcon,
   LayersIcon,
   ChevronDownIcon,
-  MaximizeIcon,
+  Maximize2Icon,
   RefreshCwIcon,
   SearchCheckIcon,
+  GitBranchIcon,
 } from 'lucide-react';
-import type { Task, TaskColumns, ExecutionMode, FollowUpDraft, TaskAttachment } from '@/lib/types';
+import type { Task, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { StructuredPane } from './StructuredPane';
 import { TerminalPane } from './TerminalPane';
 import {
@@ -29,6 +30,10 @@ interface GridViewProps {
   onClickTask?: (task: Task) => void;
   followUpDraftsRef?: React.MutableRefObject<Map<string, FollowUpDraft>>;
   onFollowUpDraftChange?: (taskId: string, draft: FollowUpDraft | null) => void;
+  parallelMode?: boolean;
+  currentBranch?: string;
+  onSwitchBranch?: (branch: string) => void;
+  defaultBranch?: string;
 }
 
 // Compute grid layout based on task count and container width
@@ -63,15 +68,24 @@ function GridCell({
   onExpand,
   followUpDraft,
   onFollowUpDraftChange,
+  parallelMode,
+  currentBranch,
+  onSwitchBranch,
+  defaultBranch,
 }: {
   task: Task;
   projectId: string;
   onExpand: () => void;
   followUpDraft?: FollowUpDraft;
   onFollowUpDraftChange?: (draft: FollowUpDraft | null) => void;
+  parallelMode?: boolean;
+  currentBranch?: string;
+  onSwitchBranch?: (branch: string) => void;
+  defaultBranch?: string;
 }) {
   const isStructured = task.renderMode !== 'cli';
   const terminalTabId = `task-${task.id.slice(0, 8)}`;
+  const isPreviewActive = parallelMode && task.branch && currentBranch === task.branch;
 
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden bg-surface-deep">
@@ -81,12 +95,32 @@ function GridCell({
         <span className="flex-1 text-xs font-medium text-text-secondary truncate">
           {task.title}
         </span>
+        {/* Branch preview button (parallel mode) */}
+        {parallelMode && task.branch && onSwitchBranch && (
+          isPreviewActive ? (
+            <button
+              onClick={() => onSwitchBranch(task.baseBranch || defaultBranch || 'main')}
+              className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-lazuli/30 bg-lazuli/10 text-lazuli hover:bg-lazuli/20"
+            >
+              <GitBranchIcon className="w-2.5 h-2.5" />
+              {task.branch}
+            </button>
+          ) : (
+            <button
+              onClick={() => onSwitchBranch(task.branch!)}
+              className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium text-lazuli hover:text-lazuli/80 px-1.5 py-0.5 rounded border border-lazuli/30 hover:bg-lazuli/10"
+            >
+              <GitBranchIcon className="w-2.5 h-2.5" />
+              Preview
+            </button>
+          )
+        )}
         <button
           onClick={onExpand}
           className="shrink-0 p-1 rounded hover:bg-surface-hover text-text-tertiary hover:text-text-secondary"
           title="Expand task details"
         >
-          <MaximizeIcon className="w-3.5 h-3.5" />
+          <Maximize2Icon className="w-3.5 h-3.5" />
         </button>
       </div>
       {/* Agent output area */}
@@ -117,6 +151,10 @@ export function GridView({
   onClickTask,
   followUpDraftsRef,
   onFollowUpDraftChange,
+  parallelMode,
+  currentBranch,
+  onSwitchBranch,
+  defaultBranch,
 }: GridViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
@@ -134,12 +172,12 @@ export function GridView({
     return () => ro.disconnect();
   }, []);
 
-  // Filter to active tasks (in-progress + verify)
+  // Filter to active tasks (in-progress + verify), sorted by createdAt descending (newest first = top-left)
   const activeTasks = useMemo(() => {
     return [
       ...tasks['in-progress'],
       ...tasks.verify,
-    ];
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [tasks]);
 
   const layout = getGridLayout(activeTasks.length, containerWidth);
@@ -218,8 +256,6 @@ export function GridView({
               if (span && span > 1) {
                 style.gridColumn = `span ${span}`;
               }
-              // For 5 tasks, last item in row 2 should center by spanning remaining cols
-              // For 3 tasks narrow: last item spans 2 cols
               return (
                 <div key={task.id} style={style} className="min-h-0 h-full">
                   <GridCell
@@ -228,6 +264,10 @@ export function GridView({
                     onExpand={() => onClickTask?.(task)}
                     followUpDraft={followUpDraftsRef?.current.get(task.id)}
                     onFollowUpDraftChange={onFollowUpDraftChange ? (draft) => onFollowUpDraftChange(task.id, draft) : undefined}
+                    parallelMode={parallelMode}
+                    currentBranch={currentBranch}
+                    onSwitchBranch={onSwitchBranch}
+                    defaultBranch={defaultBranch}
                   />
                 </div>
               );
