@@ -142,8 +142,12 @@ export function CodeTab({ project }: CodeTabProps) {
   const allFiles = useMemo(() => flattenTree(tree), [tree]);
   const filteredFiles = useMemo(() => {
     if (!paletteQuery) return allFiles.slice(0, 50);
-    return allFiles.filter((f) => fuzzyMatch(paletteQuery, f.name)).slice(0, 50);
-  }, [allFiles, paletteQuery]);
+    // Match against full relative path so "src/" or "lib/db" works
+    return allFiles.filter((f) => {
+      const rel = f.path.replace(project.path + '/', '');
+      return fuzzyMatch(paletteQuery, rel);
+    }).slice(0, 50);
+  }, [allFiles, paletteQuery, project.path]);
 
   // Resize drag handling
   useEffect(() => {
@@ -229,29 +233,20 @@ export function CodeTab({ project }: CodeTabProps) {
     persistTabs(project.id, openTabs, activeTabPath);
   }, [project.id, openTabs, activeTabPath]);
 
-  // Cmd+P global shortcut
+  // Cmd+P global shortcut — focuses the search input in the sidebar
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
         e.preventDefault();
-        setShowPalette((v) => !v);
         setPaletteQuery('');
         setPaletteIndex(0);
-      }
-      if (e.key === 'Escape' && showPalette) {
-        setShowPalette(false);
+        setShowPalette(true);
+        setTimeout(() => paletteInputRef.current?.focus(), 0);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showPalette]);
-
-  // Focus palette input when shown
-  useEffect(() => {
-    if (showPalette) {
-      setTimeout(() => paletteInputRef.current?.focus(), 0);
-    }
-  }, [showPalette]);
+  }, []);
 
   // Save file
   const saveFile = useCallback(async (filePath: string, content: string) => {
@@ -788,15 +783,74 @@ export function CodeTab({ project }: CodeTabProps) {
           className="h-full flex flex-col border-r border-border-default bg-surface-topbar flex-shrink-0"
           style={{ width: treeWidth }}
         >
-          {/* Go to file search */}
-          <div className="p-2 border-b border-border-default shrink-0">
-            <button
-              onClick={() => { setShowPalette(true); setPaletteQuery(''); setPaletteIndex(0); }}
-              className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-text-tertiary/60 bg-surface-inset rounded-md border border-border-default hover:border-border-strong transition-colors"
+          {/* Go to file search — inline input with dropdown */}
+          <div className="p-2 border-b border-border-default shrink-0 relative">
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] bg-surface-inset rounded-md border transition-colors ${
+                showPalette ? 'border-border-strong' : 'border-border-default hover:border-border-strong'
+              }`}
             >
-              <Search className="w-3 h-3" />
-              Go to file
-            </button>
+              <Search className="w-3 h-3 text-text-tertiary/60 flex-shrink-0" />
+              <input
+                ref={paletteInputRef}
+                type="text"
+                value={paletteQuery}
+                onChange={(e) => { setPaletteQuery(e.target.value); setPaletteIndex(0); }}
+                onFocus={() => { setShowPalette(true); setPaletteIndex(0); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setShowPalette(false);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setPaletteIndex((i) => Math.min(i + 1, filteredFiles.length - 1));
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setPaletteIndex((i) => Math.max(i - 1, 0));
+                  }
+                  if (e.key === 'Enter' && filteredFiles.length > 0) {
+                    handlePaletteSelect(filteredFiles[paletteIndex].path);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                placeholder="Go to file"
+                className="flex-1 bg-transparent text-[11px] text-text-primary placeholder:text-text-tertiary/50 outline-none min-w-0"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </div>
+            {/* Dropdown results */}
+            {showPalette && (
+              <div className="absolute left-2 right-2 top-full mt-1 z-[60] bg-surface-modal border border-border-strong rounded-md shadow-xl overflow-hidden max-h-[300px] flex flex-col">
+                <div className="overflow-y-auto">
+                  {filteredFiles.length === 0 ? (
+                    <div className="px-3 py-3 text-[11px] text-text-tertiary text-center">
+                      No files found
+                    </div>
+                  ) : (
+                    filteredFiles.map((file, i) => (
+                      <button
+                        key={file.path}
+                        onClick={() => {
+                          handlePaletteSelect(file.path);
+                          paletteInputRef.current?.blur();
+                        }}
+                        className={`w-full flex flex-col gap-0 px-2.5 py-1.5 text-left transition-colors ${
+                          i === paletteIndex ? 'bg-surface-hover/80' : 'hover:bg-surface-hover/40'
+                        }`}
+                      >
+                        <span className="text-[11px] text-text-primary font-medium truncate">{file.name}</span>
+                        <span className="text-text-tertiary/50 font-mono text-[10px] truncate">
+                          {file.path.replace(project.path + '/', '')}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto">
             <FileTree
@@ -824,7 +878,12 @@ export function CodeTab({ project }: CodeTabProps) {
             <div className="h-full flex flex-col items-center justify-center text-text-tertiary text-sm gap-1.5">
               <span>Select a file to view</span>
               <button
-                onClick={() => { setShowPalette(true); setPaletteQuery(''); setPaletteIndex(0); }}
+                onClick={() => {
+                  setPaletteQuery('');
+                  setPaletteIndex(0);
+                  setShowPalette(true);
+                  setTimeout(() => paletteInputRef.current?.focus(), 0);
+                }}
                 className="text-[11px] text-text-tertiary/50 font-mono hover:text-text-tertiary transition-colors"
               >
                 &#8984;P to go to file
@@ -867,67 +926,12 @@ export function CodeTab({ project }: CodeTabProps) {
       {/* Drag overlay to prevent iframe/editor stealing mouse events */}
       {isDragging && <div className="fixed inset-0 z-50 cursor-col-resize" />}
 
-      {/* Cmd+P Quick Open Palette */}
+      {/* Click-away listener for palette dropdown */}
       {showPalette && (
         <div
-          className="fixed inset-0 z-[60] flex items-start justify-center pt-[15vh]"
+          className="fixed inset-0 z-[59]"
           onClick={() => setShowPalette(false)}
-        >
-          <div
-            className="w-[500px] max-h-[400px] flex flex-col bg-surface-primary border border-border-strong rounded-lg shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-border-default">
-              <Search className="w-4 h-4 text-text-tertiary flex-shrink-0" />
-              <input
-                ref={paletteInputRef}
-                type="text"
-                value={paletteQuery}
-                onChange={(e) => { setPaletteQuery(e.target.value); setPaletteIndex(0); }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') setShowPalette(false);
-                  if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    setPaletteIndex((i) => Math.min(i + 1, filteredFiles.length - 1));
-                  }
-                  if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    setPaletteIndex((i) => Math.max(i - 1, 0));
-                  }
-                  if (e.key === 'Enter' && filteredFiles.length > 0) {
-                    handlePaletteSelect(filteredFiles[paletteIndex].path);
-                  }
-                }}
-                placeholder="Go to file..."
-                className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary/50 outline-none"
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </div>
-            <div className="overflow-y-auto max-h-[340px]">
-              {filteredFiles.length === 0 ? (
-                <div className="px-3 py-4 text-xs text-text-tertiary text-center">
-                  No files found
-                </div>
-              ) : (
-                filteredFiles.map((file, i) => (
-                  <button
-                    key={file.path}
-                    onClick={() => handlePaletteSelect(file.path)}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
-                      i === paletteIndex ? 'bg-surface-hover/80' : 'hover:bg-surface-hover/40'
-                    }`}
-                  >
-                    <span className="text-text-primary font-medium truncate">{file.name}</span>
-                    <span className="text-text-tertiary/50 font-mono text-[10px] truncate ml-auto">
-                      {file.path.replace(project.path + '/', '')}
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        />
       )}
     </div>
   );
