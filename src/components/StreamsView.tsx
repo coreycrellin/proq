@@ -571,7 +571,7 @@ export function StreamsView({
         </>
       )}
       {!showToolbarSettings && extra}
-      <div className="flex-1 min-w-0">{todoQueue}</div>
+      <div className="flex-1 min-w-0" />
       <div className="flex items-center gap-1 shrink-0">
         {addStreamButton}
       </div>
