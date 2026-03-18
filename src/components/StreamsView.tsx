@@ -259,20 +259,41 @@ export function StreamsView({
   onStartTask,
 }: StreamsViewProps) {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
-  const [streamFontSize, setStreamFontSize] = useState(13);
+  const [streamFontSize, setStreamFontSize] = useState(() => {
+    if (typeof window === 'undefined') return 13;
+    const v = parseInt(localStorage.getItem('proq-stream-fontSize') ?? '', 10);
+    return isNaN(v) ? 13 : v;
+  });
   const [pinnedDoneIds, setPinnedDoneIds] = useState<Set<string>>(new Set());
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   // Stable ordering ref: preserves task positions when only status changes,
   // preventing grid remounts that cause WebSocket reconnects and visual jumps
   const stableOrderRef = useRef<string[]>([]);
-  const [labelFontSize, setLabelFontSize] = useState(14);
-  const [hideLabels, setHideLabels] = useState(false);
-  const [showToolbarSettings, setShowToolbarSettings] = useState(true);
+  const [labelFontSize, setLabelFontSize] = useState(() => {
+    if (typeof window === 'undefined') return 14;
+    const v = parseInt(localStorage.getItem('proq-stream-labelFontSize') ?? '', 10);
+    return isNaN(v) ? 14 : v;
+  });
+  const [hideLabels, setHideLabels] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('proq-stream-hideLabels') === 'true';
+  });
+  const [showToolbarSettings, setShowToolbarSettings] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const v = localStorage.getItem('proq-stream-showSettings');
+    return v === null ? true : v === 'true';
+  });
   const [showAddMenu, setShowAddMenu] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Persist settings to localStorage
+  useEffect(() => { localStorage.setItem('proq-stream-fontSize', String(streamFontSize)); }, [streamFontSize]);
+  useEffect(() => { localStorage.setItem('proq-stream-labelFontSize', String(labelFontSize)); }, [labelFontSize]);
+  useEffect(() => { localStorage.setItem('proq-stream-hideLabels', String(hideLabels)); }, [hideLabels]);
+  useEffect(() => { localStorage.setItem('proq-stream-showSettings', String(showToolbarSettings)); }, [showToolbarSettings]);
 
   // Close add menu when clicking outside
   useEffect(() => {
