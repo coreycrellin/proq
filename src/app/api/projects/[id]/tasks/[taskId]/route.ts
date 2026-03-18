@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { getTask, getProject, updateTask, deleteTask, getSettings, getProjectDefaultBranch } from "@/lib/db";
+import { getTask, getProject, updateTask, deleteTask, getSettings, getProjectDefaultBranch, deleteTaskAgentBlocks } from "@/lib/db";
 import type { Task } from "@/lib/types";
 import { abortTask, processQueue, getInitialAgentStatus, scheduleCleanup, cancelCleanup, notify } from "@/lib/agent-dispatch";
 import { autoTitle } from "@/lib/auto-title";
 import { clearSession } from "@/lib/agent-session";
 import { emitTaskUpdate } from "@/lib/task-events";
 import { mergeWorktree, removeWorktree, ensureNotOnTaskBranch, ensureOnMainForMerge, popAutoStash } from "@/lib/worktree";
+import { safeParseBody } from "@/lib/api-utils";
 
 type Params = { params: Promise<{ id: string; taskId: string }> };
 
@@ -20,7 +21,8 @@ export async function GET(_request: Request, { params }: Params) {
 
 export async function PATCH(request: Request, { params }: Params) {
   const { id, taskId } = await params;
-  const body = await request.json();
+  const body = await safeParseBody(request);
+  if (body instanceof NextResponse) return body;
 
   // Snapshot previous status before updateTask mutates the same object reference
   const prevTask = await getTask(id, taskId);
@@ -86,8 +88,9 @@ export async function PATCH(request: Request, { params }: Params) {
           popAutoStash(projectPath, prevTask.baseBranch || defaultBr);
         }
       }
-      const resetFields = { agentStatus: null as Task["agentStatus"], summary: "", humanSteps: "", agentLog: "", needsAttention: undefined as boolean | undefined, worktreePath: undefined as string | undefined, branch: undefined as string | undefined, baseBranch: undefined as string | undefined, mergeConflict: undefined as Task["mergeConflict"], renderMode: undefined as Task["renderMode"], agentBlocks: undefined as Task["agentBlocks"], sessionId: undefined as Task["sessionId"] };
+      const resetFields = { agentStatus: null as Task["agentStatus"], summary: "", nextSteps: "", agentLog: "", needsAttention: undefined as boolean | undefined, worktreePath: undefined as string | undefined, branch: undefined as string | undefined, baseBranch: undefined as string | undefined, mergeConflict: undefined as Task["mergeConflict"], renderMode: undefined as Task["renderMode"], sessionId: undefined as Task["sessionId"] };
       await updateTask(id, taskId, resetFields);
+      await deleteTaskAgentBlocks(taskId);
       Object.assign(updated, resetFields);
       if (prevStatus === "in-progress") {
         await abortTask(id, taskId);
@@ -95,6 +98,12 @@ export async function PATCH(request: Request, { params }: Params) {
     } else if (prevStatus === "in-progress" && body.status === "verify") {
       // Deferred merge: keep worktree alive for branch preview
       // No merge here — branch stays available for preview until "done"
+      // Emit SSE so client updates immediately (agent-initiated via MCP)
+      const sseChanges: Record<string, unknown> = { status: "verify" };
+      if (body.agentStatus !== undefined) sseChanges.agentStatus = body.agentStatus;
+      if (body.summary !== undefined) sseChanges.summary = body.summary;
+      if (body.nextSteps !== undefined) sseChanges.nextSteps = body.nextSteps;
+      emitTaskUpdate(id, taskId, sseChanges);
       notify(`✅ *${(updated.title || updated.description.slice(0, 40)).replace(/"/g, '\\"')}* → verify`);
     } else if (prevStatus === "in-progress" && body.status === "done") {
       // Merge worktree when skipping verify
@@ -212,6 +221,9 @@ export async function DELETE(_request: Request, { params }: Params) {
   if (task?.renderMode !== "cli") {
     clearSession(taskId);
   }
+
+  // Clean up agent blocks file
+  await deleteTaskAgentBlocks(taskId);
 
   // If deleted task was in-progress, abort and process queue for next
   if (task?.status === "in-progress") {

@@ -3,7 +3,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomBytes } from "crypto";
 
-const UPLOAD_DIR = "/tmp/mc-drops";
+const UPLOAD_DIR = "/tmp/proq-drops";
 
 export async function POST(request: Request) {
   const formData = await request.formData();

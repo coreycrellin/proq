@@ -30,7 +30,6 @@ import {
 } from "./agent-session";
 import { getClaudeBin } from "./claude-bin";
 
-const MC_API = "http://localhost:1337";
 
 /**
  * Write an MCP config JSON file that tells Claude to connect to the proq
@@ -74,7 +73,8 @@ You have MCP tools from the **proq** server for reporting progress. Use them ins
 ### Task Tools
 - \`read_task\` — Read current task state and any existing summary
 - \`update_task\` — Update summary and move task to Verify for review
-- \`commit_changes\` — Stage and commit all current changes with a message`,
+- \`commit_changes\` — Stage and commit all current changes with a message
+- \`set_live_url\` — Set the live preview URL (e.g. after starting a dev server)`,
   ];
 
   if (mode === "auto") {
@@ -153,7 +153,7 @@ export function scheduleCleanup(projectId: string, taskId: string) {
 
   const expiresAt = Date.now() + CLEANUP_DELAY_MS;
   const shortId = taskId.slice(0, 8);
-  const tmuxSession = `mc-${shortId}`;
+  const tmuxSession = `proq-${shortId}`;
 
   const timer = setTimeout(async () => {
     try {
@@ -246,7 +246,7 @@ export async function dispatchTask(
 
   const shortId = taskId.slice(0, 8);
   const terminalTabId = `task-${shortId}`;
-  const tmuxSession = `mc-${shortId}`;
+  const tmuxSession = `proq-${shortId}`;
 
   // Check if running in parallel mode — create worktree for parallel code tasks
   const executionMode = await getExecutionMode(projectId);
@@ -283,6 +283,19 @@ export async function dispatchTask(
         // Fall back to shared directory
       }
     }
+  }
+
+  // Capture HEAD commit before dispatch so we can track task commits later
+  try {
+    const headHash = execSync(
+      `git -C '${effectivePath}' rev-parse HEAD`,
+      { timeout: 5_000, encoding: "utf-8" },
+    ).trim();
+    if (headHash) {
+      await updateTask(projectId, taskId, { startCommit: headHash });
+    }
+  } catch {
+    // Not a git repo or no commits yet — skip
   }
 
   let heading = taskTitle
@@ -347,7 +360,8 @@ export async function dispatchTask(
     const socketPath = `/tmp/proq/${tmuxSession}.sock`;
 
     // Launch via tmux with bridge — session survives server restarts, bridge exposes PTY over unix socket
-    const tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' node '${bridgePath}' '${socketPath}' '${launcherFile}'`;
+    const proqApi = `http://localhost:${process.env.PORT || 1337}`;
+    const tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' -e PROQ_API='${proqApi}' node '${bridgePath}' '${socketPath}' '${launcherFile}'`;
 
     try {
       execSync(tmuxCmd, { timeout: 10_000 });
@@ -429,7 +443,7 @@ export async function abortTask(projectId: string, taskId: string) {
   if (task?.renderMode === "cli") {
     // CLI mode: kill tmux
     const shortId = taskId.slice(0, 8);
-    const tmuxSession = `mc-${shortId}`;
+    const tmuxSession = `proq-${shortId}`;
     try {
       execSync(`tmux kill-session -t '${tmuxSession}'`, { timeout: 5_000 });
       console.log(`[agent-dispatch] killed tmux session ${tmuxSession}`);
@@ -478,7 +492,7 @@ export function isSessionAlive(taskId: string): boolean {
 
   // Fall back to tmux check
   const shortId = taskId.slice(0, 8);
-  const tmuxSession = `mc-${shortId}`;
+  const tmuxSession = `proq-${shortId}`;
   try {
     execSync(`tmux has-session -t '${tmuxSession}'`, { timeout: 3_000 });
     return true;

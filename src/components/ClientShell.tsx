@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { ProjectsProvider } from './ProjectsProvider';
 import { WorkbenchTabsProvider } from './WorkbenchTabsProvider';
@@ -8,6 +8,18 @@ import { Sidebar } from './Sidebar';
 import { MissingPathModal } from './MissingPathModal';
 import { useProjects } from './ProjectsProvider';
 import type { Project } from '@/lib/types';
+
+interface ShellActions {
+  addProject: () => Promise<void>;
+}
+
+const ShellActionsContext = createContext<ShellActions | null>(null);
+
+export function useShellActions() {
+  const ctx = useContext(ShellActionsContext);
+  if (!ctx) throw new Error('useShellActions must be used within ClientShell');
+  return ctx;
+}
 
 const STANDALONE_ROUTES = ['/design', '/experiments'];
 const STANDALONE_PREFIXES = ['/mobile'];
@@ -89,29 +101,44 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen w-full bg-surface-base text-text-primary overflow-hidden font-sans">
-      <Sidebar
-        onAddProject={handleAddProject}
-        onMissingPath={setMissingProject}
-        collapsed={sidebarCollapsed}
-        onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
-      />
-      <div className="flex-1 flex flex-col min-w-0">
-        {children}
-      </div>
-      {missingProject && (
-        <MissingPathModal
-          project={missingProject}
-          onClose={() => setMissingProject(null)}
-          onRelocate={handleRelocate}
-          onRemove={handleRemoveProject}
+    <ShellActionsContext.Provider value={{ addProject: handleAddProject }}>
+      <div className="flex h-screen w-full bg-surface-base text-text-primary overflow-hidden font-sans">
+        <Sidebar
+          onAddProject={handleAddProject}
+          onMissingPath={setMissingProject}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
         />
-      )}
-    </div>
+        <div className="flex-1 flex flex-col min-w-0">
+          {children}
+        </div>
+        {missingProject && (
+          <MissingPathModal
+            project={missingProject}
+            onClose={() => setMissingProject(null)}
+            onRelocate={handleRelocate}
+            onRemove={handleRemoveProject}
+          />
+        )}
+      </div>
+    </ShellActionsContext.Provider>
   );
 }
 
 export function ClientShell({ children }: { children: React.ReactNode }) {
+  // Listen for OS theme changes when theme is set to "system"
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = () => {
+      const stored = localStorage.getItem('theme');
+      if (!stored || stored === 'system') {
+        document.documentElement.classList.toggle('dark', mq.matches);
+      }
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   return (
     <ProjectsProvider>
       <WorkbenchTabsProvider>

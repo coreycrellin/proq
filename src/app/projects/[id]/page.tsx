@@ -17,10 +17,10 @@ import { AlertModal } from '@/components/Modal';
 import { ProjectSettingsModal } from '@/components/ProjectSettingsModal';
 import { CommitModal } from '@/components/CommitModal';
 import { useProjects } from '@/components/ProjectsProvider';
-import { emptyColumns } from '@/components/ProjectsProvider';
+import { emptyTasks } from '@/components/ProjectsProvider';
 import type { Task, TaskStatus, TaskColumns, ExecutionMode, FollowUpDraft, TaskAttachment, ViewType } from '@/lib/types';
 import { uploadFiles } from '@/lib/upload';
-import { useTaskEvents, type TaskUpdateEvent } from '@/hooks/useTaskEvents';
+import { useTaskEvents, type TaskUpdateEvent, type TaskCreatedEvent, type ProjectUpdateEvent } from '@/hooks/useTaskEvents';
 
 export default function ProjectPage() {
   const params = useParams();
@@ -54,7 +54,7 @@ export default function ProjectPage() {
   const viewingTaskIdRef = useRef<string | null>(null);
 
   const project = projects.find((p) => p.id === projectId);
-  const columns: TaskColumns = tasksByProject[projectId] || emptyColumns();
+  const columns: TaskColumns = tasksByProject[projectId] || emptyTasks();
 
   // Update document title with project id (slug)
   useEffect(() => {
@@ -94,15 +94,18 @@ export default function ProjectPage() {
       const res = await fetch(`/api/projects/${projectId}/git`);
       if (res.ok) {
         const data = await res.json();
-        setCurrentBranch(data.current || 'main');
-        setBranches(data.branches || []);
-        setGitStatus({
+        const newBranch = data.current || 'main';
+        const newBranches = data.branches || [];
+        const newStatus: GitStatus = {
           hasGit: data.hasGit !== false,
           hasRemote: data.hasRemote || false,
           ahead: data.ahead || 0,
           behind: data.behind || 0,
           dirty: data.dirty || 0,
-        });
+        };
+        setCurrentBranch(prev => prev === newBranch ? prev : newBranch);
+        setBranches(prev => JSON.stringify(prev) === JSON.stringify(newBranches) ? prev : newBranches);
+        setGitStatus(prev => JSON.stringify(prev) === JSON.stringify(newStatus) ? prev : newStatus);
       }
     } catch {
       // git API may not be available for non-git projects
@@ -135,7 +138,7 @@ export default function ProjectPage() {
   const dismissAttention = useCallback((taskId: string) => {
     // Optimistically clear needsAttention in local state
     setTasksByProject((prev) => {
-      const cols = prev[projectId] || emptyColumns();
+      const cols = prev[projectId] || emptyTasks();
       for (const status of ['todo', 'in-progress', 'verify', 'done'] as TaskStatus[]) {
         const idx = cols[status].findIndex((t) => t.id === taskId);
         if (idx === -1) continue;
@@ -166,7 +169,7 @@ export default function ProjectPage() {
     }
 
     setTasksByProject((prev) => {
-      const cols = prev[projectId] || emptyColumns();
+      const cols = prev[projectId] || emptyTasks();
       const { taskId, changes } = event;
 
       // Find the task in any column
@@ -204,18 +207,51 @@ export default function ProjectPage() {
     }
   }, [projectId, setTasksByProject, fetchBranchState, dismissAttention]);
 
-  useTaskEvents(projectId, handleTaskUpdate);
+  // Handle externally-created tasks (e.g. supervisor) — insert into todo column
+  const handleTaskCreated = useCallback((event: TaskCreatedEvent) => {
+    const task = event.task as unknown as Task;
+    if (!task.id) return;
+    setTasksByProject((prev) => {
+      const cols = prev[projectId] || emptyTasks();
+      // Skip if task already exists (e.g. we created it locally)
+      for (const status of ['todo', 'in-progress', 'verify', 'done'] as TaskStatus[]) {
+        if (cols[status].some((t) => t.id === task.id)) return prev;
+      }
+      return { ...prev, [projectId]: { ...cols, todo: [task, ...cols.todo] } };
+    });
+  }, [projectId, setTasksByProject]);
 
-  // 5s task poll as consistency backstop — skips during active drags
+  // Handle project-level SSE updates (e.g. agent sets live URL)
+  const handleProjectUpdate = useCallback((event: ProjectUpdateEvent) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === projectId ? { ...p, ...event.changes } : p))
+    );
+  }, [projectId, setProjects]);
+
+  useTaskEvents(projectId, handleTaskUpdate, handleTaskCreated, handleProjectUpdate);
+
+  // 30s poll as consistency backstop — SSE handles real-time updates.
+  // Refreshes both tasks (skipped during drags) and project-level data (e.g. serverUrl).
   useEffect(() => {
     if (!projectId) return;
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       if (!kanbanDraggingRef.current) refreshTasks(projectId);
-    }, 5_000);
+      // Also refresh project-level fields (serverUrl, etc.) that SSE may have missed
+      try {
+        const res = await fetch(`/api/projects/${projectId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setProjects((prev) =>
+            prev.map((p) => (p.id === projectId ? { ...p, ...data } : p))
+          );
+        }
+      } catch { /* ignore */ }
+    }, 30_000);
     return () => clearInterval(interval);
-  }, [projectId, refreshTasks]);
+  }, [projectId, refreshTasks, setProjects]);
 
   // 5s poll for branch state (local dirty count, branch list, preview fast-forward)
+  // Git changes are true externalities that don't pass through our API.
   useEffect(() => {
     if (!projectId) return;
     const interval = setInterval(() => {
@@ -317,7 +353,7 @@ export default function ProjectPage() {
   const deleteTask = async (taskId: string) => {
     // Optimistically remove from UI
     setTasksByProject((prev) => {
-      const cols = prev[projectId] || emptyColumns();
+      const cols = prev[projectId] || emptyTasks();
       const updated: TaskColumns = { ...cols };
       for (const status of ['todo', 'in-progress', 'verify', 'done'] as TaskStatus[]) {
         const idx = updated[status].findIndex((t) => t.id === taskId);
@@ -336,7 +372,7 @@ export default function ProjectPage() {
   const moveTask = (taskId: string, toColumn: TaskStatus, toIndex: number) => {
     // Optimistically update task state so the UI is instant
     setTasksByProject((prev) => {
-      const cols = prev[projectId] || emptyColumns();
+      const cols = prev[projectId] || emptyTasks();
       // Find and remove the task from its current column
       let task: Task | undefined;
       const updated: TaskColumns = { ...cols };
@@ -358,7 +394,7 @@ export default function ProjectPage() {
       } else if (toColumn === 'todo') {
         optimistic.agentStatus = null;
         optimistic.summary = '';
-        optimistic.humanSteps = '';
+        optimistic.nextSteps = '';
       }
 
       // Insert at target position
@@ -398,7 +434,7 @@ export default function ProjectPage() {
     // Optimistic update for board
     if (data.status || data.title) {
       setTasksByProject((prev) => {
-        const cols = prev[projectId] || emptyColumns();
+        const cols = prev[projectId] || emptyTasks();
         const updated: TaskColumns = { ...cols };
         // Find the task
         let task: Task | undefined;
@@ -439,7 +475,7 @@ export default function ProjectPage() {
       const serverTask: Task = await res.json();
       if (data.status && serverTask.status !== data.status) {
         setTasksByProject((prev) => {
-          const cols = prev[projectId] || emptyColumns();
+          const cols = prev[projectId] || emptyTasks();
           const updated: TaskColumns = { ...cols };
           // Remove from the optimistic column
           const optimisticCol = data.status as TaskStatus;
@@ -538,9 +574,11 @@ export default function ProjectPage() {
       body: JSON.stringify({ title: '', description: '' }),
     });
     const newTask: Task = await res.json();
-    // Add to local state immediately so deleteTask can find it on discard
+    // Add to local state immediately so deleteTask can find it on discard.
+    // Guard against duplicates — SSE task-created may arrive before the POST response.
     setTasksByProject((prev) => {
-      const cols = prev[projectId] || emptyColumns();
+      const cols = prev[projectId] || emptyTasks();
+      if (cols.todo.some((t) => t.id === newTask.id)) return prev;
       return { ...prev, [projectId]: { ...cols, todo: [newTask, ...cols.todo] } };
     });
     setModalTask(newTask);
@@ -602,12 +640,13 @@ export default function ProjectPage() {
 
   const handleTabChange = useCallback((tab: TabOption) => {
     setActiveTab(tab);
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, activeTab: tab } : p));
     fetch(`/api/projects/${projectId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ activeTab: tab }),
     }).catch(() => {});
-  }, [projectId]);
+  }, [projectId, setProjects]);
 
   const handleViewTypeChange = useCallback((vt: ViewType) => {
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, viewType: vt } : p));
@@ -973,7 +1012,7 @@ export default function ProjectPage() {
             // Close modal and optimistically update immediately
             setModalTask(null);
             setTasksByProject((prev) => {
-              const cols = prev[projectId] || emptyColumns();
+              const cols = prev[projectId] || emptyTasks();
               const todoCol = cols.todo.filter((t) => t.id !== taskId);
               const task = cols.todo.find((t) => t.id === taskId);
               if (!task) return prev;

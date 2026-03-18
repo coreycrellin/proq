@@ -2,15 +2,21 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { AgentBlock, AgentWsServerMsg, TaskAttachment } from '@/lib/types';
+import { useStreamingBuffer } from './useStreamingBuffer';
 
-const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '42069';
+function getWsPort(): string {
+  return (typeof window !== 'undefined' && (window as unknown as { __PROQ_WS_PORT?: string }).__PROQ_WS_PORT) || '42069';
+}
 
 interface UseAgentTabSessionResult {
   blocks: AgentBlock[];
+  streamingText: string;
   connected: boolean;
   sessionDone: boolean;
+  loaded: boolean;
   sendMessage: (text: string, attachments?: TaskAttachment[]) => void;
   stop: () => void;
+  clear: () => void;
 }
 
 export function useAgentTabSession(
@@ -21,13 +27,15 @@ export function useAgentTabSession(
   const [blocks, setBlocks] = useState<AgentBlock[]>([]);
   const [connected, setConnected] = useState(false);
   const [sessionDone, setSessionDone] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const optimisticUserRef = useRef<string | null>(null);
+  const { streamingText, appendDelta, clearBuffer } = useStreamingBuffer();
 
   useEffect(() => {
     const wsHost = window.location.hostname;
     const contextParam = context ? `&context=${context}` : '';
-    const url = `ws://${wsHost}:${WS_PORT}/ws/agent-tab?tabId=${tabId}&projectId=${projectId}${contextParam}`;
+    const url = `ws://${wsHost}:${getWsPort()}/ws/agent-tab?tabId=${tabId}&projectId=${projectId}${contextParam}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
@@ -40,6 +48,7 @@ export function useAgentTabSession(
         const msg: AgentWsServerMsg = JSON.parse(event.data);
 
         if (msg.type === 'replay') {
+          clearBuffer();
           setBlocks(msg.blocks);
           // Determine session done state
           const statusBlocks = msg.blocks.filter(
@@ -50,7 +59,13 @@ export function useAgentTabSession(
           const hasUserAfter = msg.blocks.slice(lastStatusIdx + 1).some((b) => b.type === 'user');
           const isDone = !lastStatus || (lastStatus.type === 'status' && lastStatus.subtype !== 'init' && !hasUserAfter);
           setSessionDone(isDone);
+          setLoaded(true);
+        } else if (msg.type === 'stream_delta') {
+          appendDelta(msg.text);
         } else if (msg.type === 'block') {
+          if (msg.block.type === 'text' || msg.block.type === 'user') {
+            clearBuffer();
+          }
           // Skip server echo of optimistically added user block
           if (msg.block.type === 'user' && optimisticUserRef.current !== null && msg.block.text === optimisticUserRef.current) {
             optimisticUserRef.current = null;
@@ -103,5 +118,12 @@ export function useAgentTabSession(
     }
   }, []);
 
-  return { blocks, connected, sessionDone, sendMessage, stop };
+  const clear = useCallback(() => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'clear' }));
+    }
+  }, []);
+
+  return { blocks, streamingText, connected, sessionDone, loaded, sendMessage, stop, clear };
 }

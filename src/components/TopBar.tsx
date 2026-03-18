@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { GitDetailModal } from '@/components/GitDetailModal';
+import { isElectron } from '@/lib/utils';
 
 export type TabOption = ProjectTab;
 
@@ -207,11 +208,11 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
         : 'text-text-chrome';
 
   return (
-    <header className="h-[52px] bg-surface-topbar flex items-center px-6 flex-shrink-0 border-b border-border-default">
+    <header className={`h-[48px] bg-surface-topbar flex items-center px-6 flex-shrink-0 border-b border-border-default${isElectron ? ' electron-drag' : ''}`}>
       <div className="flex-1 flex items-center min-w-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1.5 ml-1 text-text-chrome hover:text-text-chrome-hover">
+            <button className="flex items-center gap-1.5 ml-1 text-text-secondary dark:text-zinc-300 hover:text-bronze-600 dark:hover:text-bronze-500">
               <h1 className="text-base font-semibold leading-tight truncate">
                 {project.name}
               </h1>
@@ -269,7 +270,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 className={`relative px-3.5 py-1 text-xs font-medium rounded-md z-10 ${
-                  isActive ? 'text-text-chrome-active' : 'text-text-chrome hover:text-text-chrome-hover'
+                  isActive ? 'text-text-chrome-active' : 'text-text-tertiary dark:text-zinc-500 hover:text-bronze-600 dark:hover:text-bronze-500'
                 }`}
               >
                 {isActive && (
@@ -311,19 +312,19 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80 max-h-72 overflow-hidden flex flex-col p-0">
+                  <div className="flex-shrink-0 bg-surface-modal border-b border-border-subtle/60 px-2 py-1.5 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-crimson">{dirtyFiles?.length || gitStatus.dirty} Uncommitted Changes</span>
+                    {onCommit && (
+                      <button
+                        onClick={() => { setDirtyDropdownOpen(false); onCommit(); }}
+                        className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded text-crimson hover:bg-crimson/10"
+                      >
+                        Commit
+                        <GitCommitHorizontalIcon className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                   <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="sticky top-0 z-10 bg-surface-modal border-b border-border-subtle/60 px-2 py-1.5 flex items-center justify-between">
-                      <span className="text-xs font-semibold text-crimson">{dirtyFiles?.length || gitStatus.dirty} Uncommitted Changes</span>
-                      {onCommit && (
-                        <button
-                          onClick={() => { setDirtyDropdownOpen(false); onCommit(); }}
-                          className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded text-crimson hover:bg-crimson/10"
-                        >
-                          Commit
-                          <GitCommitHorizontalIcon className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
                     {dirtyFiles === null ? (
                       <DropdownMenuItem disabled className="text-xs text-text-tertiary justify-center">
                         <Loader2Icon className="w-3 h-3 animate-spin mr-2" /> Loading...
@@ -332,7 +333,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                       <DropdownMenuItem disabled className="text-xs text-text-tertiary">No changes found</DropdownMenuItem>
                     ) : (
                       dirtyFiles.map((file, i) => (
-                        <DropdownMenuItem key={i} className="text-xs gap-2 font-mono pointer-events-none">
+                        <DropdownMenuItem key={i} className="text-xs gap-2 font-mono pointer-events-none min-w-0">
                           <StatusBadge status={file.status} />
                           <span className="truncate">{file.path}</span>
                         </DropdownMenuItem>

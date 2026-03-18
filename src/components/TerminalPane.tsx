@@ -8,6 +8,14 @@ interface TerminalInstance {
   fitAddon: import('@xterm/addon-fit').FitAddon;
 }
 
+/* Pre-fill text to write into a terminal once its WS connects */
+const terminalDraftMap = new Map<string, string>();
+
+/** Queue text to be written to a terminal tab once its WebSocket is open */
+export function setTerminalDraft(tabId: string, text: string) {
+  terminalDraftMap.set(tabId, text);
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Single-terminal mounting hook                                              */
 /* -------------------------------------------------------------------------- */
@@ -61,7 +69,7 @@ export function useTerminal(
       });
 
       // Connect WS — server auto-spawns the PTY if needed and replays scrollback
-      const wsPort = process.env.NEXT_PUBLIC_WS_PORT || "42069";
+      const wsPort = (window as unknown as { __PROQ_WS_PORT?: string }).__PROQ_WS_PORT || "42069";
       let wsUrl = `ws://${window.location.hostname}:${wsPort}/ws/terminal?id=${encodeURIComponent(tabId)}`;
       if (cwd) wsUrl += `&cwd=${encodeURIComponent(cwd)}`;
       const ws = new WebSocket(wsUrl);
@@ -70,6 +78,12 @@ export function useTerminal(
         const dims = fitAddon.proposeDimensions();
         if (dims?.cols && dims?.rows) {
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }));
+        }
+        // Flush queued draft text (e.g. initial command from empty-state button)
+        const draft = terminalDraftMap.get(tabId);
+        if (draft) {
+          terminalDraftMap.delete(tabId);
+          ws.send(draft);
         }
       };
 
@@ -159,7 +173,17 @@ export function useTerminal(
     }
   }, []);
 
-  return { sendData };
+  /** Clear the terminal display and send `clear` to the shell */
+  const clearTerminal = useCallback(() => {
+    const inst = instanceRef.current;
+    if (!inst) return;
+    inst.terminal.clear();
+    if (inst.ws.readyState === WebSocket.OPEN) {
+      inst.ws.send('clear\r');
+    }
+  }, []);
+
+  return { sendData, clearTerminal };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -178,8 +202,18 @@ export function TerminalPane({
   cwd?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { sendData } = useTerminal(tabId, containerRef, visible, cwd);
+  const { sendData, clearTerminal } = useTerminal(tabId, containerRef, visible, cwd);
   const [dropping, setDropping] = useState(false);
+
+  // Listen for clear events from the tab dropdown
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { tabId: targetId, type } = (e as CustomEvent).detail;
+      if (targetId === tabId && type === 'shell') clearTerminal();
+    };
+    window.addEventListener('workbench-clear-tab', handler);
+    return () => window.removeEventListener('workbench-clear-tab', handler);
+  }, [tabId, clearTerminal]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (!enableDrop) return;

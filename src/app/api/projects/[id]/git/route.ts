@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProject } from "@/lib/db";
+import { safeParseBody } from "@/lib/api-utils";
 import {
   getCurrentBranch,
   listBranches,
@@ -19,7 +20,9 @@ import {
   gitLogFull,
   gitShowCommit,
   gitLogPaginated,
+  gitCommitsByHash,
 } from "@/lib/worktree";
+import { getTask } from "@/lib/db";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -80,7 +83,8 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  const body = await request.json();
+  const body = await safeParseBody(request);
+  if (body instanceof NextResponse) return body;
   const projectPath = resolveProjectPath(project.path);
 
   // Action-based dispatch
@@ -241,6 +245,22 @@ ${diff.slice(0, 12000)}`;
         const msg = err instanceof Error ? err.message : "Failed to create branch";
         return NextResponse.json({ error: msg }, { status: 500 });
       }
+    }
+
+    if (body.action === "task-commits") {
+      const taskId = body.taskId;
+      if (!taskId || typeof taskId !== "string") {
+        return NextResponse.json({ error: "taskId is required" }, { status: 400 });
+      }
+      const task = await getTask(id, taskId);
+      if (!task) {
+        return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      }
+
+      const commits = task.commitHashes?.length
+        ? gitCommitsByHash(projectPath, task.commitHashes)
+        : [];
+      return NextResponse.json({ commits });
     }
 
     return NextResponse.json({ error: `Unknown action: ${body.action}` }, { status: 400 });

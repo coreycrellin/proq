@@ -24,12 +24,12 @@ function defaultShell(): string {
 
 /**
  * Derive tmux session name from tabId.
- * Task tabs: "task-{shortId}" → "mc-{shortId}"
+ * Task tabs: "task-{shortId}" → "proq-{shortId}"
  * Shell tabs: "{tabId}" as-is (e.g. "default-abc12345", "shell-xyz98765")
  */
 function sessionName(tabId: string): string {
   if (tabId.startsWith("task-")) {
-    return `mc-${tabId.slice(5)}`;
+    return `proq-${tabId.slice(5)}`;
   }
   return tabId;
 }

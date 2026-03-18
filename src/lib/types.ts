@@ -34,7 +34,7 @@ export type AgentBlock =
   | { type: 'status';      subtype: 'init' | 'complete' | 'error' | 'abort';
       sessionId?: string; model?: string; costUsd?: number;
       durationMs?: number; turns?: number; error?: string }
-  | { type: 'task_update'; summary: string; humanSteps?: string; timestamp: string }
+  | { type: 'task_update'; summary: string; nextSteps?: string; timestamp: string }
   | { type: 'stream_delta'; text: string };
 
 // ── Agent WS Protocol ───────────────────────────────────
@@ -42,13 +42,15 @@ export type AgentBlock =
 export type AgentWsServerMsg =
   | { type: 'replay'; blocks: AgentBlock[] }
   | { type: 'block';  block: AgentBlock }
+  | { type: 'stream_delta'; text: string }
   | { type: 'error';  error: string };
 
 // Client → Server
 export type AgentWsClientMsg =
   | { type: 'followup'; text: string; attachments?: TaskAttachment[] }
   | { type: 'plan-approve'; text: string }
-  | { type: 'stop' };
+  | { type: 'stop' }
+  | { type: 'clear' };
 
 // ── Task ─────────────────────────────────────────────────
 export type TaskStatus = "todo" | "in-progress" | "verify" | "done";
@@ -75,9 +77,9 @@ export interface Task {
   status: TaskStatus;
   priority?: 'low' | 'medium' | 'high';
   mode?: TaskMode;
-  order?: number; // deprecated — kept for migration only
   summary?: string;
   humanSteps?: string;
+  nextSteps?: string;
   needsAttention?: boolean;
   agentLog?: string;
   agentStatus?: "queued" | "starting" | "running" | null;
@@ -90,6 +92,8 @@ export interface Task {
     branch: string;
     diff?: string; // unified diff showing what conflicts
   };
+  startCommit?: string;
+  commitHashes?: string[];
   renderMode?: AgentRenderMode;
   agentBlocks?: AgentBlock[];
   sessionId?: string;
@@ -140,8 +144,11 @@ export interface ProqSettings {
   showCosts: boolean;
   codingAgent: string;
 
+  // Updates
+  autoUpdate: boolean;
+
   // Appearance
-  theme: 'dark' | 'light';
+  theme: 'dark' | 'light' | 'system';
 
   // Notifications
   soundNotifications: boolean;
@@ -158,24 +165,23 @@ export interface WorkbenchTabInfo {
   type?: 'shell' | 'agent'; // defaults to 'shell' for backward compat
 }
 
-export interface AgentTabData {
+export interface WorkbenchSessionData {
   agentBlocks: AgentBlock[];
   sessionId?: string;
 }
 
+
 export interface ProjectState {
-  columns: TaskColumns;
+  tasks: TaskColumns;
   chatLog: ChatLogEntry[];
   agentSession?: AgentSession;
   executionMode?: ExecutionMode;
-  workbenchOpen?: boolean;
-  workbenchHeight?: number;
-  workbenchTabs?: WorkbenchTabInfo[];
-  workbenchActiveTabId?: string;
+  projectWorkbenchOpen?: boolean;
+  projectWorkbenchHeight?: number;
+  projectWorkbenchTabs?: WorkbenchTabInfo[];
+  projectWorkbenchActiveTabId?: string;
   liveWorkbenchTabs?: WorkbenchTabInfo[];
   liveWorkbenchActiveTabId?: string;
-  agentTabs?: Record<string, AgentTabData>;
+  projectWorkbenchSessions?: Record<string, WorkbenchSessionData>;
   recentlyDeleted?: DeletedTaskEntry[];
-  // Legacy field — present only in unmigrated files
-  tasks?: Task[];
 }

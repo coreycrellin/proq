@@ -6,8 +6,9 @@ import {
   stopAgentTabSession,
   startAgentTabSession,
   continueAgentTabSession,
+  clearAgentTabSession,
 } from "./agent-tab-runtime";
-import { getAgentTabData, getProject } from "./db";
+import { getWorkbenchSession, getProject } from "./db";
 import type { AgentWsClientMsg } from "./types";
 
 export async function attachAgentTabWs(
@@ -24,7 +25,7 @@ export async function attachAgentTabWs(
     attachAgentTabClient(tabId, ws);
   } else {
     // No live session — try to load persisted agentBlocks from DB
-    const stored = await getAgentTabData(projectId, tabId);
+    const stored = await getWorkbenchSession(projectId, tabId);
     if (stored?.agentBlocks && stored.agentBlocks.length > 0) {
       ws.send(JSON.stringify({ type: "replay", blocks: stored.agentBlocks }));
     } else {
@@ -36,7 +37,10 @@ export async function attachAgentTabWs(
   ws.on("message", async (raw) => {
     try {
       const msg: AgentWsClientMsg = JSON.parse(raw.toString());
-      if (msg.type === "stop") {
+      if (msg.type === "clear") {
+        await clearAgentTabSession(tabId, projectId);
+        ws.send(JSON.stringify({ type: "replay", blocks: [] }));
+      } else if (msg.type === "stop") {
         stopAgentTabSession(tabId);
       } else if (msg.type === "followup") {
         try {
@@ -49,7 +53,7 @@ export async function attachAgentTabWs(
             await continueAgentTabSession(tabId, projectId, msg.text, cwd, ws, msg.attachments);
           } else {
             // Check if there's a stored session to resume
-            const stored = await getAgentTabData(projectId, tabId);
+            const stored = await getWorkbenchSession(projectId, tabId);
             if (stored?.sessionId) {
               await continueAgentTabSession(tabId, projectId, msg.text, cwd, ws, msg.attachments);
             } else {

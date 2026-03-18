@@ -1,7 +1,9 @@
 import { spawn, type ChildProcess } from "child_process";
 import { join } from "path";
+import { tmpdir } from "os";
+import { mkdirSync, writeFileSync } from "fs";
 import type { AgentBlock, TaskAttachment } from "./types";
-import { getAgentTabData, setAgentTabData, getSettings, getProject } from "./db";
+import { getWorkbenchSession, setWorkbenchSession, getSettings, getProject } from "./db";
 import { getClaudeBin } from "./claude-bin";
 import type WebSocket from "ws";
 
@@ -43,6 +45,17 @@ function appendBlock(session: AgentTabSession, block: AgentBlock) {
 
 function processStreamEvent(session: AgentTabSession, event: Record<string, unknown>) {
   const type = event.type as string;
+
+  if (type === "stream_event") {
+    const inner = event.event as Record<string, unknown> | undefined;
+    if (inner?.type === "content_block_delta") {
+      const delta = inner.delta as Record<string, unknown> | undefined;
+      if (delta?.type === "text_delta" && typeof delta.text === "string") {
+        broadcast(session, { type: "stream_delta", text: delta.text });
+      }
+    }
+    return;
+  }
 
   if (type === "system") {
     const subtype = event.subtype as string | undefined;
@@ -172,10 +185,13 @@ function wireProcess(session: AgentTabSession, proc: ChildProcess, startTime: nu
     }
 
     if (session.status === "aborted") {
-      await setAgentTabData(session.projectId, session.tabId, {
-        agentBlocks: session.blocks,
-        sessionId: session.sessionId,
-      });
+      // Only persist if session is still tracked (skip if it was cleared)
+      if (sessions.get(session.tabId) === session) {
+        await setWorkbenchSession(session.projectId, session.tabId, {
+          agentBlocks: session.blocks,
+          sessionId: session.sessionId,
+        });
+      }
       return;
     }
 
@@ -200,7 +216,7 @@ function wireProcess(session: AgentTabSession, proc: ChildProcess, startTime: nu
       });
     }
 
-    await setAgentTabData(session.projectId, session.tabId, {
+    await setWorkbenchSession(session.projectId, session.tabId, {
       agentBlocks: session.blocks,
       sessionId: session.sessionId,
     });
@@ -214,11 +230,30 @@ function wireProcess(session: AgentTabSession, proc: ChildProcess, startTime: nu
       error: err.message,
       durationMs: Date.now() - startTime,
     });
-    await setAgentTabData(session.projectId, session.tabId, {
+    await setWorkbenchSession(session.projectId, session.tabId, {
       agentBlocks: session.blocks,
       sessionId: session.sessionId,
     });
   });
+}
+
+// ── MCP config for workbench agents ──
+
+function writeWorkbenchMcpConfig(projectId: string, tabId: string): string {
+  const promptDir = join(tmpdir(), "proq-prompts");
+  mkdirSync(promptDir, { recursive: true });
+  const mcpScriptPath = join(process.cwd(), "src/lib/proq-mcp-general.js");
+  const configPath = join(promptDir, `mcp-workbench-${tabId.slice(0, 12)}.json`);
+  const config = {
+    mcpServers: {
+      proq: {
+        command: "node",
+        args: [mcpScriptPath, "--project", projectId],
+      },
+    },
+  };
+  writeFileSync(configPath, JSON.stringify(config), "utf-8");
+  return configPath;
 }
 
 // ── Public API ──
@@ -254,12 +289,17 @@ export async function startAgentTabSession(
 
   const startTime = Date.now();
 
+  const mcpConfigPath = writeWorkbenchMcpConfig(projectId, tabId);
+
   const args: string[] = [
     "-p", text,
     "--output-format", "stream-json",
+    "--include-partial-messages",
     "--verbose",
     "--dangerously-skip-permissions",
     "--max-turns", "200",
+    "--mcp-config", mcpConfigPath,
+    "--allowedTools", "mcp__proq__*",
   ];
 
   if (settings.defaultModel) {
@@ -268,7 +308,17 @@ export async function startAgentTabSession(
 
   const systemParts: string[] = [];
   if (settings.systemPromptAdditions) systemParts.push(settings.systemPromptAdditions);
-  systemParts.push(`You are a coding assistant inside proq, a kanban-style code editor that manages tasks and projects. You are working on the "${projectName}" project in ${cwd}. proq has a REST API at http://localhost:1337 — you can create tasks (POST /api/projects/{id}/tasks), list them (GET), update them (PATCH), and more. The current project ID is "${projectId}".`);
+  systemParts.push(`You are a coding assistant inside proq, a kanban-style task board for AI-assisted development. You are working on the "${projectName}" project in ${cwd}.
+
+You have MCP tools from the **proq** server for managing tasks on the board:
+- \`list_tasks\` — List all tasks in this project by status
+- \`create_task\` — Create a new task in the Todo column
+- \`get_task\` — Read a specific task's details
+- \`update_task\` — Update a task (title, description, status, priority)
+- \`delete_task\` — Delete a task
+- \`list_projects\` — List all projects in proq
+
+Use these tools to manage tasks. If you identify follow-up work beyond your current scope, create tasks for it.`);
   if (context === "live") {
     systemParts.push(buildLiveContextPrompt(projectId));
   }
@@ -278,7 +328,7 @@ export async function startAgentTabSession(
   const proc = spawn(claudeBin, args, {
     cwd,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined },
+    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined, PROQ_API: `http://localhost:${process.env.PORT || 1337}` },
   });
 
   session.queryHandle = proc;
@@ -297,7 +347,7 @@ export async function continueAgentTabSession(
 
   // Reconstruct from DB if no in-memory session
   if (!session) {
-    const stored = await getAgentTabData(projectId, tabId);
+    const stored = await getWorkbenchSession(projectId, tabId);
     if (!stored?.sessionId) {
       throw new Error("No session to continue — no sessionId stored");
     }
@@ -342,14 +392,18 @@ export async function continueAgentTabSession(
   const startTime = Date.now();
   const project = await getProject(projectId);
   const projectName = project?.name || "project";
+  const mcpConfigPath = writeWorkbenchMcpConfig(projectId, tabId);
 
   const args: string[] = [
     "--resume", session.sessionId!,
     "-p", promptText,
     "--output-format", "stream-json",
+    "--include-partial-messages",
     "--verbose",
     "--dangerously-skip-permissions",
     "--max-turns", "200",
+    "--mcp-config", mcpConfigPath,
+    "--allowedTools", "mcp__proq__*",
   ];
 
   if (settings.defaultModel) {
@@ -358,14 +412,24 @@ export async function continueAgentTabSession(
 
   const systemParts: string[] = [];
   if (settings.systemPromptAdditions) systemParts.push(settings.systemPromptAdditions);
-  systemParts.push(`You are a coding assistant inside proq, a kanban-style code editor that manages tasks and projects. You are working on the "${projectName}" project in ${cwd}. proq has a REST API at http://localhost:1337 — you can create tasks (POST /api/projects/{id}/tasks), list them (GET), update them (PATCH), and more. The current project ID is "${projectId}".`);
+  systemParts.push(`You are a coding assistant inside proq, a kanban-style task board for AI-assisted development. You are working on the "${projectName}" project in ${cwd}.
+
+You have MCP tools from the **proq** server for managing tasks on the board:
+- \`list_tasks\` — List all tasks in this project by status
+- \`create_task\` — Create a new task in the Todo column
+- \`get_task\` — Read a specific task's details
+- \`update_task\` — Update a task (title, description, status, priority)
+- \`delete_task\` — Delete a task
+- \`list_projects\` — List all projects in proq
+
+Use these tools to manage tasks. If you identify follow-up work beyond your current scope, create tasks for it.`);
   args.push("--append-system-prompt", systemParts.join("\n\n"));
 
   const claudeBin = await getClaudeBin();
   const proc = spawn(claudeBin, args, {
     cwd,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined },
+    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined, PROQ_API: `http://localhost:${process.env.PORT || 1337}` },
   });
 
   session.queryHandle = proc;
@@ -415,7 +479,7 @@ You are working in the **Live Preview** tab of proq. Your primary job here is to
 4. Once you see the server is running, **immediately** set the live preview URL by making this API call:
 
 \`\`\`bash
-curl -s -X PATCH http://localhost:1337/api/projects/${projectId} \\
+curl -s -X PATCH http://localhost:${process.env.PORT || 1337}/api/projects/${projectId} \\
   -H 'Content-Type: application/json' \\
   -d '{"serverUrl":"<the-url-you-found>"}'
 \`\`\`
@@ -429,14 +493,25 @@ This will update the Live preview iframe to show the running application.
 - If asked to install dependencies, run the appropriate install command first`;
 }
 
-export function clearAgentTabSession(tabId: string): void {
+export async function clearAgentTabSession(tabId: string, projectId?: string): Promise<void> {
   const session = sessions.get(tabId);
   if (session) {
     if (session.status === "running" && session.queryHandle) {
       session.status = "aborted";
       session.queryHandle.kill("SIGTERM");
     }
+    // Clear persisted data
+    await setWorkbenchSession(session.projectId, tabId, {
+      agentBlocks: [],
+      sessionId: undefined,
+    });
     session.clients.clear();
     sessions.delete(tabId);
+  } else if (projectId) {
+    // No in-memory session but clear persisted data
+    await setWorkbenchSession(projectId, tabId, {
+      agentBlocks: [],
+      sessionId: undefined,
+    });
   }
 }

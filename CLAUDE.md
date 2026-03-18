@@ -16,7 +16,7 @@ proq is the command center for AI-assisted development. It's a Next.js kanban bo
 - **Supervisor** — An AI assistant that creates/dispatches tasks via the API conversationally (e.g., via OpenClaw or any chat agent)
 - **Claude Code agents** — Disposable worker instances launched per-task in tmux
 
-**Stack:** Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, lowdb, @dnd-kit, uuid
+**Stack:** Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, @dnd-kit, uuid
 
 ## Quick Start
 
@@ -58,7 +58,7 @@ src/
     ├── agent-session.ts        # Structured agent session management (child process)
     ├── task-events.ts          # SSE event bus for server-initiated task updates
     ├── worktree.ts             # Git worktree + branch operations (create/remove/merge/checkout)
-    ├── db.ts                   # lowdb database operations
+    ├── db.ts                   # JSON file storage with per-resource write locks
     ├── types.ts                # All TypeScript interfaces
     └── utils.ts                # cn() utility (clsx + tailwind-merge)
 ```
@@ -78,7 +78,7 @@ Key functions:
 - `isSessionAlive()` — checks if a tmux session is alive for a task
 - `scheduleCleanup()` — deferred cleanup (1hr) to capture agent logs after completion
 
-**Launch:** `tmux new-session -d -s mc-{shortId} -c '{projectPath}'` running the agent via a bridge script that exposes a PTY over a unix socket.
+**Launch:** `tmux new-session -d -s proq-{shortId} -c '{projectPath}'` running the agent via a bridge script that exposes a PTY over a unix socket.
 
 **Callback:** Agent curls back when done:
 
@@ -120,13 +120,13 @@ In parallel mode, each task gets its own git worktree + branch (`proq/{shortId}`
 - **`data/workspace.json`** — Project registry (id, name, path, status, serverUrl)
 - **`data/projects/{id}.json`** — Per-project state (tasks array + chatLog array)
 - **`data/` is gitignored** — Each user has their own local state, auto-created on first run
-- Database: lowdb (JSON file storage, no external DB needed)
+- Database: Custom JSON file storage (readFileSync/writeFileSync with per-resource write locks)
 - Auto-migration: old `config.json` / `state/` are renamed on startup
 
 ### Key Types (src/lib/types.ts)
 
 - **Project**: `{ id, name, path, status, serverUrl, createdAt }`
-- **Task**: `{ id, title, description, status, priority, order, summary, humanSteps, agentLog, agentStatus, attachments, createdAt, updatedAt }`
+- **Task**: `{ id, title, description, status, priority, order, summary, nextSteps, agentLog, agentStatus, attachments, createdAt, updatedAt }`
 - **ChatLogEntry**: `{ role: 'proq'|'user', message, timestamp, toolCalls? }`
 - Task statuses: `todo` → `in-progress` → `verify` → `done`
 - Project statuses: `active`, `review`, `idle`, `error`
@@ -191,7 +191,7 @@ All routes follow the same pattern: update state, then call `processQueue()`.
 Tasks have fields specifically for AI agent use:
 
 - `summary` — Agent's cumulative work summary (newline-separated)
-- `humanSteps` — Action items for human review (newline-separated)
+- `nextSteps` — Suggested next steps: testing, refinements, or follow-up work (newline-separated)
 - `agentLog` — Execution log from agent session
 - `agentStatus` — Enum: `"queued"` | `"starting"` | `"running"` | null (agent lifecycle)
 - `worktreePath` — Path to git worktree (parallel mode only)
@@ -202,7 +202,6 @@ Tasks have fields specifically for AI agent use:
 
 - Path alias: `@/*` maps to `./src/*`
 - `design-mock/` is a separate Vite prototype — not part of the main app
-- lowdb v7 uses ESM — all db operations are async
 - The app runs on port 1337 by default
-- Tmux sessions: `tmux attach -t mc-{first8ofTaskId}` to watch an agent work
+- Tmux sessions: `tmux attach -t proq-{first8ofTaskId}` to watch an agent work
 - Optional Slack notifications via OpenClaw CLI — set `OPENCLAW_BIN` and `SLACK_CHANNEL` in `.env.local`

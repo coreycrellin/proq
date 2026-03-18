@@ -1,6 +1,6 @@
 import type WebSocket from "ws";
 import { getSession, attachClient, detachClient, stopSession, continueSession } from "./agent-session";
-import { getTask, getProject, updateTask } from "./db";
+import { getTask, getProject, updateTask, getTaskAgentBlocks } from "./db";
 import { emitTaskUpdate } from "./task-events";
 import type { AgentWsClientMsg } from "./types";
 
@@ -60,15 +60,24 @@ export async function attachAgentWsWithProject(
     ws.send(replay);
     attachClient(taskId, ws);
   } else {
-    // No in-memory session — load from DB
+    // Load from separate agent-blocks file, fall back to task DB
+    const blocks = await getTaskAgentBlocks(taskId);
     const task = await getTask(projectId, taskId);
-    if (task?.agentBlocks && task.agentBlocks.length > 0) {
-      ws.send(JSON.stringify({ type: "replay", blocks: task.agentBlocks }));
-      // If still running, poll DB for incremental updates (blocks flushed by scheduleBlockFlush)
-      if (task.agentStatus === "running" || task.agentStatus === "starting") {
+    const isActive = task?.agentStatus === "running" || task?.agentStatus === "starting";
+
+    if (blocks.length > 0) {
+      ws.send(JSON.stringify({ type: "replay", blocks }));
+      // If still running, poll for incremental updates
+      if (isActive) {
         stopPolling = startDbPolling(taskId, projectId, ws);
       }
-    } else if (task?.agentStatus === "running" || task?.agentStatus === "starting") {
+    } else if (task?.agentBlocks && task.agentBlocks.length > 0) {
+      // Legacy: blocks stored inline on task object
+      ws.send(JSON.stringify({ type: "replay", blocks: task.agentBlocks }));
+      if (isActive) {
+        stopPolling = startDbPolling(taskId, projectId, ws);
+      }
+    } else if (isActive) {
       // Session not in memory yet but task is supposed to be running — poll for blocks
       ws.send(JSON.stringify({ type: "replay", blocks: [] }));
       stopPolling = startDbPolling(taskId, projectId, ws);

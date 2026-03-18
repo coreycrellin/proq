@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Fragment, useState, useRef, useCallback } from "react";
+import React, { Fragment, useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -18,6 +18,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { isElectron } from "@/lib/utils";
 import {
   PlusIcon,
   SquareChevronUpIcon,
@@ -31,7 +32,7 @@ import {
   SettingsIcon,
   FolderOpenIcon,
 } from "lucide-react";
-import type { Project, Task, TaskStatus, TaskColumns } from "@/lib/types";
+import type { Project, TaskStatus, TaskColumns } from "@/lib/types";
 import { useProjects } from "./ProjectsProvider";
 import {
   DropdownMenu,
@@ -240,7 +241,7 @@ function SortableProject({
           if (isRenaming) return;
           router.push(`/projects/${project.id}`);
         }}
-        className={`w-full text-left py-3 px-4 relative group block cursor-pointer
+        className={`w-full text-left py-2.5 px-4 relative group block cursor-pointer
           ${isActive ? "bg-surface-selected/50" : "hover:bg-surface-hover/40"}
           `}
       >
@@ -340,6 +341,17 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
     useProjects();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [showBlockedModal, setShowBlockedModal] = useState(false);
+
+  // Listen for update notifications from Electron
+  useEffect(() => {
+    if (!isElectron || typeof window === "undefined" || !window.proqDesktop?.onUpdateAvailable) return;
+    const cleanup = window.proqDesktop.onUpdateAvailable(() => {
+      setUpdateAvailable(true);
+    });
+    return cleanup;
+  }, []);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -426,13 +438,27 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
     setRenamingId(null);
   }, []);
 
+  const handleUpdateClick = useCallback(() => {
+    // Check if any tasks are in-progress across all projects
+    const hasInProgress = Object.values(tasksByProject).some((cols) =>
+      cols["in-progress"]?.some((t) => t.status === "in-progress")
+    );
+    if (hasInProgress) {
+      setShowBlockedModal(true);
+      return;
+    }
+    window.proqDesktop?.applyAndRestart();
+  }, [tasksByProject]);
+
   if (collapsed) {
     return (
       <aside
-        className="w-10 h-full bg-surface-secondary border-r border-border-default flex-shrink-0 cursor-pointer hover:bg-surface-hover/40"
+        className={`${isElectron ? 'w-[84px]' : 'w-10'} h-full bg-surface-secondary border-r border-border-default flex-shrink-0 cursor-pointer hover:bg-surface-hover/40 relative`}
+        style={isElectron ? { paddingTop: 48 } : undefined}
         onClick={onToggleCollapsed}
       >
-        <div className="h-16 flex items-center justify-center">
+        {isElectron && <div className="absolute top-0 left-0 right-0 h-[48px] electron-drag" />}
+        <div className="h-[48px] flex items-center justify-center relative">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/proq-logo-vector.svg"
@@ -441,16 +467,20 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
             height={13}
             className="translate-y-[4px]"
           />
+          {isElectron && updateAvailable && (
+            <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-bronze-600" />
+          )}
         </div>
       </aside>
     );
   }
 
   return (
-    <aside className="w-[260px] h-full bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0">
+    <aside className="w-[260px] h-full bg-surface-secondary border-r border-border-default flex flex-col flex-shrink-0 relative" style={isElectron ? { paddingTop: 48 } : undefined}>
+      {isElectron && <div className="absolute top-0 left-0 right-0 h-[48px] electron-drag" />}
       {/* Header — collapse toggle */}
       <div
-        className="h-16 flex items-center gap-2.5 px-4 pl-[18px] group/logo hover:bg-surface-hover/40 relative cursor-pointer flex-shrink-0"
+        className="h-[48px] flex items-center gap-2.5 px-4 pl-[18px] group/logo hover:bg-surface-hover/40 relative cursor-pointer flex-shrink-0"
         onClick={onToggleCollapsed}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -473,7 +503,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
       {/* Main Chat Item */}
       <Link
         href="/supervisor"
-        className={`w-full text-left p-3 px-4 relative group py-4 block flex-shrink-0
+        className={`w-full text-left px-4 relative group block flex-shrink-0 h-[48px] flex items-center
           ${isChatActive ? "bg-surface-selected" : "hover:bg-surface-hover/40"}`}
       >
         {isChatActive && (
@@ -493,7 +523,7 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
 
       {/* Project List */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="px-4 py-3 flex items-center justify-between">
+        <div className="px-4 h-[48px] flex items-center justify-between flex-shrink-0">
           <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-widest">
             Projects
           </span>
@@ -544,6 +574,16 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
         </DndContext>
       </div>
 
+      {/* Update banner */}
+      {isElectron && updateAvailable && (
+        <button
+          onClick={handleUpdateClick}
+          className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-zinc-950 bg-bronze-600 hover:bg-bronze-500 cursor-pointer flex-shrink-0 transition-colors"
+        >
+          Restart for updates
+        </button>
+      )}
+
       {/* Fixed Settings at bottom */}
       <Link
         href="/settings"
@@ -558,6 +598,23 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
           Settings
         </span>
       </Link>
+
+      {/* Blocked modal — tasks in progress */}
+      {showBlockedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-surface-modal border border-border-default rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+            <p className="text-sm text-text-primary mb-4">
+              Wait for in-progress tasks to finish and try again.
+            </p>
+            <button
+              onClick={() => setShowBlockedModal(false)}
+              className="btn-primary w-full"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

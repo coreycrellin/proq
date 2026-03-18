@@ -1,4 +1,4 @@
-import { onTaskUpdate } from "@/lib/task-events";
+import { onTaskEvent } from "@/lib/task-events";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +23,15 @@ export async function GET(
       // Heartbeat every 30s to keep the connection alive
       const heartbeat = setInterval(() => send("heartbeat"), 30_000);
 
-      // Listen for targeted task updates on this project
-      const unsubscribe = onTaskUpdate((update) => {
-        if (update.projectId === id) {
-          send(JSON.stringify({ taskId: update.taskId, changes: update.changes }));
+      // Listen for task events on this project
+      const unsubscribe = onTaskEvent((event) => {
+        if (event.projectId !== id) return;
+        if (event.type === 'project_update') {
+          send(JSON.stringify({ type: 'project_update', changes: event.changes }));
+        } else if (event.type === 'created') {
+          send(JSON.stringify({ type: 'created', task: event.task }));
+        } else {
+          send(JSON.stringify({ taskId: event.taskId, changes: event.changes }));
         }
       });
 

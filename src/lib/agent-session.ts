@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from "child_process";
 import { join } from "path";
 import { readFile } from "fs/promises";
 import type { AgentBlock, TaskAttachment, TaskMode } from "./types";
-import { updateTask, getTask, getProject, getSettings } from "./db";
+import { updateTask, getTask, getProject, getSettings, setTaskAgentBlocks, readAgentBlocksFile } from "./db";
 import {
   notify,
   buildProqSystemPrompt,
@@ -123,9 +123,7 @@ function wireProcess(
     }
 
     if (session.status === "aborted") {
-      await updateTask(projectId, taskId, {
-        agentBlocks: session.blocks,
-      });
+      await setTaskAgentBlocks(taskId, session.blocks);
       return;
     }
 
@@ -163,7 +161,7 @@ function wireProcess(
       lastToolUse.name === "AskUserQuestion";
     const endedOnPlanExit =
       lastToolUse?.type === "tool_use" && lastToolUse.name === "ExitPlanMode";
-    let questionFields: { humanSteps?: string; summary?: string } = {};
+    let questionFields: { nextSteps?: string; summary?: string } = {};
     if (endedOnQuestion) {
       const input = lastToolUse.input as Record<string, unknown>;
       const questions = Array.isArray(input.questions)
@@ -172,13 +170,13 @@ function wireProcess(
       const questionText = questions.map((q) => q.question).join("\n");
       if (questionText) {
         questionFields = {
-          humanSteps: questionText,
+          nextSteps: questionText,
           summary: "Agent has a question — respond in chat window ←.",
         };
       }
     } else if (endedOnPlanExit) {
       questionFields = {
-        humanSteps:
+        nextSteps:
           "Agent has a plan ready for approval — review plan in chat window ←.",
         summary: "Agent created a plan and is waiting for approval.",
       };
@@ -199,19 +197,21 @@ function wireProcess(
       }
     }
 
+    // Persist agent blocks to separate file
+    await setTaskAgentBlocks(taskId, session.blocks, session.sessionId);
+
     if (stillInProgress) {
       // Safety net: move to verify and clear agentStatus
-      await updateTask(projectId, taskId, {
+      const closeUpdate: Record<string, unknown> = {
         status: "verify",
         agentStatus: null,
-        summary:
-          session.status === "error"
-            ? `Error: ${stderrOutput.trim() || `CLI exited with code ${code}`}`
-            : undefined,
         ...questionFields,
-        agentBlocks: session.blocks,
         sessionId: session.sessionId,
-      });
+      };
+      if (session.status === "error") {
+        closeUpdate.summary = `Error: ${stderrOutput.trim() || `CLI exited with code ${code}`}`;
+      }
+      await updateTask(projectId, taskId, closeUpdate as Parameters<typeof updateTask>[2]);
       notify(
         `✅ *${(task?.title || task?.description || "task").slice(0, 40).replace(/"/g, '\\"')}* → verify`,
       );
@@ -220,9 +220,8 @@ function wireProcess(
         agentStatus: null,
       });
     } else {
-      // Agent already handled status via update_task — just persist agentBlocks
+      // Agent already handled status via update_task — just persist sessionId
       await updateTask(projectId, taskId, {
-        agentBlocks: session.blocks,
         sessionId: session.sessionId,
       });
     }
@@ -237,21 +236,17 @@ function wireProcess(
       error: errorMsg,
       durationMs: Date.now() - startTime,
     });
+    await setTaskAgentBlocks(taskId, session.blocks, session.sessionId);
     const task = await getTask(projectId, taskId);
     if (task?.status === "in-progress") {
       await updateTask(projectId, taskId, {
         status: "verify",
         agentStatus: null,
         summary: `Error: ${errorMsg}`,
-        agentBlocks: session.blocks,
       });
       emitTaskUpdate(projectId, taskId, {
         status: "verify",
         agentStatus: null,
-      });
-    } else {
-      await updateTask(projectId, taskId, {
-        agentBlocks: session.blocks,
       });
     }
   });
@@ -299,6 +294,7 @@ export async function startSession(
     prompt,
     "--output-format",
     "stream-json",
+    "--include-partial-messages",
     "--verbose",
     "--max-turns",
     "200",
@@ -351,7 +347,7 @@ export async function startSession(
   const proc = spawn(claudeBin, args, {
     cwd,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined },
+    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined, PROQ_API: `http://localhost:${process.env.PORT || 1337}` },
   });
 
   session.queryHandle = proc;
@@ -364,6 +360,17 @@ function processStreamEvent(
   event: Record<string, unknown>,
 ) {
   const type = event.type as string;
+
+  if (type === "stream_event") {
+    const inner = event.event as Record<string, unknown> | undefined;
+    if (inner?.type === "content_block_delta") {
+      const delta = inner.delta as Record<string, unknown> | undefined;
+      if (delta?.type === "text_delta" && typeof delta.text === "string") {
+        broadcast(session, { type: "stream_delta", text: delta.text });
+      }
+    }
+    return;
+  }
 
   if (type === "system") {
     const subtype = event.subtype as string | undefined;
@@ -520,12 +527,13 @@ export async function continueSession(
     const task = await getTask(projectId, taskId);
     taskMode = task?.mode;
     canResume = false;
+    const stored = readAgentBlocksFile(taskId);
     session = {
       taskId,
       projectId,
-      sessionId: task?.sessionId,
+      sessionId: stored.sessionId || task?.sessionId,
       queryHandle: null,
-      blocks: task?.agentBlocks || [],
+      blocks: stored.blocks,
       clients: new Set(),
       status: "done",
     };
@@ -588,6 +596,7 @@ export async function continueSession(
     promptText,
     "--output-format",
     "stream-json",
+    "--include-partial-messages",
     "--verbose",
     "--max-turns",
     "200",
@@ -629,8 +638,8 @@ export async function continueSession(
       contextParts.push(`Description: ${task.description}`);
     if (task?.summary)
       contextParts.push(`Previous summary:\n${task.summary}`);
-    if (task?.humanSteps)
-      contextParts.push(`Previous action items:\n${task.humanSteps}`);
+    if (task?.nextSteps)
+      contextParts.push(`Previous next steps:\n${task.nextSteps}`);
     if (contextParts.length > 0) {
       systemParts.push(
         `## Previous work on this task\nThis task was previously worked on by an agent. Here is the context from that work:\n\n${contextParts.join("\n\n")}`,
@@ -673,7 +682,7 @@ export async function continueSession(
   const proc = spawn(claudeBin, args, {
     cwd,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined },
+    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined, PROQ_API: `http://localhost:${process.env.PORT || 1337}` },
   });
 
   session.queryHandle = proc;

@@ -5,17 +5,35 @@ export interface TaskUpdateEvent {
   changes: Record<string, unknown>;
 }
 
+export interface TaskCreatedEvent {
+  type: 'created';
+  task: Record<string, unknown>;
+}
+
+export interface ProjectUpdateEvent {
+  type: 'project_update';
+  changes: Record<string, unknown>;
+}
+
+export type TaskSSEEvent = TaskUpdateEvent | TaskCreatedEvent | ProjectUpdateEvent;
+
 /**
- * Subscribe to SSE task-update events for a project.
- * Each event carries {taskId, changes} — the callback merges
- * those fields into local state. No fetching involved.
+ * Subscribe to SSE task events for a project.
+ * - Update events carry {taskId, changes} — merged into existing tasks.
+ * - Created events carry {type: 'created', task} — inserted into the todo column.
  */
 export function useTaskEvents(
   projectId: string | undefined,
   onUpdate: (event: TaskUpdateEvent) => void,
+  onCreated?: (event: TaskCreatedEvent) => void,
+  onProjectUpdate?: (event: ProjectUpdateEvent) => void,
 ) {
   const onUpdateRef = useRef(onUpdate);
   onUpdateRef.current = onUpdate;
+  const onCreatedRef = useRef(onCreated);
+  onCreatedRef.current = onCreated;
+  const onProjectUpdateRef = useRef(onProjectUpdate);
+  onProjectUpdateRef.current = onProjectUpdate;
 
   useEffect(() => {
     if (!projectId) return;
@@ -32,9 +50,13 @@ export function useTaskEvents(
       es.onmessage = (event) => {
         if (event.data === 'heartbeat') return;
         try {
-          const parsed: TaskUpdateEvent = JSON.parse(event.data);
-          if (parsed.taskId && parsed.changes) {
-            onUpdateRef.current(parsed);
+          const parsed = JSON.parse(event.data);
+          if (parsed.type === 'project_update' && parsed.changes) {
+            onProjectUpdateRef.current?.(parsed as ProjectUpdateEvent);
+          } else if (parsed.type === 'created' && parsed.task) {
+            onCreatedRef.current?.(parsed as TaskCreatedEvent);
+          } else if (parsed.taskId && parsed.changes) {
+            onUpdateRef.current(parsed as TaskUpdateEvent);
           }
         } catch {
           // ignore unparseable events

@@ -2,16 +2,21 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { AgentBlock, AgentWsServerMsg, TaskAttachment } from '@/lib/types';
+import { useStreamingBuffer } from './useStreamingBuffer';
 
-const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '42069';
+function getWsPort(): string {
+  return (typeof window !== 'undefined' && (window as unknown as { __PROQ_WS_PORT?: string }).__PROQ_WS_PORT) || '42069';
+}
 
 interface UseSupervisorSessionResult {
   blocks: AgentBlock[];
+  streamingText: string;
   connected: boolean;
   sessionDone: boolean;
   hasHistory: boolean;
   sendMessage: (text: string, attachments?: TaskAttachment[]) => void;
   stop: () => void;
+  clear: () => Promise<void>;
 }
 
 export function useSupervisorSession(): UseSupervisorSessionResult {
@@ -20,10 +25,11 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
   const [sessionDone, setSessionDone] = useState(true);
   const wsRef = useRef<WebSocket | null>(null);
   const optimisticUserRef = useRef<string | null>(null);
+  const { streamingText, appendDelta, clearBuffer } = useStreamingBuffer();
 
   useEffect(() => {
     const wsHost = window.location.hostname;
-    const url = `ws://${wsHost}:${WS_PORT}/ws/supervisor`;
+    const url = `ws://${wsHost}:${getWsPort()}/ws/supervisor`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
@@ -37,6 +43,7 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
 
         if (msg.type === 'replay') {
           setBlocks(msg.blocks);
+          clearBuffer();
           // Determine session done state
           const statusBlocks = msg.blocks.filter(
             (b) => b.type === 'status' && ['complete', 'error', 'abort', 'init'].includes(b.subtype)
@@ -46,7 +53,12 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
           const hasUserAfter = msg.blocks.slice(lastStatusIdx + 1).some((b) => b.type === 'user');
           const isDone = !lastStatus || (lastStatus.type === 'status' && lastStatus.subtype !== 'init' && !hasUserAfter);
           setSessionDone(isDone);
+        } else if (msg.type === 'stream_delta') {
+          appendDelta(msg.text);
         } else if (msg.type === 'block') {
+          if (msg.block.type === 'text' || msg.block.type === 'user') {
+            clearBuffer();
+          }
           // Skip server echo of optimistically added user block
           if (msg.block.type === 'user' && optimisticUserRef.current !== null && msg.block.text === optimisticUserRef.current) {
             optimisticUserRef.current = null;
@@ -99,7 +111,15 @@ export function useSupervisorSession(): UseSupervisorSessionResult {
     }
   }, []);
 
+  const clear = useCallback(async () => {
+    await fetch('/api/supervisor', { method: 'DELETE' });
+    setBlocks([]);
+    setSessionDone(true);
+  }, []);
+
   const hasHistory = blocks.length > 0;
 
-  return { blocks, connected, sessionDone, hasHistory, sendMessage, stop };
+  return { blocks, streamingText, connected, sessionDone, hasHistory, sendMessage, stop, clear };
 }
+
+export type { UseSupervisorSessionResult };

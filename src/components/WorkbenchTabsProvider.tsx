@@ -35,7 +35,7 @@ function defaultTabs(projectId: string, scope: WorkbenchScope = 'project'): Work
   if (scope === 'live') {
     return [
       { id: `live-agent-${projectId}`, label: 'Agent', type: 'agent' },
-      { id: `live-shell-${projectId}`, label: 'Server', type: 'shell' },
+      { id: `live-shell-${projectId}`, label: 'Terminal', type: 'shell' },
     ];
   }
   return [
@@ -187,15 +187,18 @@ export function WorkbenchTabsProvider({ children }: { children: React.ReactNode 
 
     setState((prev) => {
       const ps = getOrCreate(prev, projectId, scope);
+      const closedIndex = ps.tabs.findIndex((t) => t.id === tabId);
       const filtered = ps.tabs.filter((t) => t.id !== tabId);
-      let next: Record<string, ProjectWorkbenchState>;
+      let activeTabId: string;
       if (filtered.length === 0) {
-        const dts = defaultTabs(projectId, scope);
-        next = { ...prev, [key]: { ...ps, tabs: dts, activeTabId: dts[0].id } };
+        activeTabId = '';
+      } else if (ps.activeTabId !== tabId) {
+        activeTabId = ps.activeTabId;
       } else {
-        const activeTabId = ps.activeTabId === tabId ? filtered[0].id : ps.activeTabId;
-        next = { ...prev, [key]: { ...ps, tabs: filtered, activeTabId } };
+        // Select the previous tab, or the next if closing the first tab
+        activeTabId = filtered[closedIndex > 0 ? closedIndex - 1 : 0].id;
       }
+      const next = { ...prev, [key]: { ...ps, tabs: filtered, activeTabId } };
       persistTabs(projectId, next[key], scope);
       return next;
     });

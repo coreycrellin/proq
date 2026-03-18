@@ -21,6 +21,10 @@ npm run dev     # starts dev server on localhost:1337
 
 Open [http://localhost:1337](http://localhost:1337).
 
+### Desktop App (Alternative)
+
+The [desktop shell](../desktop/) is an Electron wrapper that handles everything above through a setup wizard — no terminal needed. It clones proq, installs dependencies, builds the server, and runs it inside a native window. See the [desktop README](../desktop/README.md) for setup and packaging instructions.
+
 ## Add a Project
 
 Click the **+** button in the sidebar. Enter:
@@ -38,7 +42,8 @@ Click **New Task** on the board. Fill in:
 - **Title** — short summary
 - **Description** — detailed instructions for the agent
 - **Mode** — determines what the agent is allowed to do:
-  - **Build** (default) — full code changes, commits, the works
+  - **Auto** (default) — automatically picks the best mode based on the task
+  - **Build** — full code changes, commits, the works
   - **Plan** — research only, no file changes, agent reports summary
   - **Answer** — same as plan, for quick questions
 - **Attachments** — drag or paste images (screenshots, mockups) that the agent can view
@@ -88,7 +93,7 @@ While the agent is running, you can send follow-up messages from the agent modal
 When the agent finishes, it calls back via MCP to move the task to **Verify**. The task card shows:
 
 - **Findings** — the agent's summary of what it did
-- **Human Steps** — action items for you (if any)
+- **Next Steps** — suggested testing, refinements, or follow-up work (if any)
 
 From Verify, you can:
 
@@ -141,12 +146,10 @@ Click the gear icon to open Settings. Key sections:
 
 | Section | What it controls |
 |---|---|
-| **System** | Port number |
-| **Agent** | Claude binary path, default model, system prompt additions, execution mode (sequential/parallel), render mode (structured/CLI) |
-| **Git** | Auto-commit, commit style, auto-push, show branch switcher |
-| **Appearance** | Theme |
-| **Notifications** | Slack integration, webhooks |
-| **Process** | Cleanup delay, poll interval, deleted task retention, terminal scrollback |
+| **Agent** | Claude binary path, default model, system prompt additions, execution mode (sequential/parallel), render mode (structured/CLI), cost display, coding agent |
+| **Updates** | Auto-update |
+| **Appearance** | Theme (dark/light/system) |
+| **Notifications** | Sound, desktop, webhooks |
 
 For the full settings reference, see [Architecture > Settings Reference](./Architecture.md#settings-reference).
 

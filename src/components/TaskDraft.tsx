@@ -192,7 +192,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
     const toolbarH = toolbarRef.current?.offsetHeight ?? 0;
     const descPadding = 16; // py-2 wrapper padding top+bottom
 
-    const ideal = headerH + textContentH + descPadding + attachH + toolbarH;
+    const ideal = headerH + textContentH + descPadding + attachH + toolbarH + 2; // +2 prevents sub-pixel scrollbar
     const maxH = window.innerHeight * MAX_MODAL_VH;
     setModalHeight(Math.max(MIN_MODAL_HEIGHT, Math.min(Math.ceil(ideal), maxH)));
   }, [description, attachments.length, isOpen]);
@@ -244,6 +244,17 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
     const updated = attachments.filter((a) => a.id !== id);
     setAttachments(updated);
     autosave(title, description, updated);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const imageFiles = Array.from(e.clipboardData.items)
+      .filter((item) => item.type.startsWith('image/'))
+      .map((item) => item.getAsFile())
+      .filter((f): f is File => f !== null);
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      addFiles(imageFiles);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -301,7 +312,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
                 className={`relative px-3 py-1 text-xs font-medium rounded z-10 ${
                   mode === value
                     ? 'text-text-chrome-active'
-                    : 'text-text-chrome hover:text-text-chrome-hover'
+                    : 'text-text-tertiary dark:text-zinc-500 hover:text-bronze-600 dark:hover:text-bronze-500'
                 }`}
               >
                 {mode === value && (
@@ -329,6 +340,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
                 descriptionRef.current?.focus();
               }
             }}
+            onPaste={handlePaste}
             className="w-full bg-transparent text-xl font-semibold text-text-primary placeholder-text-placeholder focus:outline-none mb-1 pr-8"
             placeholder={titleGenerating ? 'Generating title...' : '(Auto title)'}
           />
@@ -353,7 +365,8 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
                 }
               }
             }}
-            className="block w-full h-full bg-transparent text-sm text-text-secondary placeholder-text-placeholder focus:outline-none focus-visible:ring-0 resize-none leading-relaxed"
+            onPaste={handlePaste}
+            className="block w-full h-full bg-transparent text-sm text-text-secondary placeholder-text-placeholder focus:outline-none focus-visible:ring-0 resize-none leading-relaxed overflow-y-auto"
             placeholder="Write something..."
           />
         </div>

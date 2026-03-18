@@ -53,7 +53,9 @@ async function buildSupervisorSystemPrompt(): Promise<string> {
     .map((p) => `- **${p.name}** (id: \`${p.id}\`, path: \`${p.path}\`${p.serverUrl ? `, server: ${p.serverUrl}` : ""})`)
     .join("\n");
 
-  return `You are the Supervisor for proq — a task orchestration board for AI-assisted development running at http://localhost:1337.
+  const PROQ_API = `http://localhost:${process.env.PORT || 1337}`;
+
+  return `You are the Supervisor for proq — a task orchestration board for AI-assisted development running at ${PROQ_API}.
 
 Your working directory is the proq codebase itself. You preside over all of proq's functionality and the currently loaded projects.
 
@@ -66,29 +68,29 @@ ${projectList || "(no projects loaded)"}
 You can manage projects and tasks by calling the REST API with curl or other tools.
 
 Projects:
-  GET    http://localhost:1337/api/projects                         — List all projects
-  POST   http://localhost:1337/api/projects                         — Create project { name, path, serverUrl? }
-  GET    http://localhost:1337/api/projects/{id}                    — Get project details
-  PATCH  http://localhost:1337/api/projects/{id}                    — Update project
-  DELETE http://localhost:1337/api/projects/{id}                    — Delete project
+  GET    ${PROQ_API}/api/projects                         — List all projects
+  POST   ${PROQ_API}/api/projects                         — Create project { name, path, serverUrl? }
+  GET    ${PROQ_API}/api/projects/{id}                    — Get project details
+  PATCH  ${PROQ_API}/api/projects/{id}                    — Update project
+  DELETE ${PROQ_API}/api/projects/{id}                    — Delete project
 
 Tasks:
-  GET    http://localhost:1337/api/projects/{id}/tasks              — List tasks (returns columns: todo, in-progress, verify, done)
-  POST   http://localhost:1337/api/projects/{id}/tasks              — Create task { title?, description, priority?, mode? }
-  PATCH  http://localhost:1337/api/projects/{id}/tasks/{taskId}     — Update task (status, title, description, summary, etc.)
-  DELETE http://localhost:1337/api/projects/{id}/tasks/{taskId}     — Delete task
-  PUT    http://localhost:1337/api/projects/{id}/tasks/reorder      — Bulk reorder tasks
+  GET    ${PROQ_API}/api/projects/{id}/tasks              — List tasks (returns columns: todo, in-progress, verify, done)
+  POST   ${PROQ_API}/api/projects/{id}/tasks              — Create task { title?, description, priority?, mode? }
+  PATCH  ${PROQ_API}/api/projects/{id}/tasks/{taskId}     — Update task (status, title, description, summary, etc.)
+  DELETE ${PROQ_API}/api/projects/{id}/tasks/{taskId}     — Delete task
+  PUT    ${PROQ_API}/api/projects/{id}/tasks/reorder      — Bulk reorder tasks
 
 Task lifecycle: todo → in-progress → verify → done
 When a task moves to "in-progress", it gets dispatched to a Claude Code agent automatically.
 When setting status to "in-progress", also set agentStatus to "queued".
 
 Chat:
-  GET    http://localhost:1337/api/projects/{id}/chat               — Get project chat log
-  POST   http://localhost:1337/api/projects/{id}/chat               — Add chat message
+  GET    ${PROQ_API}/api/projects/{id}/chat               — Get project chat log
+  POST   ${PROQ_API}/api/projects/{id}/chat               — Add chat message
 
 Cross-project:
-  GET    http://localhost:1337/api/agent/tasks                      — All currently in-progress tasks across all projects
+  GET    ${PROQ_API}/api/agent/tasks                      — All currently in-progress tasks across all projects
 
 ## Guidelines
 
@@ -98,10 +100,21 @@ Cross-project:
 - When the user asks about a project, check its tasks and status first.`;
 }
 
-// ── Stream event processing (shared with agent-session) ──
+// ── Stream event processing ──
 
 function processStreamEvent(session: SupervisorSession, event: Record<string, unknown>) {
   const type = event.type as string;
+  // Handle raw streaming deltas from Claude CLI
+  if (type === "stream_event") {
+    const inner = event.event as Record<string, unknown> | undefined;
+    if (inner?.type === "content_block_delta") {
+      const delta = inner.delta as Record<string, unknown> | undefined;
+      if (delta?.type === "text_delta" && typeof delta.text === "string") {
+        broadcast(session, { type: "stream_delta", text: delta.text });
+      }
+    }
+    return;
+  }
 
   if (type === "system") {
     const subtype = event.subtype as string | undefined;
@@ -298,6 +311,7 @@ export async function startSupervisorSession(text: string): Promise<void> {
   const args: string[] = [
     "-p", text,
     "--output-format", "stream-json",
+    "--include-partial-messages",
     "--verbose",
     "--dangerously-skip-permissions",
     "--max-turns", "200",
@@ -316,7 +330,7 @@ export async function startSupervisorSession(text: string): Promise<void> {
   const proc = spawn(claudeBin, args, {
     cwd: process.cwd(),
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined },
+    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined, PROQ_API: `http://localhost:${process.env.PORT || 1337}` },
   });
 
   session.queryHandle = proc;
@@ -366,6 +380,7 @@ export async function continueSupervisorSession(
     "--resume", session.sessionId!,
     "-p", text,
     "--output-format", "stream-json",
+    "--include-partial-messages",
     "--verbose",
     "--dangerously-skip-permissions",
     "--max-turns", "200",
@@ -384,7 +399,7 @@ export async function continueSupervisorSession(
   const proc = spawn(claudeBin, args, {
     cwd: process.cwd(),
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined },
+    env: { ...process.env, CLAUDECODE: undefined, PORT: undefined, PROQ_API: `http://localhost:${process.env.PORT || 1337}` },
   });
 
   session.queryHandle = proc;
