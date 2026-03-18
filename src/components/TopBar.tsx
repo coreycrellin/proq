@@ -31,6 +31,7 @@ interface TopBarProps {
   onTabChange: (tab: TabOption) => void;
   currentBranch?: string;
   branches?: string[];
+  defaultBranch?: string;
   taskBranchMap?: Record<string, string>;
   onSwitchBranch?: (branch: string) => void;
   projectId?: string;
@@ -45,7 +46,7 @@ interface TopBarProps {
   onCreateBranch?: (name: string) => Promise<void>;
 }
 
-export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onInitGit, viewType = 'kanban', onViewTypeChange, onOpenSettings, onCommit, onCreateBranch }: TopBarProps) {
+export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, defaultBranch, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onInitGit, viewType = 'kanban', onViewTypeChange, onOpenSettings, onCommit, onCreateBranch }: TopBarProps) {
   // Branch selector popover
   const [branchPopoverOpen, setBranchPopoverOpen] = useState(false);
   const [branchFilter, setBranchFilter] = useState('');
@@ -196,23 +197,23 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
   const isOnPreviewBranch = currentBranch?.startsWith('proq/') ?? false;
   const hasGit = gitStatus?.hasGit !== false;
 
-  // Sort branches: proq/* first, then main, then others
+  // Sort branches: proq/* first, then default branch, then others
   const sortedBranches = branches ? [...branches].sort((a, b) => {
     const aIsProq = a.startsWith('proq/');
     const bIsProq = b.startsWith('proq/');
     if (aIsProq && !bIsProq) return -1;
     if (!aIsProq && bIsProq) return 1;
-    const aIsMain = a === 'main' || a === 'master';
-    const bIsMain = b === 'main' || b === 'master';
-    if (aIsMain && !bIsMain) return -1;
-    if (!aIsMain && bIsMain) return 1;
+    const aIsDefault = a === defaultBranch;
+    const bIsDefault = b === defaultBranch;
+    if (aIsDefault && !bIsDefault) return -1;
+    if (!aIsDefault && bIsDefault) return 1;
     return a.localeCompare(b);
   }) : [];
 
-  // Group branches: main/master, proq/* branches, others
-  const mainBranches = sortedBranches.filter(b => b === 'main' || b === 'master');
+  // Group branches: default branch, proq/* branches, others
+  const defaultBranches = sortedBranches.filter(b => b === defaultBranch);
   const proqBranches = sortedBranches.filter(b => b.startsWith('proq/'));
-  const otherBranches = sortedBranches.filter(b => b !== 'main' && b !== 'master' && !b.startsWith('proq/'));
+  const otherBranches = sortedBranches.filter(b => b !== defaultBranch && !b.startsWith('proq/'));
 
   // History button label + color
   const ahead = gitStatus?.ahead ?? 0;
@@ -547,7 +548,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                   <BranchPopover
                     ref={branchPopoverRef}
                     branches={sortedBranches}
-                    mainBranches={mainBranches}
+                    defaultBranches={defaultBranches}
                     proqBranches={proqBranches}
                     otherBranches={otherBranches}
                     currentBranch={currentBranch}
@@ -571,7 +572,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
 
 const BranchPopover = React.forwardRef<HTMLDivElement, {
   branches: string[];
-  mainBranches: string[];
+  defaultBranches: string[];
   proqBranches: string[];
   otherBranches: string[];
   currentBranch: string;
@@ -584,19 +585,19 @@ const BranchPopover = React.forwardRef<HTMLDivElement, {
   onCreateBranch?: (name: string) => Promise<void>;
 }>(function BranchPopover(props, ref) {
   const {
-    branches, mainBranches, proqBranches, otherBranches, currentBranch, taskBranchMap,
+    branches, defaultBranches, proqBranches, otherBranches, currentBranch, taskBranchMap,
     branchFilter, onFilterChange, searchRef, onSwitchBranch, onClose, onCreateBranch,
   } = props;
   const [creating, setCreating] = useState(false);
 
   const filter = branchFilter.toLowerCase().trim();
-  const filteredMain = mainBranches.filter(b => b.toLowerCase().includes(filter));
+  const filteredDefault = defaultBranches.filter(b => b.toLowerCase().includes(filter));
   const filteredProq = proqBranches.filter(b => {
     const title = taskBranchMap?.[b]?.toLowerCase() || '';
     return b.toLowerCase().includes(filter) || title.includes(filter);
   });
   const filteredOther = otherBranches.filter(b => b.toLowerCase().includes(filter));
-  const totalFiltered = filteredMain.length + filteredProq.length + filteredOther.length;
+  const totalFiltered = filteredDefault.length + filteredProq.length + filteredOther.length;
 
   // Show "Create branch" option when filter text doesn't exactly match any existing branch
   const exactMatch = filter && branches.some(b => b.toLowerCase() === filter);
@@ -660,10 +661,10 @@ const BranchPopover = React.forwardRef<HTMLDivElement, {
             onSelect={() => onSwitchBranch(branch)}
           />
         ))}
-        {filteredMain.length > 0 && filteredProq.length > 0 && (
+        {filteredDefault.length > 0 && filteredProq.length > 0 && (
           <div className="border-t border-border-default" />
         )}
-        {filteredMain.map((branch) => (
+        {filteredDefault.map((branch) => (
           <BranchRow
             key={branch}
             branch={branch}
@@ -672,7 +673,7 @@ const BranchPopover = React.forwardRef<HTMLDivElement, {
             onSelect={() => onSwitchBranch(branch)}
           />
         ))}
-        {filteredOther.length > 0 && (filteredMain.length > 0 || filteredProq.length > 0) && (
+        {filteredOther.length > 0 && (filteredDefault.length > 0 || filteredProq.length > 0) && (
           <div className="border-t border-border-default" />
         )}
         {filteredOther.map((branch) => (

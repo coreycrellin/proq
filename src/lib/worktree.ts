@@ -442,7 +442,7 @@ export function autoCommitIfDirty(
 }
 
 /** Detect the default branch (main, master, develop, etc.) */
-function detectDefaultBranch(projectPath: string): string | null {
+export function detectDefaultBranch(projectPath: string): string | null {
   // Try remote HEAD first (most reliable)
   try {
     const ref = execSync(
