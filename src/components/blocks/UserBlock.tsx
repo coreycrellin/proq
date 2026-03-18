@@ -5,13 +5,13 @@ import { FileIcon } from 'lucide-react';
 import type { TaskAttachment } from '@/lib/types';
 import { attachmentUrl } from '@/lib/upload';
 
-export function UserBlock({ text, attachments }: { text: string; attachments?: TaskAttachment[] }) {
+export function UserBlock({ text, attachments, fontSize }: { text: string; attachments?: TaskAttachment[]; fontSize?: number }) {
   return (
     <div className="flex items-baseline gap-2 my-3">
       <div className="inline-flex flex-col bg-surface-topbar rounded px-2.5 py-1.5">
         <div className="flex items-baseline gap-2">
           <span className="text-xs font-bold text-text-chrome shrink-0">{'\u276F'}</span>
-          <p className="text-sm leading-relaxed text-text-primary whitespace-pre-wrap">{text}</p>
+          <p className="text-sm leading-relaxed text-text-primary whitespace-pre-wrap" style={fontSize ? { fontSize: `${fontSize}px` } : undefined}>{text}</p>
         </div>
         {attachments && attachments.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5 ml-4">

@@ -4,7 +4,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-export function TextBlock({ text }: { text: string }) {
+export function TextBlock({ text, fontSize }: { text: string; fontSize?: number }) {
   return (
     <div className="text-sm leading-relaxed text-text-secondary py-2 px-1">
       <ReactMarkdown

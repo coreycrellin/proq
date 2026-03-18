@@ -41,6 +41,7 @@ interface StreamsViewProps {
   onResumeEditing?: (taskId: string) => void;
   onAddTask?: () => void;
   onStartTask?: (taskId: string) => void;
+  onUpdateTitle?: (taskId: string, title: string) => void;
 }
 
 function getStreamTasks(
@@ -257,6 +258,7 @@ export function StreamsView({
   executionMode = 'sequential',
   onExecutionModeChange,
   onStartTask,
+  onUpdateTitle,
 }: StreamsViewProps) {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [streamFontSize, setStreamFontSize] = useState(() => {
@@ -819,6 +821,7 @@ interface StreamCellFullProps {
   onRemove?: () => void;
   onComplete?: (taskId: string) => void;
   onResumeEditing?: (taskId: string) => void;
+  onUpdateTitle?: (taskId: string, title: string) => void;
   followUpDraft?: FollowUpDraft;
   onFollowUpDraftChange?: (draft: FollowUpDraft | null) => void;
 }
@@ -836,9 +839,33 @@ function StreamCellFull({
   onRemove,
   onComplete,
   onResumeEditing,
+  onUpdateTitle,
   followUpDraft,
   onFollowUpDraftChange,
 }: StreamCellFullProps) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(task.title || '');
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [editing]);
+
+  useEffect(() => {
+    if (!editing) setEditValue(task.title || '');
+  }, [task.title, editing]);
+
+  const commitEdit = () => {
+    const trimmed = editValue.trim();
+    setEditing(false);
+    if (trimmed && trimmed !== task.title) {
+      onUpdateTitle?.(task.id, trimmed);
+    }
+  };
+
   const isLive = task.agentStatus === 'running' || task.agentStatus === 'starting';
   // Only use static blocks for "done" tasks — verify tasks need a live WS connection for follow-ups
   const staticBlocks =
@@ -852,12 +879,28 @@ function StreamCellFull({
       {!hideLabel && (
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0">
           {statusIcon(task)}
-          <span
-            className="font-medium text-text-secondary truncate flex-1"
-            style={{ fontSize: labelFontSize ? `${labelFontSize}px` : undefined }}
-          >
-            {task.title || task.description?.slice(0, 50) || 'Untitled'}
-          </span>
+          {editing ? (
+            <input
+              ref={titleInputRef}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitEdit();
+                if (e.key === 'Escape') { setEditing(false); setEditValue(task.title || ''); }
+              }}
+              className="font-medium text-text-secondary bg-transparent border-b border-blue-400 outline-none flex-1 min-w-0"
+              style={{ fontSize: labelFontSize ? `${labelFontSize}px` : undefined }}
+            />
+          ) : (
+            <span
+              className={`font-medium text-text-secondary truncate flex-1 ${onUpdateTitle ? 'cursor-pointer hover:text-text-primary' : ''}`}
+              style={{ fontSize: labelFontSize ? `${labelFontSize}px` : undefined }}
+              onClick={onUpdateTitle ? () => setEditing(true) : undefined}
+            >
+              {task.title || task.description?.slice(0, 50) || 'Untitled'}
+            </span>
+          )}
           {onExpand && (
             <button
               onClick={onExpand}
