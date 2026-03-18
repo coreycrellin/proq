@@ -15,11 +15,10 @@ import {
   getTask,
   updateTask,
   getSettings,
-  getProjectDefaultBranch,
 } from "./db";
 import { stripAnsi } from "./utils";
 import { emitTaskUpdate } from "./task-events";
-import { createWorktree, removeWorktree, getCurrentBranch } from "./worktree";
+import { removeWorktree } from "./worktree";
 import type { TaskAttachment, TaskMode, AgentRenderMode } from "./types";
 import {
   startSession,
@@ -248,42 +247,8 @@ export async function dispatchTask(
   const terminalTabId = `task-${shortId}`;
   const tmuxSession = `proq-${shortId}`;
 
-  // Check if running in parallel mode — create worktree for parallel code tasks
-  const executionMode = await getExecutionMode(projectId);
-  let effectivePath = projectPath;
-
-  // Re-read the task to check if it already has a worktree (e.g., conflict resolution re-dispatch)
-  const currentTask = await getTask(projectId, taskId);
-
-  if (executionMode === "parallel") {
-    if (currentTask?.worktreePath) {
-      // Worktree already exists (conflict resolution re-dispatch) — reuse it
-      effectivePath = currentTask.worktreePath;
-      console.log(`[agent-dispatch] reusing existing worktree ${effectivePath}`);
-    } else {
-      try {
-        // Determine base branch: use current branch if it's a non-proq, non-default branch
-        const defaultBranch = await getProjectDefaultBranch(projectId);
-        const current = getCurrentBranch(projectPath);
-        const baseBranch = (
-          current.branch.startsWith("proq/") ||
-          current.branch.startsWith("proq-preview/") ||
-          current.branch === defaultBranch
-        ) ? defaultBranch : current.branch;
-
-        const worktreePath = createWorktree(projectPath, shortId, baseBranch);
-        const branch = `proq/${shortId}`;
-        await updateTask(projectId, taskId, { worktreePath, branch, baseBranch });
-        effectivePath = worktreePath;
-      } catch (err) {
-        console.error(
-          `[agent-dispatch] failed to create worktree for ${shortId}:`,
-          err,
-        );
-        // Fall back to shared directory
-      }
-    }
-  }
+  // Parallel mode: all agents work directly in the project directory (no worktrees/branches)
+  const effectivePath = projectPath;
 
   // Capture HEAD commit before dispatch so we can track task commits later
   try {

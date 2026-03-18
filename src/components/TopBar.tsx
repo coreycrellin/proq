@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef } from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, RadioTowerIcon, SettingsIcon, GitCommitHorizontalIcon, PlusIcon } from 'lucide-react';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, RadioTowerIcon, SettingsIcon, GitCommitHorizontalIcon, PlusIcon, XIcon } from 'lucide-react';
 import type { Project, ProjectTab, ViewType } from '@/lib/types';
 import {
   DropdownMenu,
@@ -42,9 +42,13 @@ interface TopBarProps {
   onOpenSettings?: () => void;
   onCommit?: () => void;
   onCreateBranch?: (name: string) => Promise<void>;
+  hidden?: boolean;
+  onToggleHidden?: () => void;
+  contentHidden?: boolean;
+  onToggleContentHidden?: () => void;
 }
 
-export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onInitGit, viewType = 'kanban', onViewTypeChange, onOpenSettings, onCommit, onCreateBranch }: TopBarProps) {
+export function TopBar({ project, activeTab, onTabChange, currentBranch, branches, taskBranchMap, onSwitchBranch, projectId, gitStatus, onPush, onPull, onInitGit, viewType = 'kanban', onViewTypeChange, onOpenSettings, onCommit, onCreateBranch, hidden, onToggleHidden, contentHidden, onToggleContentHidden }: TopBarProps) {
   // New branch creation
   const [newBranchMode, setNewBranchMode] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
@@ -207,8 +211,27 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
         ? 'text-emerald'
         : 'text-text-chrome';
 
+  if (hidden) {
+    return (
+      <div
+        className="h-1 w-full flex-shrink-0 relative group/reveal cursor-pointer z-30"
+        onClick={onToggleHidden}
+      >
+        <div className="absolute inset-x-0 top-0 h-1 bg-transparent group-hover/reveal:bg-bronze-700/60 transition-colors" />
+      </div>
+    );
+  }
+
   return (
-    <header className={`h-[48px] bg-surface-topbar flex items-center px-6 flex-shrink-0 border-b border-border-default${isElectron ? ' electron-drag' : ''}`}>
+    <header
+      className={`h-[48px] bg-surface-topbar flex items-center px-6 flex-shrink-0 border-b border-border-default${isElectron ? ' electron-drag' : ''}`}
+      onDoubleClick={(e) => {
+        // Don't hide if double-clicking interactive elements
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('input') || target.closest('[role="menuitem"]')) return;
+        onToggleHidden?.();
+      }}
+    >
       <div className="flex-1 flex items-center min-w-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -261,33 +284,43 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
         </DropdownMenu>
       </div>
 
-      <div className="flex-1 flex justify-center min-w-0">
-        <div className="bg-surface-hover/40 p-0.5 rounded-md flex items-center border border-border-default">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                className={`relative px-3.5 py-1 text-xs font-medium rounded-md z-10 ${
-                  isActive ? 'text-text-chrome-active' : 'text-text-tertiary dark:text-zinc-500 hover:text-bronze-600 dark:hover:text-bronze-500'
-                }`}
-              >
-                {isActive && (
-                  <div
-                    className="absolute inset-0 bg-surface-primary rounded-md border border-border-hover/50 shadow-sm"
-                    style={{ zIndex: -1 }}
-                  />
-                )}
-                {tab.label}
-              </button>
-            );
-          })}
+      {!contentHidden && (
+        <div className="flex-1 flex justify-center min-w-0">
+          <div className="bg-surface-hover/40 p-0.5 rounded-md flex items-center border border-border-default">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={`relative px-3.5 py-1 text-xs font-medium rounded-md z-10 ${
+                    isActive ? 'text-text-chrome-active' : 'text-text-tertiary dark:text-zinc-500 hover:text-bronze-600 dark:hover:text-bronze-500'
+                  }`}
+                >
+                  {isActive && (
+                    <div
+                      className="absolute inset-0 bg-surface-primary rounded-md border border-border-hover/50 shadow-sm"
+                      style={{ zIndex: -1 }}
+                    />
+                  )}
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="flex-1 flex items-center justify-end gap-2 whitespace-nowrap">
-        {!hasGit ? (
+      <div className={`flex-1 flex items-center justify-end gap-2 whitespace-nowrap${contentHidden ? '' : ''}`}>
+        {contentHidden ? (
+          <button
+            onClick={onToggleContentHidden}
+            className="p-1.5 rounded-md text-text-placeholder hover:text-text-secondary hover:bg-surface-hover/40 transition-colors"
+            title="Show toolbar content"
+          >
+            <XIcon className="w-3.5 h-3.5" />
+          </button>
+        ) : !hasGit ? (
           /* No git — show init button */
           <button
             onClick={onInitGit}
@@ -605,6 +638,15 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+            )}
+            {onToggleContentHidden && (
+              <button
+                onClick={onToggleContentHidden}
+                className="ml-2 p-1.5 rounded-md text-text-placeholder hover:text-text-secondary hover:bg-surface-hover/40 transition-colors"
+                title="Hide toolbar content"
+              >
+                <XIcon className="w-3.5 h-3.5" />
+              </button>
             )}
           </>
         )}

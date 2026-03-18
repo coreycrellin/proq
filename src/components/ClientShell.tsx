@@ -7,6 +7,7 @@ import { WorkbenchTabsProvider } from './WorkbenchTabsProvider';
 import { Sidebar } from './Sidebar';
 import { MissingPathModal } from './MissingPathModal';
 import { useProjects } from './ProjectsProvider';
+import { isElectron } from '@/lib/utils';
 import type { Project } from '@/lib/types';
 
 interface ShellActions {
@@ -30,6 +31,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   const { refreshProjects, isLoaded } = useProjects();
   const [missingProject, setMissingProject] = useState<Project | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
 
   const handleAddProject = useCallback(async () => {
     const res = await fetch('/api/folder-picker', { method: 'POST' });
@@ -108,8 +110,16 @@ function ShellInner({ children }: { children: React.ReactNode }) {
           onMissingPath={setMissingProject}
           collapsed={sidebarCollapsed}
           onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
+          hidden={sidebarHidden}
+          onToggleHidden={() => setSidebarHidden((h) => !h)}
         />
-        <div className="flex-1 flex flex-col min-w-0">
+        <div
+          className="flex-1 flex flex-col min-w-0 relative"
+          style={isElectron && sidebarHidden ? { paddingLeft: 72 } : undefined}
+        >
+          {isElectron && sidebarHidden && (
+            <div className="absolute top-0 left-0 w-[72px] h-[48px] electron-drag z-40" />
+          )}
           {children}
         </div>
         {missingProject && (

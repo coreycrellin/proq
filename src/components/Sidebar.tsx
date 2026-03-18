@@ -55,6 +55,8 @@ interface SidebarProps {
   onMissingPath?: (project: Project) => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  hidden?: boolean;
+  onToggleHidden?: () => void;
 }
 
 function TaskStatusSummary({ columns }: { columns: TaskColumns }) {
@@ -334,7 +336,7 @@ function SortableProject({
 
 // ── Sidebar ──────────────────────────────────────────────
 
-export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollapsed }: SidebarProps) {
+export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollapsed, hidden, onToggleHidden }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { projects, tasksByProject, refreshProjects, setProjects } =
@@ -450,6 +452,17 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
     window.proqDesktop?.applyAndRestart();
   }, [tasksByProject]);
 
+  if (hidden) {
+    return (
+      <div
+        className="w-1 h-full flex-shrink-0 relative group/reveal cursor-pointer z-30"
+        onClick={onToggleHidden}
+      >
+        <div className="absolute inset-y-0 left-0 w-1 bg-transparent group-hover/reveal:bg-bronze-700/60 transition-colors" />
+      </div>
+    );
+  }
+
   if (collapsed) {
     return (
       <aside
@@ -497,7 +510,10 @@ export function Sidebar({ onAddProject, onMissingPath, collapsed, onToggleCollap
         >
           proq
         </span>
-        <PanelLeftCloseIcon className="w-4 h-4 text-text-tertiary hover:text-text-secondary opacity-0 group-hover/logo:opacity-100 transition-opacity" />
+        <PanelLeftCloseIcon
+          className="w-4 h-4 text-text-tertiary hover:text-text-secondary opacity-0 group-hover/logo:opacity-100 transition-opacity"
+          onClick={(e) => { e.stopPropagation(); onToggleHidden?.(); }}
+        />
       </div>
 
       {/* Main Chat Item */}

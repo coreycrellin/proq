@@ -20,13 +20,10 @@ export function ParallelModeModal({ isOpen, onConfirm, onCancel }: ParallelModeM
     >
       <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-300">
         <p>
-          Each task runs on its <strong className="text-zinc-900 dark:text-zinc-100">own isolated git worktree</strong> — a separate copy of the codebase so tasks never conflict while in progress.
+          All tasks run <strong className="text-zinc-900 dark:text-zinc-100">directly in your project directory</strong> — like having multiple terminal windows open, each with its own Claude instance.
         </p>
         <p>
-          To preview changes before marking a task complete, click the <strong className="text-zinc-900 dark:text-zinc-100">Preview</strong> button in the task detail. This switches your dev server to that task&apos;s branch so you can test it live.
-        </p>
-        <p>
-          When a task is moved to <strong className="text-zinc-900 dark:text-zinc-100">Done</strong>, its branch is automatically merged into main and the worktree is cleaned up.
+          No separate branches or worktrees are created. All changes go straight to your local working copy.
         </p>
       </div>
     </ConfirmModal>

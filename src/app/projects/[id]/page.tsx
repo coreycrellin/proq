@@ -43,6 +43,9 @@ export default function ProjectPage() {
   const [showModeBlockedModal, setShowModeBlockedModal] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [showCommitModal, setShowCommitModal] = useState(false);
+  const [topBarHidden, setTopBarHidden] = useState(false);
+  const [topBarContentHidden, setTopBarContentHidden] = useState(false);
+  const [workbenchHidden, setWorkbenchHidden] = useState(false);
   const [currentBranch, setCurrentBranch] = useState<string>('main');
   const [branches, setBranches] = useState<string[]>([]);
   const [gitStatus, setGitStatus] = useState<GitStatus>({ hasGit: true, hasRemote: false, ahead: 0, behind: 0, dirty: 0 });
@@ -815,6 +818,10 @@ export default function ProjectPage() {
         onOpenSettings={() => setShowProjectSettings(true)}
         onCommit={() => setShowCommitModal(true)}
         onCreateBranch={handleCreateBranch}
+        hidden={topBarHidden}
+        onToggleHidden={() => setTopBarHidden((h) => !h)}
+        contentHidden={topBarContentHidden}
+        onToggleContentHidden={() => setTopBarContentHidden((h) => !h)}
       />
 
       <main ref={containerRef} className="flex-1 flex flex-col overflow-hidden relative">
@@ -929,6 +936,8 @@ export default function ProjectPage() {
               onExpand={expandWorkbench}
               onResizeStart={handleResizeStart}
               isDragging={isDragging}
+              hidden={workbenchHidden}
+              onToggleHidden={() => setWorkbenchHidden((h) => !h)}
             />
           </>
         )}

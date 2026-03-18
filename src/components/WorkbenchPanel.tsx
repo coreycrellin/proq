@@ -8,7 +8,7 @@ import React, {
   useImperativeHandle,
   forwardRef,
 } from 'react';
-import { Plus, TerminalIcon, SquareChevronUpIcon, ChevronUp, ChevronDown, MoreHorizontal, PencilIcon, Trash2Icon, EraserIcon } from 'lucide-react';
+import { Plus, TerminalIcon, SquareChevronUpIcon, ChevronUp, ChevronDown, MoreHorizontal, PencilIcon, Trash2Icon, EraserIcon, XIcon } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   DndContext,
@@ -58,6 +58,8 @@ interface WorkbenchPanelProps {
   onExpand?: () => void;
   onResizeStart?: (e: React.MouseEvent) => void;
   isDragging?: boolean;
+  hidden?: boolean;
+  onToggleHidden?: () => void;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -167,7 +169,7 @@ function SortableTab({
 /*  Panel component                                                           */
 /* -------------------------------------------------------------------------- */
 
-const WorkbenchPanel = forwardRef<WorkbenchPanelHandle, WorkbenchPanelProps>(function WorkbenchPanel({ projectId, projectPath, scope = 'project', agentContext, style, collapsed, onToggleCollapsed, onExpand, onResizeStart, isDragging }, ref) {
+const WorkbenchPanel = forwardRef<WorkbenchPanelHandle, WorkbenchPanelProps>(function WorkbenchPanel({ projectId, projectPath, scope = 'project', agentContext, style, collapsed, onToggleCollapsed, onExpand, onResizeStart, isDragging, hidden, onToggleHidden }, ref) {
   const { getTabs, getActiveTabId, setActiveTabId, openTab, closeTab, renameTab, reorderTabs, hydrateProject } = useWorkbenchTabs();
   const panelRef = useRef<HTMLDivElement>(null);
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
@@ -280,6 +282,17 @@ const WorkbenchPanel = forwardRef<WorkbenchPanelHandle, WorkbenchPanelProps>(fun
     [tabs, reorderTabs, projectId, scope]
   );
 
+  if (hidden) {
+    return (
+      <div
+        className="h-1 w-full flex-shrink-0 relative group/reveal cursor-pointer z-30"
+        onClick={onToggleHidden}
+      >
+        <div className="absolute inset-x-0 bottom-0 h-1 bg-transparent group-hover/reveal:bg-bronze-700/60 transition-colors" />
+      </div>
+    );
+  }
+
   return (
     <div
       ref={panelRef}
@@ -306,6 +319,11 @@ const WorkbenchPanel = forwardRef<WorkbenchPanelHandle, WorkbenchPanelProps>(fun
             const target = e.target as HTMLElement;
             if (target.closest('button') || target.closest('[data-clickable]')) return;
             onResizeStart?.(e);
+          }}
+          onDoubleClick={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('button') || target.closest('[data-clickable]')) return;
+            onToggleHidden?.();
           }}
         >
         <button
@@ -381,6 +399,15 @@ const WorkbenchPanel = forwardRef<WorkbenchPanelHandle, WorkbenchPanelProps>(fun
 
         {/* Spacer — fills remaining space for grab target */}
         <div className="flex-1" />
+        {onToggleHidden && (
+          <button
+            onClick={onToggleHidden}
+            className="flex items-center justify-center w-12 self-stretch text-text-placeholder hover:text-text-secondary hover:bg-surface-hover/30 shrink-0"
+            title="Hide panel"
+          >
+            <XIcon className="w-3.5 h-3.5" />
+          </button>
+        )}
         </div>
       </div>
 
