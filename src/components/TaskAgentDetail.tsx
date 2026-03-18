@@ -629,42 +629,38 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
             </AccordionSection>
           )}
 
-          {/* Merge conflict banner (not an accordion — it's an alert) */}
-          {task.mergeConflict && (
-            <div className="px-4 py-3">
-              <div className="bg-red-500/8 border border-red-500/20 rounded-md p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangleIcon className="w-3.5 h-3.5 text-red-400" />
-                  <span className="text-xs font-medium text-red-400 uppercase tracking-wide">
-                    Merge conflict
-                  </span>
-                  <span className="text-xs font-mono text-red-400/70">
-                    {task.mergeConflict.branch}
-                  </span>
-                </div>
-                {task.mergeConflict.files.length > 0 && (
-                  <ul className="space-y-0.5 mb-2">
-                    {task.mergeConflict.files.map((file) => (
-                      <li key={file} className="text-xs font-mono text-text-secondary flex items-start">
-                        <span className="mr-2 text-red-400 shrink-0">-</span>
-                        <span>{file}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <button
-                  onClick={() => setShowConflictModal(true)}
-                  className="text-[11px] font-medium text-red-400 hover:text-red-300"
-                >
-                  View Details
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Complete button pinned to bottom */}
-        {task.status === 'verify' && onComplete && (
+        {/* Merge conflict banner — pinned to bottom, replaces Complete button */}
+        {task.mergeConflict ? (
+          <div className="shrink-0 border-t border-red-500/20 bg-red-500/8 px-4 py-3">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangleIcon className="w-3.5 h-3.5 text-red-400" />
+              <span className="text-xs font-medium text-red-400 uppercase tracking-wide">
+                Merge conflict
+              </span>
+              <span className="text-xs font-mono text-red-400/70">
+                {task.mergeConflict.branch}
+              </span>
+            </div>
+            {task.mergeConflict.files.length > 0 && (
+              <ul className="space-y-0.5 mb-2">
+                {task.mergeConflict.files.map((file) => (
+                  <li key={file} className="text-xs font-mono text-text-secondary flex items-start">
+                    <span className="mr-2 text-red-400 shrink-0">-</span>
+                    <span>{file}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button
+              onClick={() => setShowConflictModal(true)}
+              className="text-[11px] font-medium text-red-400 hover:text-red-300"
+            >
+              View Details
+            </button>
+          </div>
+        ) : task.status === 'verify' && onComplete ? (
           <div className="shrink-0 group/complete">
             <div className={`h-px ${merging ? 'bg-emerald/30' : 'bg-border-default group-hover/complete:bg-emerald/40'}`} />
             <button
@@ -687,7 +683,7 @@ export function TaskAgentDetail({ task, projectId, isQueued, cleanupExpiresAt, f
               {merging ? 'Merging...' : (task.branch ? 'Merge & Complete' : 'Complete')}
             </button>
           </div>
-        )}
+        ) : null}
       </div>
 
       {selectedCommitHash && (
