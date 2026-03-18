@@ -635,10 +635,10 @@ export function CodeTab({ project }: CodeTabProps) {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-base">
-      {/* Sub-header bar — lightest chrome layer */}
-      <div className="h-10 flex-shrink-0 flex items-center justify-between px-3 border-b border-border-default bg-surface-secondary">
-        <div className="flex items-center gap-2 min-w-0">
-          {/* Breadcrumb path */}
+      {/* Sub-header bar — lightest chrome layer, 3-column layout */}
+      <div className="h-10 flex-shrink-0 grid grid-cols-[1fr_auto_1fr] items-center px-6 border-b border-border-default bg-surface-secondary">
+        {/* Left: breadcrumb + save status (ml-1 aligns with TopBar project name) */}
+        <div className="flex items-center gap-2 min-w-0 ml-1">
           {activeTabPath && (() => {
             const rel = activeTabPath.replace(project.path + '/', '');
             const parts = rel.split('/');
@@ -657,10 +657,22 @@ export function CodeTab({ project }: CodeTabProps) {
               </div>
             );
           })()}
+          {saveStatus === 'saving' && (
+            <span className="flex items-center text-xs text-text-tertiary">
+              <Loader2 className="w-3 h-3 animate-spin" />
+            </span>
+          )}
+          {saveStatus === 'saved' && (
+            <span className="flex items-center text-xs text-text-tertiary">
+              <Check className="w-3 h-3" />
+            </span>
+          )}
+        </div>
 
-          {/* Edit / Preview toggle for markdown */}
+        {/* Center: Edit / Preview toggle (markdown only) */}
+        <div className="flex items-center justify-center">
           {isMarkdown && activeTabPath && (
-            <div className="flex items-center bg-surface-hover rounded-md p-0.5 border border-border-strong ml-2">
+            <div className="flex items-center bg-surface-hover rounded-md p-0.5 border border-border-strong">
               <button
                 onClick={() => setMdView('raw')}
                 className={`flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded ${
@@ -685,22 +697,10 @@ export function CodeTab({ project }: CodeTabProps) {
               </button>
             </div>
           )}
-
-          {/* Save status indicator */}
-          {saveStatus === 'saving' && (
-            <span className="flex items-center gap-1 text-xs text-text-tertiary ml-2">
-              <Loader2 className="w-3 h-3 animate-spin" />
-            </span>
-          )}
-          {saveStatus === 'saved' && (
-            <span className="flex items-center gap-1 text-xs text-text-tertiary ml-2">
-              <Check className="w-3 h-3" />
-            </span>
-          )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Cancel / Save changes — GitHub style, right-aligned */}
+        {/* Right: actions */}
+        <div className="flex items-center gap-1.5 justify-end">
           {isDirty && (
             <>
               <button
