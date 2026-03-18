@@ -31,7 +31,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   const isStandalone = STANDALONE_ROUTES.includes(pathname) || STANDALONE_PREFIXES.some((p) => pathname.startsWith(p));
   const { refreshProjects, isLoaded } = useProjects();
   const [missingProject, setMissingProject] = useState<Project | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [sidebarHidden, setSidebarHidden] = useState(false);
 
   const handleAddProject = useCallback(async () => {

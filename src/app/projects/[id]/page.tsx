@@ -44,7 +44,7 @@ export default function ProjectPage() {
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [showCommitModal, setShowCommitModal] = useState(false);
   const [topBarHidden, setTopBarHidden] = useState(false);
-  const [topBarContentHidden, setTopBarContentHidden] = useState(false);
+  const [topBarContentHidden, setTopBarContentHidden] = useState(true);
   const [workbenchHidden, setWorkbenchHidden] = useState(false);
   const [currentBranch, setCurrentBranch] = useState<string>('main');
   const [branches, setBranches] = useState<string[]>([]);
@@ -69,13 +69,12 @@ export default function ProjectPage() {
     if (project) setActiveTab(project.activeTab || 'project');
   }, [project?.id]);
 
-  // Restore terminal open/closed state and height from project
+  // Restore terminal height from project (always start collapsed)
   useEffect(() => {
     if (!projectId) return;
     fetch(`/api/projects/${projectId}/workbench-state`)
       .then((res) => res.json())
       .then((data) => {
-        setTerminalCollapsed(!data.open);
         if (typeof data.height === 'number') setChatPercent(data.height);
       })
       .catch(() => {});
