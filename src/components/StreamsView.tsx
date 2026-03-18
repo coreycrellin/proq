@@ -823,7 +823,7 @@ function StreamCellFull({
       )}
 
       {/* Full StructuredPane — scrollable stream + input area */}
-      <div className="flex-1 min-h-0" style={fontSize && fontSize !== 13 ? { zoom: fontSize / 13 } : undefined}>
+      <div className="flex-1 min-h-0 flex flex-col" style={fontSize && fontSize !== 13 ? { zoom: fontSize / 13 } : undefined}>
         <StructuredPane
           taskId={task.id}
           projectId={projectId}
