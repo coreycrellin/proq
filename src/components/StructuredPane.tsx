@@ -439,6 +439,24 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     }
   }
 
+  // Find index of last non-text render item (tool, user, task_update, ask, plan)
+  // Text blocks after this are "final output" and get the response font size
+  let lastNonTextRenderIdx = -1;
+  for (let i = renderItems.length - 1; i >= 0; i--) {
+    const item = renderItems[i];
+    if (item.kind === 'tool_group' || item.kind === 'ask_question' || item.kind === 'plan_approval') {
+      lastNonTextRenderIdx = i;
+      break;
+    }
+    if (item.kind === 'block') {
+      const t = item.block.type;
+      if (t === 'user' || t === 'task_update') {
+        lastNonTextRenderIdx = i;
+        break;
+      }
+    }
+  }
+
   // Determine if agent is processing (not waiting for user input, not finished)
   const lastRenderItem = renderItems[renderItems.length - 1];
   const isWaitingForInput =
@@ -537,8 +555,10 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
             const idx = item.idx;
 
             switch (block.type) {
-              case 'text':
-                return <TextBlock key={idx} text={block.text} fontSize={effectiveResponseFontSize !== 14 ? effectiveResponseFontSize : undefined} />;
+              case 'text': {
+                const isFinalText = ri > lastNonTextRenderIdx;
+                return <TextBlock key={idx} text={block.text} fontSize={isFinalText && effectiveResponseFontSize !== 14 ? effectiveResponseFontSize : undefined} />;
+              }
               case 'thinking':
                 return <ThinkingBlock key={idx} thinking={block.thinking} forceCollapsed={undefined} />;
               case 'user':
@@ -659,7 +679,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
                 onKeyDown={handleKeyDown}
                 placeholder={taskStatus === 'done' ? "Send a follow-up..." : "Send a message..."}
                 rows={1}
-                style={{ height: '24px' }}
+                style={{ height: '24px', fontSize: effectiveUserFontSize !== 14 ? `${effectiveUserFontSize}px` : undefined }}
                 className="flex-1 min-h-[24px] max-h-[60px] resize-none overflow-hidden bg-transparent text-xs leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none py-0.5"
               />
               {isRunning && (
@@ -690,7 +710,7 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
               onKeyDown={handleKeyDown}
               placeholder={taskStatus === 'done' ? "Send a follow-up..." : "Send a message..."}
               rows={1}
-              style={{ height: '36px' }}
+              style={{ height: '36px', fontSize: effectiveUserFontSize !== 14 ? `${effectiveUserFontSize}px` : undefined }}
               className="w-full min-h-[36px] max-h-[160px] resize-none overflow-hidden bg-transparent px-3 pt-3 pb-2 text-sm leading-[20px] text-text-secondary placeholder:text-text-placeholder focus:outline-none"
             />
 
