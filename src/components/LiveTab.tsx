@@ -16,14 +16,16 @@ const PRESETS: Record<Exclude<ViewportSize, 'desktop'>, { w: number; h: number }
 interface LiveTabProps {
   project: Project;
   workbenchCollapsed: boolean;
+  workbenchHidden: boolean;
   workbenchHeight: number;
   isDragging: boolean;
   onToggleCollapsed: () => void;
+  onToggleHidden: () => void;
   onExpand: () => void;
   onResizeStart: (e: React.MouseEvent) => void;
 }
 
-export function LiveTab({ project, workbenchCollapsed, workbenchHeight, isDragging, onToggleCollapsed, onExpand, onResizeStart }: LiveTabProps) {
+export function LiveTab({ project, workbenchCollapsed, workbenchHidden, workbenchHeight, isDragging, onToggleCollapsed, onToggleHidden, onExpand, onResizeStart }: LiveTabProps) {
   const [urlInput, setUrlInput] = useState(project.serverUrl || 'http://localhost:3000');
   const [barValue, setBarValue] = useState(project.serverUrl ?? '');
   const initialVp = project.liveViewport ?? 'desktop';
@@ -332,6 +334,8 @@ export function LiveTab({ project, workbenchCollapsed, workbenchHeight, isDraggi
         onExpand={onExpand}
         onResizeStart={onResizeStart}
         isDragging={isDragging}
+        hidden={workbenchHidden}
+        onToggleHidden={onToggleHidden}
       />
     </>
   );

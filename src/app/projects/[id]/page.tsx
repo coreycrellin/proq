@@ -33,6 +33,7 @@ export default function ProjectPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [workbenchCollapsed, setTerminalCollapsed] = useState(true);
   const [liveWorkbenchCollapsed, setLiveWorkbenchCollapsed] = useState(true);
+  const [liveWorkbenchHidden, setLiveWorkbenchHidden] = useState(false);
   const [liveChatPercent, setLiveChatPercent] = useState(40);
   const [liveIsDragging, setLiveIsDragging] = useState(false);
   const [modalTask, setModalTask] = useState<Task | null>(null);
@@ -947,9 +948,11 @@ export default function ProjectPage() {
           <LiveTab
             project={project}
             workbenchCollapsed={liveWorkbenchCollapsed}
+            workbenchHidden={liveWorkbenchHidden}
             workbenchHeight={liveChatPercent}
             isDragging={liveIsDragging}
             onToggleCollapsed={toggleLiveWorkbenchCollapsed}
+            onToggleHidden={() => setLiveWorkbenchHidden((h) => !h)}
             onExpand={expandLiveWorkbench}
             onResizeStart={handleLiveResizeStart}
           />
