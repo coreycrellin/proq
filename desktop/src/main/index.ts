@@ -422,8 +422,8 @@ async function launchApp(): Promise<void> {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.proq.desktop')
 
-  // Set dock icon on macOS (in dev mode it doesn't come from the app bundle)
-  if (process.platform === 'darwin' && app.dock) {
+  // Set dock icon on macOS in dev mode (production gets the squircle from the bundled .icns)
+  if (is.dev && process.platform === 'darwin' && app.dock) {
     app.dock.setIcon(icon)
   }
 
