@@ -17,6 +17,7 @@ import {
   ListOrderedIcon,
   LayersIcon,
   PlayIcon,
+  TypeIcon,
 } from 'lucide-react';
 import type { Task, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { StructuredPane } from './StructuredPane';
@@ -263,6 +264,7 @@ export function StreamsView({
   onStartTask,
 }: StreamsViewProps) {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [streamFontSize, setStreamFontSize] = useState(13);
   const [pinnedDoneIds, setPinnedDoneIds] = useState<Set<string>>(new Set());
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   // Stable ordering ref: preserves task positions when only status changes,
@@ -525,6 +527,23 @@ export function StreamsView({
         </button>
       )}
       {modeDropdown}
+      {/* Text size input */}
+      <div className="flex items-center gap-1 shrink-0">
+        <TypeIcon className="w-3 h-3 text-text-placeholder" />
+        <input
+          type="number"
+          min={8}
+          max={32}
+          value={streamFontSize}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            if (!isNaN(v) && v >= 8 && v <= 32) setStreamFontSize(v);
+          }}
+          className="w-10 px-1 py-0.5 rounded text-[10px] text-text-secondary bg-surface-secondary border border-border-default text-center focus:outline-none focus:border-blue-500"
+          title="Stream text size (px)"
+        />
+        <span className="text-[10px] text-text-placeholder">px</span>
+      </div>
       {extra}
       <div className="flex-1 min-w-0">{todoQueue}</div>
       <div className="flex items-center gap-1 shrink-0">
@@ -560,6 +579,7 @@ export function StreamsView({
         <StreamCellFull
           task={expandedTask}
           projectId={projectId}
+          fontSize={streamFontSize}
           hideLeftBorder
           onCollapse={() => setExpandedTaskId(null)}
           onRemove={() => handleRemoveStream(expandedTask.id)}
@@ -634,6 +654,7 @@ export function StreamsView({
                         task={task}
                         projectId={projectId}
                         compact
+                        fontSize={streamFontSize}
                         hideLeftBorder={i === 0}
                         onExpand={() => setExpandedTaskId(task.id)}
                         onRemove={() => handleRemoveStream(task.id)}
@@ -660,6 +681,7 @@ export function StreamsView({
                         task={task}
                         projectId={projectId}
                         compact
+                        fontSize={streamFontSize}
                         hideLeftBorder={i === 0}
                         onExpand={() => setExpandedTaskId(task.id)}
                         onRemove={() => handleRemoveStream(task.id)}
@@ -693,6 +715,7 @@ export function StreamsView({
               task={task}
               projectId={projectId}
               compact
+              fontSize={streamFontSize}
               hideLeftBorder={i % gridCols === 0}
               onExpand={() => setExpandedTaskId(task.id)}
               onRemove={() => handleRemoveStream(task.id)}
@@ -715,6 +738,7 @@ interface StreamCellFullProps {
   projectId: string;
   compact?: boolean;
   hideLeftBorder?: boolean;
+  fontSize?: number;
   onExpand?: () => void;
   onCollapse?: () => void;
   onRemove?: () => void;
@@ -729,6 +753,7 @@ function StreamCellFull({
   projectId,
   compact,
   hideLeftBorder,
+  fontSize,
   onExpand,
   onCollapse,
   onRemove,
@@ -745,7 +770,7 @@ function StreamCellFull({
       : undefined;
 
   return (
-    <div className={`flex flex-col min-h-0 h-full bg-surface-deep ${hideLeftBorder ? '' : `border-l-[3px] ${statusBorderColor(task)}`}`}>
+    <div className={`flex flex-col min-h-0 h-full bg-surface-deep ${hideLeftBorder ? '' : `border-l-[3px] ${statusBorderColor(task)}`}`} style={fontSize ? { fontSize: `${fontSize}px` } : undefined}>
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0">
         {statusIcon(task)}
