@@ -770,7 +770,7 @@ function StreamCellFull({
       : undefined;
 
   return (
-    <div className={`flex flex-col min-h-0 h-full bg-surface-deep ${hideLeftBorder ? '' : `border-l-[3px] ${statusBorderColor(task)}`}`} style={fontSize ? { fontSize: `${fontSize}px` } : undefined}>
+    <div className={`flex flex-col min-h-0 h-full bg-surface-deep ${hideLeftBorder ? '' : `border-l-[3px] ${statusBorderColor(task)}`}`}>
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0">
         {statusIcon(task)}
@@ -807,19 +807,21 @@ function StreamCellFull({
       </div>
 
       {/* Full StructuredPane — scrollable stream + input area */}
-      <StructuredPane
-        taskId={task.id}
-        projectId={projectId}
-        visible={true}
-        taskStatus={task.status}
-        agentBlocks={staticBlocks}
-        followUpDraft={followUpDraft}
-        onFollowUpDraftChange={onFollowUpDraftChange ?? undefined}
-        onTaskStatusChange={(status) => {
-          if (status === 'verify' && onResumeEditing) onResumeEditing(task.id);
-        }}
-        compact={compact}
-      />
+      <div className="flex-1 min-h-0" style={fontSize && fontSize !== 13 ? { zoom: fontSize / 13 } : undefined}>
+        <StructuredPane
+          taskId={task.id}
+          projectId={projectId}
+          visible={true}
+          taskStatus={task.status}
+          agentBlocks={staticBlocks}
+          followUpDraft={followUpDraft}
+          onFollowUpDraftChange={onFollowUpDraftChange ?? undefined}
+          onTaskStatusChange={(status) => {
+            if (status === 'verify' && onResumeEditing) onResumeEditing(task.id);
+          }}
+          compact={compact}
+        />
+      </div>
     </div>
   );
 }
