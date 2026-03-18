@@ -19,6 +19,7 @@ import {
   PlayIcon,
   TypeIcon,
   TagIcon,
+  SettingsIcon,
 } from 'lucide-react';
 import type { Task, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { StructuredPane } from './StructuredPane';
@@ -265,6 +266,7 @@ export function StreamsView({
   // preventing grid remounts that cause WebSocket reconnects and visual jumps
   const stableOrderRef = useRef<string[]>([]);
   const [hideLabels, setHideLabels] = useState(false);
+  const [showToolbarSettings, setShowToolbarSettings] = useState(true);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -521,38 +523,54 @@ export function StreamsView({
           New Task
         </button>
       )}
-      {modeDropdown}
-      {/* Text size input */}
-      <div className="flex items-center gap-1 shrink-0">
-        <TypeIcon className="w-3 h-3 text-text-placeholder" />
-        <input
-          type="number"
-          min={8}
-          max={32}
-          value={streamFontSize}
-          onChange={(e) => {
-            const v = parseInt(e.target.value, 10);
-            if (!isNaN(v) && v >= 8 && v <= 32) setStreamFontSize(v);
-          }}
-          className="w-10 px-1 py-0.5 rounded text-[10px] text-text-secondary bg-surface-secondary border border-border-default text-center focus:outline-none focus:border-blue-500"
-          title="Stream text size (px)"
-        />
-        <span className="text-[10px] text-text-placeholder">px</span>
-      </div>
-      {/* Hide labels toggle */}
       <button
-        onClick={() => setHideLabels((v) => !v)}
+        onClick={() => setShowToolbarSettings((v) => !v)}
         className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
-          hideLabels
+          showToolbarSettings
             ? 'text-blue-400 bg-blue-500/10'
             : 'text-text-tertiary hover:text-text-secondary hover:bg-surface-hover'
         }`}
-        title={hideLabels ? 'Show task labels' : 'Hide task labels'}
+        title={showToolbarSettings ? 'Hide settings' : 'Show settings'}
       >
-        <TagIcon className="w-3 h-3" />
-        <span>{hideLabels ? 'Labels hidden' : 'Labels'}</span>
+        <SettingsIcon className="w-3 h-3" />
       </button>
-      {extra}
+      {showToolbarSettings && (
+        <>
+          {modeDropdown}
+          {/* Text size input */}
+          <div className="flex items-center gap-1 shrink-0">
+            <TypeIcon className="w-3 h-3 text-text-placeholder" />
+            <input
+              type="number"
+              min={8}
+              max={32}
+              value={streamFontSize}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v) && v >= 8 && v <= 32) setStreamFontSize(v);
+              }}
+              className="w-10 px-1 py-0.5 rounded text-[10px] text-text-secondary bg-surface-secondary border border-border-default text-center focus:outline-none focus:border-blue-500"
+              title="Stream text size (px)"
+            />
+            <span className="text-[10px] text-text-placeholder">px</span>
+          </div>
+          {/* Hide labels toggle */}
+          <button
+            onClick={() => setHideLabels((v) => !v)}
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+              hideLabels
+                ? 'text-blue-400 bg-blue-500/10'
+                : 'text-text-tertiary hover:text-text-secondary hover:bg-surface-hover'
+            }`}
+            title={hideLabels ? 'Show task labels' : 'Hide task labels'}
+          >
+            <TagIcon className="w-3 h-3" />
+            <span>{hideLabels ? 'Labels hidden' : 'Labels'}</span>
+          </button>
+          {extra}
+        </>
+      )}
+      {!showToolbarSettings && extra}
       <div className="flex-1 min-w-0">{todoQueue}</div>
       <div className="flex items-center gap-1 shrink-0">
         {addStreamButton}
