@@ -43,7 +43,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   // Handle status transitions
   if (prevStatus && body.status && prevStatus !== body.status) {
-    // Auto-title on status change (e.g. starting a task) — draft modal handles its own auto-title
+    // Auto-title on status change (e.g. starting a task) from the full description
     if (!updated.title && updated.description?.trim()) {
       autoTitle(id, taskId, updated.description);
     }
