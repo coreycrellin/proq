@@ -209,7 +209,7 @@ export function GridView({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Top toolbar */}
-      <div className="shrink-0 h-10 flex items-center gap-3 px-4 border-b border-border-default bg-surface-topbar">
+      <div className="shrink-0 h-10 flex items-center gap-3 px-6 border-b border-border-default bg-surface-topbar">
         {onAddTask && (
           <button
             onClick={onAddTask}
