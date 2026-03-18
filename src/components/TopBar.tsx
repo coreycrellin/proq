@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, ColumnsIcon, SettingsIcon, GitCommitHorizontalIcon, XIcon, SearchIcon, EyeIcon } from 'lucide-react';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, ColumnsIcon, SettingsIcon, GitCommitHorizontalIcon, XIcon, SearchIcon } from 'lucide-react';
 import type { Project, ProjectTab, ViewType } from '@/lib/types';
 import {
   DropdownMenu,
@@ -523,11 +523,7 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
                       : 'border-border-default bg-surface-secondary text-text-chrome hover:bg-surface-hover'
                   }`}
                 >
-                  {isOnPreviewBranch ? (
-                    <EyeIcon className="w-3.5 h-3.5 text-lazuli" />
-                  ) : (
-                    <GitBranchIcon className="w-3.5 h-3.5" />
-                  )}
+                  <GitBranchIcon className={`w-3.5 h-3.5 ${isOnPreviewBranch ? 'text-lazuli' : ''}`} />
                   <span className="max-w-[180px] truncate">
                     {isOnPreviewBranch && taskBranchMap?.[currentBranch!]
                       ? taskBranchMap[currentBranch!].split(/\s+/).slice(0, 4).join(' ')
@@ -706,8 +702,11 @@ const BranchPopover = React.forwardRef<HTMLDivElement, {
       <div className="border-t border-border-default">
         <button
           onClick={() => onFilterChange('')}
-          className="w-full px-3 py-2 text-xs text-text-secondary hover:bg-surface-hover transition-colors text-left"
+          className="flex items-center gap-2 w-full px-3 py-2.5 text-xs text-text-secondary hover:bg-surface-hover transition-colors"
         >
+          <span className="w-4 shrink-0 flex justify-center">
+            <GitBranchIcon className="w-3.5 h-3.5 text-text-tertiary" />
+          </span>
           View all branches
         </button>
       </div>
@@ -722,7 +721,6 @@ function BranchRow({ branch, isCurrent, isDefault, taskTitle, onSelect }: {
   taskTitle?: string;
   onSelect: () => void;
 }) {
-  const isPreview = branch.startsWith('proq/');
   return (
     <button
       onClick={() => { if (!isCurrent) onSelect(); }}
@@ -733,10 +731,12 @@ function BranchRow({ branch, isCurrent, isDefault, taskTitle, onSelect }: {
       <span className="w-4 shrink-0 flex justify-center">
         {isCurrent && <CheckIcon className="w-3.5 h-3.5" />}
       </span>
-      {isPreview ? (
+      {taskTitle ? (
         <>
-          <EyeIcon className={`w-3 h-3 shrink-0 ${isCurrent ? 'text-lazuli' : 'text-text-tertiary'}`} />
-          <span className="truncate">{taskTitle || branch.replace('proq/', '')}</span>
+          <span className="truncate">{taskTitle}</span>
+          <span className="ml-auto text-[10px] font-mono text-text-tertiary truncate max-w-[100px]">
+            {branch.replace('proq/', '')}
+          </span>
         </>
       ) : (
         <span className="font-mono truncate">{branch}</span>
