@@ -494,8 +494,7 @@ app.whenReady().then(() => {
                   applicationName: 'proq',
                   applicationVersion: app.getVersion(),
                   version: '',
-                  copyright: 'Build beautiful things',
-                  icons: [getIcon()]
+                  copyright: 'Build beautiful things'
                 })
                 app.showAboutPanel()
               }
