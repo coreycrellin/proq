@@ -5,6 +5,7 @@ import { Loader2Icon, ClockIcon, CheckCircle2Icon, SearchCheckIcon, MicIcon, Plu
 import type { Task, TaskColumns, TaskAttachment } from '@/lib/types';
 import { StructuredPane } from '../StructuredPane';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
+import { handleChatCommand } from '@/lib/chat-commands';
 import { HttpsSetupSheet } from './HttpsSetupSheet';
 import { useTTS } from '@/hooks/useTTS';
 
@@ -610,7 +611,18 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
                       ref={i === currentIndex ? descriptionInputRef : undefined}
                       autoFocus={i === currentIndex}
                       value={taskDescription}
-                      onChange={(e) => setTaskDescription(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const trimmed = val.trim().toLowerCase();
+                        if (trimmed === '/atr' || trimmed === '/att') {
+                          setTaskDescription('');
+                          handleChatCommand(trimmed, (newAtts) => {
+                            setComposeAttachments((prev) => [...prev, ...newAtts]);
+                          });
+                          return;
+                        }
+                        setTaskDescription(val);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
