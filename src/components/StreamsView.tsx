@@ -22,6 +22,7 @@ import {
   SettingsIcon,
   UserIcon,
   MessageSquareIcon,
+  GripVerticalIcon,
 } from 'lucide-react';
 import type { Task, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { StructuredPane } from './StructuredPane';
@@ -270,9 +271,23 @@ export function StreamsView({
   });
   const [pinnedDoneIds, setPinnedDoneIds] = useState<Set<string>>(new Set());
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
-  // Stable ordering ref: preserves task positions when only status changes,
-  // preventing grid remounts that cause WebSocket reconnects and visual jumps
-  const stableOrderRef = useRef<string[]>([]);
+  // Persistent ordering: preserves task positions across status changes AND remounts.
+  // Stored in localStorage per project so positions survive page reloads.
+  const orderStorageKey = `proq-stream-order-${projectId}`;
+  const [manualOrder, setManualOrder] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem(orderStorageKey);
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+  // Keep localStorage in sync
+  useEffect(() => {
+    localStorage.setItem(orderStorageKey, JSON.stringify(manualOrder));
+  }, [orderStorageKey, manualOrder]);
+  // Drag state for reordering
+  const [dragSourceId, setDragSourceId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [labelFontSize, setLabelFontSize] = useState(() => {
     if (typeof window === 'undefined') return 10;
     const v = parseInt(localStorage.getItem('proq-stream-labelFontSize') ?? '', 10);
@@ -373,29 +388,27 @@ export function StreamsView({
 
   const streamTasks = useMemo(() => {
     const sorted = getStreamTasks(tasks, validPinnedIds, validHiddenIds);
-    const prevOrder = stableOrderRef.current;
     const newIds = new Set(sorted.map((t) => t.id));
-    const prevIds = new Set(prevOrder);
+    const prevIds = new Set(manualOrder);
+    const taskMap = new Map(sorted.map((t) => [t.id, t]));
 
-    // If same set of task IDs, preserve previous order (just update task objects)
+    // If same set of task IDs, preserve manual order (just update task objects)
     // This prevents grid position swaps when only agentStatus changes
     const sameSet =
       newIds.size === prevIds.size && [...newIds].every((id) => prevIds.has(id));
 
-    if (sameSet && prevOrder.length > 0) {
-      const taskMap = new Map(sorted.map((t) => [t.id, t]));
-      const result = prevOrder.map((id) => taskMap.get(id)!).filter(Boolean);
-      return result;
+    if (sameSet && manualOrder.length > 0) {
+      return manualOrder.map((id) => taskMap.get(id)!).filter(Boolean);
     }
 
     // Different set — prepend new tasks to the front, keep existing order for the rest
-    const taskMap = new Map(sorted.map((t) => [t.id, t]));
     const addedIds = [...newIds].filter((id) => !prevIds.has(id));
-    const keptIds = prevOrder.filter((id) => newIds.has(id));
+    const keptIds = manualOrder.filter((id) => newIds.has(id));
     const mergedOrder = [...addedIds, ...keptIds];
-    stableOrderRef.current = mergedOrder;
+    // Persist the new order
+    setManualOrder(mergedOrder);
     return mergedOrder.map((id) => taskMap.get(id)!).filter(Boolean);
-  }, [tasks, validPinnedIds, validHiddenIds]);
+  }, [tasks, validPinnedIds, validHiddenIds, manualOrder]);
 
   // Done tasks available to add (not already pinned)
   const addableDoneTasks = useMemo(
@@ -428,6 +441,20 @@ export function StreamsView({
     });
     setShowAddMenu(false);
   };
+
+  const handleReorder = useCallback((fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    setManualOrder((prev) => {
+      const order = [...prev];
+      const fromIdx = order.indexOf(fromId);
+      const toIdx = order.indexOf(toId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      // Remove from old position, insert at new position
+      order.splice(fromIdx, 1);
+      order.splice(toIdx, 0, fromId);
+      return order;
+    });
+  }, []);
 
   const handleRestoreHidden = (taskId: string) => {
     setHiddenIds((prev) => {
@@ -716,6 +743,16 @@ export function StreamsView({
     );
   }
 
+  // Helper: drag props for a task cell
+  const dragProps = (task: Task) => ({
+    onDragStart: () => setDragSourceId(task.id),
+    onDragEnd: () => { setDragSourceId(null); setDragOverId(null); },
+    onDragOver: () => setDragOverId(task.id),
+    onDrop: () => { if (dragSourceId && dragSourceId !== task.id) handleReorder(dragSourceId, task.id); setDragSourceId(null); setDragOverId(null); },
+    isDragSource: dragSourceId === task.id,
+    isDragOver: dragOverId === task.id,
+  });
+
   const useScrollLayout = streamTasks.length > 6;
 
   // For >6 tasks: horizontal scrollable 2-row layout
@@ -791,6 +828,7 @@ export function StreamsView({
                         onUpdateTitle={onUpdateTitle}
                         followUpDraft={followUpDraftsRef?.current.get(task.id)}
                         onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
+                        {...dragProps(task)}
                       />
                     </div>
                   </React.Fragment>
@@ -823,6 +861,7 @@ export function StreamsView({
                         onUpdateTitle={onUpdateTitle}
                         followUpDraft={followUpDraftsRef?.current.get(task.id)}
                         onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
+                        {...dragProps(task)}
                       />
                     </div>
                   </React.Fragment>
@@ -862,6 +901,7 @@ export function StreamsView({
               onUpdateTitle={onUpdateTitle}
               followUpDraft={followUpDraftsRef?.current.get(task.id)}
               onFollowUpDraftChange={(draft) => onFollowUpDraftChange?.(task.id, draft)}
+              {...dragProps(task)}
             />
           ))}
         </ResizableGrid>
@@ -890,6 +930,13 @@ interface StreamCellFullProps {
   onUpdateTitle?: (taskId: string, title: string) => void;
   followUpDraft?: FollowUpDraft;
   onFollowUpDraftChange?: (draft: FollowUpDraft | null) => void;
+  // Drag-to-reorder
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onDragOver?: () => void;
+  onDrop?: () => void;
+  isDragSource?: boolean;
+  isDragOver?: boolean;
 }
 
 function StreamCellFull({
@@ -910,6 +957,12 @@ function StreamCellFull({
   onUpdateTitle,
   followUpDraft,
   onFollowUpDraftChange,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
+  isDragSource,
+  isDragOver,
 }: StreamCellFullProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(task.title || '');
@@ -945,7 +998,29 @@ function StreamCellFull({
     <div className={`flex flex-col min-h-0 h-full bg-surface-deep`}>
       {/* Header */}
       {!hideLabel && (
-        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0">
+        <div
+          className={`flex items-center gap-1 px-1 py-1.5 border-b border-border-default bg-surface-primary/60 shrink-0 transition-colors ${
+            isDragOver && !isDragSource ? 'bg-blue-500/20 border-blue-400/40' : ''
+          } ${isDragSource ? 'opacity-40' : ''}`}
+          onDragOver={onDragOver ? (e) => { e.preventDefault(); onDragOver(); } : undefined}
+          onDrop={onDrop ? (e) => { e.preventDefault(); onDrop(); } : undefined}
+        >
+          {/* Drag handle */}
+          {onDragStart && (
+            <div
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', task.id);
+                onDragStart();
+              }}
+              onDragEnd={onDragEnd}
+              className="cursor-grab active:cursor-grabbing p-0.5 rounded text-text-placeholder hover:text-text-secondary hover:bg-surface-hover"
+              title="Drag to reorder"
+            >
+              <GripVerticalIcon className="w-3 h-3" />
+            </div>
+          )}
           {statusIcon(task)}
           {editing ? (
             <input
