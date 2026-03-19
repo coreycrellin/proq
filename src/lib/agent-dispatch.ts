@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 import {
   existsSync,
   writeFileSync,
@@ -158,10 +158,15 @@ export function scheduleCleanup(projectId: string, taskId: string) {
     try {
       const socketLogPath = `/tmp/proq/${tmuxSession}.sock.log`;
 
-      // Kill tmux session first — this sends SIGTERM to bridge, which writes .log file
+      // Kill bridge process — sends SIGTERM which writes .log file
+      const pidPath = `/tmp/proq/${tmuxSession}.pid`;
       try {
-        execSync(`tmux kill-session -t '${tmuxSession}'`, { timeout: 5_000 });
-        console.log(`[agent-cleanup] killed tmux session ${tmuxSession}`);
+        if (existsSync(pidPath)) {
+          const pid = parseInt(readFileSync(pidPath, "utf-8").trim(), 10);
+          process.kill(-pid, "SIGTERM"); // Kill process group
+          unlinkSync(pidPath);
+          console.log(`[agent-cleanup] killed bridge process ${pid} for ${tmuxSession}`);
+        }
       } catch {
         // Already gone
       }
@@ -300,7 +305,7 @@ export async function dispatchTask(
     ? `# ${taskTitle}\n\n${taskDescription}`
     : taskDescription;
 
-  // ── CLI mode: dispatch via tmux ──
+  // ── CLI mode: dispatch via bridge process ──
   if (renderMode === "cli") {
     let prompt: string;
 
@@ -353,14 +358,21 @@ export async function dispatchTask(
     const bridgePath = join(process.cwd(), "src/lib/proq-bridge.js");
     const socketPath = `/tmp/proq/${tmuxSession}.sock`;
 
-    // Launch via tmux with bridge — session survives server restarts, bridge exposes PTY over unix socket
+    // Launch bridge directly — detached process survives server restarts, exposes PTY over unix socket
     const proqApi = `http://localhost:${process.env.PORT || 1337}`;
-    const tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' -e PROQ_API='${proqApi}' node '${bridgePath}' '${socketPath}' '${launcherFile}'`;
+    const pidPath = `/tmp/proq/${tmuxSession}.pid`;
 
     try {
-      execSync(tmuxCmd, { timeout: 10_000 });
+      const child = spawn("node", [bridgePath, socketPath, launcherFile], {
+        cwd: effectivePath,
+        detached: true,
+        stdio: "ignore",
+        env: { ...process.env, PROQ_API: proqApi, CLAUDECODE: undefined, PORT: undefined },
+      });
+      child.unref();
+      writeFileSync(pidPath, String(child.pid));
       console.log(
-        `[agent-dispatch] launched tmux session ${tmuxSession} for task ${taskId}`,
+        `[agent-dispatch] launched bridge process ${child.pid} for task ${taskId}`,
       );
 
       notify(`🚀 *${(taskTitle || "task").replace(/"/g, '\\"')}* dispatched (cli)`);
@@ -368,7 +380,7 @@ export async function dispatchTask(
       return terminalTabId;
     } catch (err) {
       console.error(
-        `[agent-dispatch] failed to launch tmux session for ${taskId}:`,
+        `[agent-dispatch] failed to launch bridge for ${taskId}:`,
         err,
       );
       return undefined;
@@ -430,15 +442,20 @@ export async function abortTask(projectId: string, taskId: string) {
   const task = await getTask(projectId, taskId);
 
   if (task?.renderMode === "cli") {
-    // CLI mode: kill tmux
+    // CLI mode: kill bridge process
     const shortId = taskId.slice(0, 8);
     const tmuxSession = `proq-${shortId}`;
+    const pidPath = `/tmp/proq/${tmuxSession}.pid`;
     try {
-      execSync(`tmux kill-session -t '${tmuxSession}'`, { timeout: 5_000 });
-      console.log(`[agent-dispatch] killed tmux session ${tmuxSession}`);
+      if (existsSync(pidPath)) {
+        const pid = parseInt(readFileSync(pidPath, "utf-8").trim(), 10);
+        process.kill(-pid, "SIGTERM"); // Kill process group
+        unlinkSync(pidPath);
+        console.log(`[agent-dispatch] killed bridge process ${pid} (${tmuxSession})`);
+      }
     } catch (err) {
       console.error(
-        `[agent-dispatch] failed to kill tmux session ${tmuxSession}:`,
+        `[agent-dispatch] failed to kill bridge process ${tmuxSession}:`,
         err,
       );
     }
@@ -479,15 +496,20 @@ export function isSessionAlive(taskId: string): boolean {
   // Check agent session runtime first
   if (isSessionRunning(taskId)) return true;
 
-  // Fall back to tmux check
+  // Fall back to PID file check
   const shortId = taskId.slice(0, 8);
-  const tmuxSession = `proq-${shortId}`;
+  const pidPath = `/tmp/proq/proq-${shortId}.pid`;
   try {
-    execSync(`tmux has-session -t '${tmuxSession}'`, { timeout: 3_000 });
-    return true;
+    if (existsSync(pidPath)) {
+      const pid = parseInt(readFileSync(pidPath, "utf-8").trim(), 10);
+      process.kill(pid, 0); // Throws if process doesn't exist
+      return true;
+    }
   } catch {
-    return false;
+    // Process doesn't exist — clean up stale PID file
+    try { if (existsSync(pidPath)) unlinkSync(pidPath); } catch {}
   }
+  return false;
 }
 
 /**
