@@ -30,30 +30,6 @@ export async function checkNodeVersion(): Promise<CheckResult> {
   }
 }
 
-export async function checkTmux(): Promise<CheckResult> {
-  try {
-    const { stdout } = await execFileAsync('tmux', ['-V'])
-    const version = stdout.trim().replace(/^tmux\s*/, '')
-    return { ok: true, version }
-  } catch {
-    return { ok: false, error: 'tmux not found' }
-  }
-}
-
-export async function installTmux(): Promise<CheckResult> {
-  try {
-    if (process.platform === 'darwin') {
-      await execFileAsync('brew', ['install', 'tmux'])
-    } else {
-      await execFileAsync('sudo', ['apt-get', 'install', '-y', 'tmux'])
-    }
-    return checkTmux()
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e)
-    return { ok: false, error: `Failed to install tmux: ${message}` }
-  }
-}
-
 export async function checkClaudeCli(): Promise<CheckResult> {
   const searchPaths = [
     path.join(process.env.HOME || '', '.local/bin/claude'),

@@ -26,8 +26,6 @@ interface UpdateCheckResult {
 
 interface ProqDesktopAPI {
   checkNode: () => Promise<CheckResult>
-  checkTmux: () => Promise<CheckResult>
-  installTmux: () => Promise<CheckResult>
   checkClaude: () => Promise<CheckResult>
   checkXcode: () => Promise<CheckResult>
   checkHomebrew: () => Promise<CheckResult>

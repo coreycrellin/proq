@@ -9,8 +9,6 @@ import iconDevLight from '../../resources/icon-dev-light.png?asset'
 import { getConfig, setConfig, resetConfig } from './config'
 import {
   checkNodeVersion,
-  checkTmux,
-  installTmux,
   checkClaudeCli,
   checkXcodeTools,
   checkHomebrew,
@@ -154,8 +152,6 @@ function loadRendererPage(win: BrowserWindow, hash?: string): void {
 function registerIpcHandlers(): void {
   // Setup
   ipcMain.handle('setup:check-node', () => checkNodeVersion())
-  ipcMain.handle('setup:check-tmux', () => checkTmux())
-  ipcMain.handle('setup:install-tmux', () => installTmux())
   ipcMain.handle('setup:check-claude', () => checkClaudeCli())
   ipcMain.handle('setup:check-xcode', () => checkXcodeTools())
   ipcMain.handle('setup:check-homebrew', () => checkHomebrew())

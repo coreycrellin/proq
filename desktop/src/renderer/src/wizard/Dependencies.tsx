@@ -18,7 +18,6 @@ interface DepState {
   xcode: CheckResult | null
   homebrew: CheckResult | null
   node: CheckResult | null
-  tmux: CheckResult | null
   claude: CheckResult | null
 }
 
@@ -39,7 +38,6 @@ export function Dependencies({
     xcode: null,
     homebrew: null,
     node: null,
-    tmux: null,
     claude: null
   })
   const [installing, setInstalling] = useState<InstallingState>({})
@@ -49,14 +47,13 @@ export function Dependencies({
   const isMac = navigator.platform.toLowerCase().includes('mac')
 
   const runChecks = useCallback(async (): Promise<DepState> => {
-    const [node, tmux, claude, xcode, homebrew] = await Promise.all([
+    const [node, claude, xcode, homebrew] = await Promise.all([
       window.proqDesktop.checkNode(),
-      window.proqDesktop.checkTmux(),
       window.proqDesktop.checkClaude(),
       window.proqDesktop.checkXcode(),
       window.proqDesktop.checkHomebrew()
     ])
-    const state: DepState = { xcode, homebrew, node, tmux, claude }
+    const state: DepState = { xcode, homebrew, node, claude }
     setDeps(state)
     if (claude.ok && claude.path) {
       setClaudePath(claude.path)
@@ -99,13 +96,6 @@ export function Dependencies({
     setIsInstalling('node', false)
   }
 
-  const handleInstallTmux = async (): Promise<void> => {
-    setIsInstalling('tmux', true)
-    const result = await window.proqDesktop.installTmux()
-    setDep('tmux', result)
-    setIsInstalling('tmux', false)
-  }
-
   const handleInstallClaude = async (): Promise<void> => {
     setIsInstalling('claude', true)
     const result = await window.proqDesktop.installClaude()
@@ -144,12 +134,7 @@ export function Dependencies({
       await handleInstallNode()
     }
 
-    // 4. tmux (needs Homebrew)
-    if (deps.tmux && !deps.tmux.ok && deps.homebrew?.ok) {
-      await handleInstallTmux()
-    }
-
-    // 5. Claude CLI (needs Node/npm)
+    // 4. Claude CLI (needs Node/npm)
     const currentNode = deps.node
     if (deps.claude && !deps.claude.ok && currentNode?.ok) {
       await handleInstallClaude()
@@ -159,10 +144,10 @@ export function Dependencies({
   }
 
   const canProceed = deps.node?.ok
-  const allChecked = deps.node !== null && deps.tmux !== null && deps.claude !== null && deps.xcode !== null && deps.homebrew !== null
+  const allChecked = deps.node !== null && deps.claude !== null && deps.xcode !== null && deps.homebrew !== null
   const anyMissing =
     allChecked &&
-    (!deps.node?.ok || (isMac && !deps.xcode?.ok) || !deps.homebrew?.ok || !deps.tmux?.ok || !deps.claude?.ok)
+    (!deps.node?.ok || (isMac && !deps.xcode?.ok) || !deps.homebrew?.ok || !deps.claude?.ok)
   const anyInstalling = Object.values(installing).some(Boolean)
 
   // Dependency row renderer
@@ -220,12 +205,6 @@ export function Dependencies({
           deps.node && !deps.node.ok && !deps.homebrew?.ok
             ? 'Install Homebrew first'
             : deps.node?.error
-        )}
-
-        {depRow('tmux', 'tmux', deps.tmux, handleInstallTmux,
-          deps.tmux && !deps.tmux.ok && !deps.homebrew?.ok
-            ? 'Install Homebrew first'
-            : 'Optional — needed for CLI render mode'
         )}
 
         {depRow('claude', 'Claude Code CLI', deps.claude, handleInstallClaude,

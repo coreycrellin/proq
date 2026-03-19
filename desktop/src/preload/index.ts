@@ -4,8 +4,6 @@ import { electronAPI } from '@electron-toolkit/preload'
 const proqDesktopAPI = {
   // Setup checks
   checkNode: (): Promise<unknown> => ipcRenderer.invoke('setup:check-node'),
-  checkTmux: (): Promise<unknown> => ipcRenderer.invoke('setup:check-tmux'),
-  installTmux: (): Promise<unknown> => ipcRenderer.invoke('setup:install-tmux'),
   checkClaude: (): Promise<unknown> => ipcRenderer.invoke('setup:check-claude'),
   checkXcode: (): Promise<unknown> => ipcRenderer.invoke('setup:check-xcode'),
   checkHomebrew: (): Promise<unknown> => ipcRenderer.invoke('setup:check-homebrew'),
