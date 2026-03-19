@@ -192,7 +192,7 @@ export default function SettingsPage() {
               <p className="text-sm text-text-secondary leading-relaxed mb-2">
                 A task board that runs your coding agents. You write tasks,
                 agents do the work, you review and merge. proq is a kanban
-                board that launches CLI coding agents in tmux, one per task,
+                board that launches coding agents, one per task,
                 against your actual codebase.
               </p>
               <p className="text-sm text-text-secondary leading-relaxed mb-4">

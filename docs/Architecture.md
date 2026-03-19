@@ -28,7 +28,7 @@ How proq works under the hood. For a usage walkthrough, see [Getting Started](./
 │  │  lowdb   │   │  Agent Processes           │           │
 │  │  (JSON)  │   │  ┌────────┐ ┌────────┐    │           │
 │  │          │   │  │Struct. │ │  CLI   │    │           │
-│  │          │   │  │Session │ │ (tmux) │    │           │
+│  │          │   │  │Session │ │(bridge)│    │           │
 │  └──────────┘   │  │(spawn) │ │        │    │           │
 │                 │  └────────┘ └────────┘    │           │
 │                 └───────────────────────────┘           │
@@ -42,7 +42,7 @@ How proq works under the hood. For a usage walkthrough, see [Getting Started](./
   └──────────┘     └──────────────────┘
 ```
 
-**Next.js server** handles the REST API, serves the React SPA, and runs the dispatch engine. **Agent processes** are spawned per-task — either as child processes (structured mode) or inside tmux sessions (CLI mode). **WebSocket hub** on port 42069 streams agent output, terminal PTY data, supervisor messages, and agent tab sessions. **lowdb** stores all state as JSON files — no external database.
+**Next.js server** handles the REST API, serves the React SPA, and runs the dispatch engine. **Agent processes** are spawned per-task — either as child processes (structured mode) or as detached bridge processes (CLI mode). **WebSocket hub** on port 42069 streams agent output, terminal PTY data, supervisor messages, and agent tab sessions. **lowdb** stores all state as JSON files — no external database.
 
 ## Data Layer
 
@@ -111,7 +111,7 @@ When a task moves to in-progress, it enters the dispatch pipeline:
 
 1. **queued** — waiting for its turn (sequential) or for processQueue to run (parallel)
 2. **starting** — selected by processQueue, agent process is launching
-3. **running** — agent is actively working (tmux session alive or child process running)
+3. **running** — agent is actively working (child process or detached bridge process running)
 4. **null** — not dispatched (task is in todo, verify, or done)
 
 ### Side Effects Per Transition
@@ -163,16 +163,17 @@ Follow-up messages use `--resume <sessionId>` to continue the conversation.
 
 ### CLI Mode
 
-Launches inside a tmux session with a PTY bridge:
+Launches a detached bridge process:
 
 ```
-tmux new-session -d -s mc-{shortId} -c {projectPath} \
-  node proq-bridge.js {socketPath} {launcherScript}
+spawn('node', [proq-bridge.js, socketPath, launcherScript], {
+  cwd: projectPath, detached: true, stdio: 'ignore'
+})
 ```
 
-The bridge (`proq-bridge.js`) spawns the Claude CLI in a real PTY via node-pty, exposes a unix socket at `/tmp/proq/mc-{shortId}.sock`, and maintains a 50KB scrollback ring buffer. Clients connect to the socket to stream terminal output. Reconnection replays the scrollback.
+The bridge (`proq-bridge.js`) spawns the Claude CLI in a real PTY via node-pty, exposes a unix socket at `/tmp/proq/proq-{shortId}.sock`, and maintains a 50KB scrollback ring buffer. PID files in `/tmp/proq/` track process lifecycle. Clients connect to the socket to stream terminal output. Reconnection replays the scrollback.
 
-tmux acts purely as a process container — crash survival, enumeration (`tmux ls | grep ^mc-`), and kill (`tmux kill-session`).
+The detached process survives server restarts. Lifecycle is managed via PID files — `process.kill(-pid, 'SIGTERM')` to kill the process group, `process.kill(pid, 0)` to check liveness.
 
 ## MCP Callback
 
@@ -213,7 +214,7 @@ Raw terminal rendering via xterm.js. The bridge process (`proq-bridge.js`) maint
 - 50KB scrollback ring buffer
 - Reconnection with full scrollback replay
 - Resize propagation (cols/rows via JSON message → `proc.resize()`)
-- Session survives server restarts (tmux owns the process tree)
+- Session survives server restarts (detached process with PID file tracking)
 
 ## WebSocket Protocol
 
