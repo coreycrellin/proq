@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, RadioTowerIcon, Columns3Icon, SettingsIcon, GitCommitHorizontalIcon, PlusIcon, XIcon, SearchIcon } from 'lucide-react';
+import { GitBranchIcon, ChevronDownIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, Loader2Icon, HistoryIcon, DiffIcon, LayoutGridIcon, ListIcon, RadioTowerIcon, Columns3Icon, SettingsIcon, GitCommitHorizontalIcon, PlusIcon, XIcon, SearchIcon, MonitorIcon } from 'lucide-react';
 import type { Project, ProjectTab, ViewType } from '@/lib/types';
 import { useShellActions } from '@/components/ClientShell';
 import {
@@ -624,6 +624,18 @@ export function TopBar({ project, activeTab, onTabChange, currentBranch, branche
               </button>
             )}
           </>
+        )}
+        {/* Open in desktop app — only show when in browser */}
+        {!isElectron && (
+          <button
+            onClick={() => {
+              fetch('/api/open-desktop', { method: 'POST' }).catch(() => {});
+            }}
+            className="ml-1 p-1.5 rounded-md text-text-placeholder hover:text-text-secondary hover:bg-surface-hover/40 transition-colors"
+            title="Open in desktop app"
+          >
+            <MonitorIcon className="w-3.5 h-3.5" />
+          </button>
         )}
       </div>
     </header>
