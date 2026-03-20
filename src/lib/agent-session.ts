@@ -646,6 +646,9 @@ export async function continueSession(
 
   const settings = await getSettings();
   session.status = "running";
+  // Reset the partial-message dedup counter — the new CLI process starts
+  // fresh, so its first assistant event has content from index 0.
+  session.assistantBlocksProcessed = 0;
 
   const startTime = Date.now();
 
