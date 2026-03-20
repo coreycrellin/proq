@@ -43,7 +43,7 @@ interface StructuredPaneProps {
 }
 
 export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly, sendRef, attachRef, onNewText, userFontSize: userFontSizeProp, responseFontSize: responseFontSizeProp }: StructuredPaneProps) {
-  const { blocks, streamingText, connected, sessionDone, sendFollowUp, approvePlan, stop } = useAgentSession(taskId, projectId, agentBlocks);
+  const { blocks, streamingText, connected, sessionDone, sendFollowUp, approvePlan, stop, reconnect } = useAgentSession(taskId, projectId, agentBlocks);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -203,6 +203,9 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
           followUpMessage: text,
         }),
       });
+      // Reconnect WS so we can receive updates from the newly dispatched session.
+      // Small delay to give the server time to start the session.
+      setTimeout(reconnect, 1500);
     }
 
     setInputValue('');
@@ -226,11 +229,12 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'in-progress', followUpMessage: text }),
           });
+          setTimeout(reconnect, 1500);
         }
       };
     }
     return () => { if (sendRef) sendRef.current = null; };
-  }, [sendRef, taskId, projectId, taskStatus, connected, sendFollowUp]);
+  }, [sendRef, taskId, projectId, taskStatus, connected, sendFollowUp, reconnect]);
 
   // Expose imperative attach for external callers (e.g. mobile plus button)
   useEffect(() => {

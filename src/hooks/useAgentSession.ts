@@ -22,6 +22,8 @@ interface UseAgentSessionResult {
   sendFollowUp: (text: string, attachments?: TaskAttachment[]) => void;
   approvePlan: (text: string) => void;
   stop: () => void;
+  /** Force a WS reconnection (e.g. after HTTP fallback dispatches a task) */
+  reconnect: () => void;
 }
 
 export function useAgentSession(
@@ -33,6 +35,7 @@ export function useAgentSession(
   const [connected, setConnected] = useState(false);
   const [sessionDone, setSessionDone] = useState(!!staticLog);
   const wsRef = useRef<WebSocket | null>(null);
+  const connectRef = useRef<(() => void) | null>(null);
   const { streamingText, appendDelta, clearBuffer } = useStreamingBuffer();
 
   // If static log, just use it directly
@@ -199,10 +202,25 @@ export function useAgentSession(
       };
     }
 
+    // Expose connect for imperative reconnection (e.g. after HTTP fallback)
+    connectRef.current = () => {
+      if (cancelled) return;
+      // Reset retry state so the new connection gets fresh attempts
+      retryCount = 0;
+      wsFailCount = 0;
+      // Close existing WS if any (use 1000 to prevent onclose from also reconnecting)
+      if (wsRef.current) {
+        wsRef.current.close(1000);
+        wsRef.current = null;
+      }
+      connect();
+    };
+
     connect();
 
     return () => {
       cancelled = true;
+      connectRef.current = null;
       if (retryTimer) clearTimeout(retryTimer);
       if (pollTimer) clearInterval(pollTimer);
       if (wsRef.current) wsRef.current.close();
@@ -231,5 +249,9 @@ export function useAgentSession(
     }
   }, []);
 
-  return { blocks, streamingText, connected, sessionDone, sendFollowUp, approvePlan, stop };
+  const reconnect = useCallback(() => {
+    connectRef.current?.();
+  }, []);
+
+  return { blocks, streamingText, connected, sessionDone, sendFollowUp, approvePlan, stop, reconnect };
 }
