@@ -283,6 +283,22 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     }
   }, []);
 
+  // Safety net: if a drag ends anywhere (drop on another element, or drag cancelled),
+  // clear the drop overlay. Handles the case where dragging across this pane to reach
+  // another one doesn't trigger a proper dragLeave.
+  useEffect(() => {
+    const reset = () => {
+      dragCounterRef.current = 0;
+      setIsDragOver(false);
+    };
+    document.addEventListener('drop', reset);
+    document.addEventListener('dragend', reset);
+    return () => {
+      document.removeEventListener('drop', reset);
+      document.removeEventListener('dragend', reset);
+    };
+  }, []);
+
   // Notify parent of new text blocks for TTS — only after agent finishes
   // Use a ref to capture onNewText so it survives task-list reorder races
   // (on mobile, the task moves from "running" to "verify" sort order right as
