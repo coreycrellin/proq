@@ -9,9 +9,18 @@ import type { AgentWsClientMsg } from "./types";
  * is still running (e.g. after HMR lost the session reference).
  * Blocks are persisted incrementally by scheduleBlockFlush, so we can
  * pick up new ones by comparing lengths.
+ *
+ * @param initialBlockCount — number of blocks already sent to this client
+ *   via the initial replay. Prevents re-sending those blocks as individual
+ *   messages on the first poll iteration.
  */
-function startDbPolling(taskId: string, projectId: string, ws: WebSocket): () => void {
-  let lastBlockCount = 0;
+function startDbPolling(
+  taskId: string,
+  projectId: string,
+  ws: WebSocket,
+  initialBlockCount: number,
+): () => void {
+  let lastBlockCount = initialBlockCount;
   const interval = setInterval(async () => {
     // Stop polling if in-memory session reappears (e.g. after continueSession)
     const liveSession = getSession(taskId);
@@ -67,20 +76,20 @@ export async function attachAgentWsWithProject(
 
     if (blocks.length > 0) {
       ws.send(JSON.stringify({ type: "replay", blocks }));
-      // If still running, poll for incremental updates
+      // If still running, poll for incremental updates — skip blocks already in the replay
       if (isActive) {
-        stopPolling = startDbPolling(taskId, projectId, ws);
+        stopPolling = startDbPolling(taskId, projectId, ws, blocks.length);
       }
     } else if (task?.agentBlocks && task.agentBlocks.length > 0) {
       // Legacy: blocks stored inline on task object
       ws.send(JSON.stringify({ type: "replay", blocks: task.agentBlocks }));
       if (isActive) {
-        stopPolling = startDbPolling(taskId, projectId, ws);
+        stopPolling = startDbPolling(taskId, projectId, ws, task.agentBlocks.length);
       }
     } else if (isActive) {
       // Session not in memory yet but task is supposed to be running — poll for blocks
       ws.send(JSON.stringify({ type: "replay", blocks: [] }));
-      stopPolling = startDbPolling(taskId, projectId, ws);
+      stopPolling = startDbPolling(taskId, projectId, ws, 0);
     } else {
       ws.send(JSON.stringify({ type: "error", error: "No session found" }));
     }
