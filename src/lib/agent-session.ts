@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from "child_process";
 import { join } from "path";
 import { readFile } from "fs/promises";
 import type { AgentBlock, TaskAttachment, TaskMode } from "./types";
+import { claudeOneShot } from "./claude-cli";
 import { updateTask, getTask, getProject, getSettings, setTaskAgentBlocks, readAgentBlocksFile } from "./db";
 import {
   notify,
@@ -39,6 +40,18 @@ export interface AgentRuntimeSession {
    * text/thinking blocks would be appended multiple times.
    */
   assistantBlocksProcessed: number;
+  /**
+   * Maps content block index (within the current assistant message) to the
+   * index in session.blocks where that block was stored. Used to update
+   * text/thinking blocks in-place when their content grows via partial messages,
+   * ensuring replays show the final text rather than the first partial.
+   */
+  contentToBlockIdx: Map<number, number>;
+  /**
+   * Short label describing what Claude is currently working on, generated
+   * by Haiku after each turn. Displayed near the input in the chat UI.
+   */
+  contextLabel?: string;
 }
 
 // ── Singleton attached to globalThis to survive HMR ──
@@ -337,6 +350,7 @@ export async function startSession(
     clients: new Set(),
     status: "running",
     assistantBlocksProcessed: 0,
+    contentToBlockIdx: new Map(),
   };
   sessions.set(taskId, session);
 
@@ -467,11 +481,38 @@ function processStreamEvent(
       // The ?? 0 handles sessions created before this field existed (HMR).
       const startIdx = session.assistantBlocksProcessed ?? 0;
       session.assistantBlocksProcessed = content.length;
+      if (!session.contentToBlockIdx) session.contentToBlockIdx = new Map();
+
+      // Update existing text/thinking blocks if their content grew (partial messages).
+      // This ensures replays show the final text, not the first partial fragment.
+      for (let ci = 0; ci < Math.min(startIdx, content.length); ci++) {
+        const b = content[ci] as Record<string, unknown>;
+        const blockIdx = session.contentToBlockIdx.get(ci);
+        if (blockIdx === undefined) continue;
+        const stored = session.blocks[blockIdx];
+        if (!stored) continue;
+        if (b.type === "text" && stored.type === "text") {
+          const newText = b.text as string;
+          if (newText !== stored.text) {
+            stored.text = newText;
+            scheduleBlockFlush(session);
+          }
+        } else if (b.type === "thinking" && stored.type === "thinking") {
+          const newThinking = b.thinking as string;
+          if (newThinking !== stored.thinking) {
+            stored.thinking = newThinking;
+            scheduleBlockFlush(session);
+          }
+        }
+      }
+
       for (let ci = startIdx; ci < content.length; ci++) {
         const b = content[ci] as Record<string, unknown>;
         if (b.type === "text") {
+          session.contentToBlockIdx.set(ci, session.blocks.length);
           appendBlock(session, { type: "text", text: b.text as string });
         } else if (b.type === "thinking") {
+          session.contentToBlockIdx.set(ci, session.blocks.length);
           appendBlock(session, {
             type: "thinking",
             thinking: b.thinking as string,
@@ -568,6 +609,7 @@ function processStreamEvent(
     }
   } else if (type === "result") {
     session.assistantBlocksProcessed = 0;
+    if (session.contentToBlockIdx) session.contentToBlockIdx.clear();
     session.sessionId = event.session_id as string | undefined;
     const isError = event.is_error as boolean | undefined;
     const costUsd = event.total_cost_usd as number | undefined;
@@ -589,7 +631,43 @@ function processStreamEvent(
     } else {
       session.status = "done";
     }
+
+    // Generate/update context label (fire-and-forget, non-blocking)
+    generateContextLabel(session);
   }
+}
+
+/**
+ * Generate a short context label describing what Claude is working on.
+ * Uses Haiku for speed/cost. Updates on each turn so the label stays current.
+ */
+function generateContextLabel(session: AgentRuntimeSession) {
+  // Gather recent user prompts and text blocks for context
+  const parts: string[] = [];
+  for (let i = session.blocks.length - 1; i >= 0 && parts.length < 5; i--) {
+    const b = session.blocks[i];
+    if (b.type === "user") parts.unshift(`User: ${b.text.slice(0, 200)}`);
+    else if (b.type === "text") parts.unshift(`Assistant: ${b.text.slice(0, 200)}`);
+  }
+  if (parts.length === 0) return;
+
+  const prompt = [
+    "Based on this conversation, generate a very short label (2-5 words, lowercase, kebab-case) describing what is being worked on.",
+    "Examples: fix-login-css, add-dark-mode, refactor-api-routes, update-photo-gallery, debug-auth-flow",
+    "Just output the label, nothing else.",
+    "",
+    parts.join("\n"),
+  ].join("\n");
+
+  claudeOneShot(prompt).then((raw) => {
+    const label = raw.trim().split("\n")[0].toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
+    if (label) {
+      session.contextLabel = label;
+      broadcast(session, { type: "context_label", label });
+    }
+  }).catch(() => {
+    // Non-critical — don't break the session
+  });
 }
 
 export async function continueSession(
@@ -623,6 +701,7 @@ export async function continueSession(
       clients: new Set(),
       status: "done",
       assistantBlocksProcessed: 0,
+      contentToBlockIdx: new Map(),
     };
     sessions.set(taskId, session);
   } else {
@@ -664,9 +743,10 @@ export async function continueSession(
 
   const settings = await getSettings();
   session.status = "running";
-  // Reset the partial-message dedup counter — the new CLI process starts
-  // fresh, so its first assistant event has content from index 0.
+  // Reset the partial-message dedup counter and content mapping — the new
+  // CLI process starts fresh, so its first assistant event has content from index 0.
   session.assistantBlocksProcessed = 0;
+  if (session.contentToBlockIdx) session.contentToBlockIdx.clear();
 
   const startTime = Date.now();
 

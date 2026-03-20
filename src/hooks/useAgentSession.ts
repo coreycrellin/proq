@@ -19,6 +19,7 @@ interface UseAgentSessionResult {
   streamingText: string;
   connected: boolean;
   sessionDone: boolean;
+  contextLabel?: string;
   sendFollowUp: (text: string, attachments?: TaskAttachment[]) => boolean;
   approvePlan: (text: string) => void;
   stop: () => void;
@@ -34,8 +35,11 @@ export function useAgentSession(
   const [blocks, setBlocks] = useState<AgentBlock[]>(staticLog || []);
   const [connected, setConnected] = useState(false);
   const [sessionDone, setSessionDone] = useState(!!staticLog);
+  const [contextLabel, setContextLabel] = useState<string | undefined>();
   const wsRef = useRef<WebSocket | null>(null);
   const connectRef = useRef<(() => void) | null>(null);
+  // Ref for poll timer so WS handlers can stop polling to prevent duplicate blocks
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { streamingText, appendDelta, clearBuffer } = useStreamingBuffer();
 
   // If static log, just use it directly
@@ -50,15 +54,21 @@ export function useAgentSession(
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
     let wsFailCount = 0;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    function stopHttpPolling() {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    }
 
     // ── HTTP polling fallback ──
     function startHttpPolling() {
-      if (cancelled || pollTimer) return;
+      if (cancelled || pollTimerRef.current) return;
       let lastTotal = 0;
 
-      pollTimer = setInterval(async () => {
-        if (cancelled) { if (pollTimer) clearInterval(pollTimer); return; }
+      pollTimerRef.current = setInterval(async () => {
+        if (cancelled) { stopHttpPolling(); return; }
         try {
           const res = await fetch(
             `/api/projects/${projectId}/tasks/${taskId}/blocks?after=${lastTotal}`
@@ -79,7 +89,8 @@ export function useAgentSession(
 
           if (data.done) {
             setSessionDone(true);
-            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+            clearBuffer();
+            stopHttpPolling();
           }
         } catch {
           // Retry next interval
@@ -114,6 +125,8 @@ export function useAgentSession(
       ws.onopen = () => {
         setConnected(true);
         wsFailCount = 0;
+        // WS is live — stop HTTP polling to prevent duplicate blocks
+        stopHttpPolling();
       };
 
       ws.onmessage = (event) => {
@@ -123,7 +136,10 @@ export function useAgentSession(
           if (msg.type === 'replay') {
             retryCount = 0; // successful — reset retries
             clearBuffer();
+            // Stop polling — WS replay replaces all blocks, polling would re-add them
+            stopHttpPolling();
             setBlocks(msg.blocks);
+            if (msg.contextLabel) setContextLabel(msg.contextLabel);
             // Check if session is done — look at last status block and user blocks
             // A user block after the last complete/error/abort means a follow-up is pending
             const statusBlocks = msg.blocks.filter(
@@ -136,6 +152,8 @@ export function useAgentSession(
             setSessionDone(isDone);
           } else if (msg.type === 'stream_delta') {
             appendDelta(msg.text);
+          } else if (msg.type === 'context_label') {
+            setContextLabel(msg.label);
           } else if (msg.type === 'block') {
             retryCount = 0;
             if (msg.block.type === 'text' || msg.block.type === 'user') {
@@ -172,6 +190,8 @@ export function useAgentSession(
               setSessionDone(false);
             } else if (msg.block.type === 'status' && (msg.block.subtype === 'complete' || msg.block.subtype === 'error' || msg.block.subtype === 'abort')) {
               setSessionDone(true);
+              // Clear streaming buffer — session is done, no more deltas coming
+              clearBuffer();
             }
           } else if (msg.type === 'error') {
             // Session not ready yet — retry with backoff
@@ -193,10 +213,11 @@ export function useAgentSession(
       ws.onclose = (event) => {
         setConnected(false);
         wsRef.current = null;
-        // Reconnect automatically unless the effect was cleaned up or we
-        // intentionally closed (code 1000 = normal closure).
-        // This covers idle timeouts, network blips, and server restarts.
-        if (!cancelled && event.code !== 1000) {
+        // Reconnect automatically unless:
+        // - the effect was cleaned up
+        // - we intentionally closed (code 1000 = normal closure)
+        // - HTTP polling is already active (avoid running both channels)
+        if (!cancelled && event.code !== 1000 && !pollTimerRef.current) {
           retryTimer = setTimeout(connect, RETRY_DELAY_MS);
         }
       };
@@ -205,7 +226,7 @@ export function useAgentSession(
         setConnected(false);
         wsFailCount++;
         // If WS consistently fails, switch to HTTP polling
-        if (wsFailCount >= WS_FAIL_THRESHOLD && !pollTimer) {
+        if (wsFailCount >= WS_FAIL_THRESHOLD && !pollTimerRef.current) {
           console.log('[useAgentSession] WebSocket unreachable, switching to HTTP polling');
           startHttpPolling();
         }
@@ -218,6 +239,8 @@ export function useAgentSession(
       // Reset retry state so the new connection gets fresh attempts
       retryCount = 0;
       wsFailCount = 0;
+      // Stop polling — we're explicitly reconnecting WS
+      stopHttpPolling();
       // Close existing WS if any (use 1000 to prevent onclose from also reconnecting)
       if (wsRef.current) {
         wsRef.current.close(1000);
@@ -232,7 +255,7 @@ export function useAgentSession(
       cancelled = true;
       connectRef.current = null;
       if (retryTimer) clearTimeout(retryTimer);
-      if (pollTimer) clearInterval(pollTimer);
+      stopHttpPolling();
       if (wsRef.current) wsRef.current.close();
       wsRef.current = null;
     };
@@ -258,12 +281,15 @@ export function useAgentSession(
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'stop' }));
+    } else {
+      // HTTP fallback — stop the session even when WS is down
+      fetch(`/api/projects/${projectId}/tasks/${taskId}/stop`, { method: 'POST' }).catch(() => {});
     }
-  }, []);
+  }, [projectId, taskId]);
 
   const reconnect = useCallback(() => {
     connectRef.current?.();
   }, []);
 
-  return { blocks, streamingText, connected, sessionDone, sendFollowUp, approvePlan, stop, reconnect };
+  return { blocks, streamingText, connected, sessionDone, contextLabel, sendFollowUp, approvePlan, stop, reconnect };
 }

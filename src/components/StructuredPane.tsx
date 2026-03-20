@@ -43,7 +43,7 @@ interface StructuredPaneProps {
 }
 
 export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBlocks, followUpDraft, onFollowUpDraftChange, onTaskStatusChange, compact, readOnly, sendRef, attachRef, onNewText, userFontSize: userFontSizeProp, responseFontSize: responseFontSizeProp }: StructuredPaneProps) {
-  const { blocks, streamingText, connected, sessionDone, sendFollowUp, approvePlan, stop, reconnect } = useAgentSession(taskId, projectId, agentBlocks);
+  const { blocks, streamingText, connected, sessionDone, contextLabel, sendFollowUp, approvePlan, stop, reconnect } = useAgentSession(taskId, projectId, agentBlocks);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -190,20 +190,19 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     const text = inputValue.trim();
     if (!text && attachments.length === 0) return;
 
-    // Try WS first; if the socket isn't actually open, fall back to re-dispatch
+    // Try WS first; if the socket isn't actually open, fall back to HTTP endpoint
     const sent = connected && sendFollowUp(text, attachments.length > 0 ? attachments : undefined);
     if (!sent) {
-      // No WS connection or send failed — fall back to re-dispatch via PATCH
-      fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
-        method: 'PATCH',
+      // No WS — use dedicated follow-up endpoint that calls continueSession directly
+      fetch(`/api/projects/${projectId}/tasks/${taskId}/followup`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: 'in-progress',
-          followUpMessage: text,
+          text,
+          attachments: attachments.length > 0 ? attachments : undefined,
         }),
       });
-      // Reconnect WS so we can receive updates from the newly dispatched session.
-      // Small delay to give the server time to start the session.
+      // Reconnect WS so we can receive updates from the newly started session.
       setTimeout(reconnect, 1500);
     }
 
@@ -222,10 +221,10 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
         if (!text.trim()) return;
         const sent = connected && sendFollowUp(text);
         if (!sent) {
-          fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
-            method: 'PATCH',
+          fetch(`/api/projects/${projectId}/tasks/${taskId}/followup`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'in-progress', followUpMessage: text }),
+            body: JSON.stringify({ text }),
           });
           setTimeout(reconnect, 1500);
         }
@@ -654,6 +653,12 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
 
       {/* Input area */}
       {!readOnly && <div className={`shrink-0 ${compact ? 'px-1.5 py-1' : 'px-3 py-2.5'}`}>
+        {/* Context label — shows what Claude is working on */}
+        {contextLabel && (
+          <div className="flex items-center justify-end mb-1 px-1">
+            <span className="text-[10px] font-mono text-text-placeholder tracking-wide">{contextLabel}</span>
+          </div>
+        )}
         <div className={`${compact ? 'rounded-lg' : 'rounded-xl'} border border-border-strong/40 focus-within:border-border-strong bg-surface-topbar overflow-hidden transition-colors`}>
           {/* Attachment previews inside container */}
           {attachments.length > 0 && (

@@ -56,7 +56,7 @@ export async function attachAgentWsWithProject(
   let stopPolling: (() => void) | null = null;
 
   if (session) {
-    const replay = JSON.stringify({ type: "replay", blocks: session.blocks });
+    const replay = JSON.stringify({ type: "replay", blocks: session.blocks, contextLabel: session.contextLabel });
     ws.send(replay);
     attachClient(taskId, ws);
   } else {
