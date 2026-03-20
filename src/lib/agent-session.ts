@@ -87,13 +87,19 @@ function scheduleBlockFlush(session: AgentRuntimeSession) {
 }
 
 function appendBlock(session: AgentRuntimeSession, block: AgentBlock) {
-  // Dedup guard: if the last block is an identical text or thinking block,
-  // skip it. This catches doubles from old processStreamEvent closures that
-  // survived HMR and don't have the assistantBlocksProcessed counter.
-  const last = session.blocks[session.blocks.length - 1];
-  if (last) {
-    if (block.type === "text" && last.type === "text" && block.text === last.text) return;
-    if (block.type === "thinking" && last.type === "thinking" && block.thinking === last.thinking) return;
+  // Dedup guard: check recent blocks (not just the last one) for identical
+  // text/thinking content.  Tool results can sit between the original and a
+  // duplicate, so scanning only the last block is insufficient.
+  if (block.type === "text" || block.type === "thinking") {
+    const searchKey = block.type === "text" ? "text" : "thinking";
+    const blockContent = block.type === "text" ? block.text : block.thinking;
+    // Scan backwards through recent blocks (up to 30) looking for a match
+    for (let i = session.blocks.length - 1; i >= 0 && i >= session.blocks.length - 30; i--) {
+      const prev = session.blocks[i];
+      if (prev.type === block.type && (prev as Record<string, unknown>)[searchKey] === blockContent) return;
+      // Stop scanning past status/user blocks — those mark turn boundaries
+      if (prev.type === "status" || prev.type === "user") break;
+    }
   }
   session.blocks.push(block);
   broadcast(session, { type: "block", block });
@@ -521,9 +527,12 @@ function processStreamEvent(
       }
     }
   } else if (type === "user") {
-    // New turn — reset the assistant block counter so the next assistant
-    // message processes all its content blocks from the start.
-    session.assistantBlocksProcessed = 0;
+    // Do NOT reset assistantBlocksProcessed here — tool_result events come
+    // as "user" events mid-turn, but with --include-partial-messages the next
+    // "assistant" event still includes ALL content blocks from the entire
+    // message. Resetting the counter causes every pre-tool-use block to be
+    // re-appended as a duplicate.  The counter is already reset when a new
+    // CLI process starts (in continueSession / startSession).
     session.sessionId = event.session_id as string | undefined;
     const message = event.message as { content?: unknown[] } | undefined;
     const userContent = message?.content;

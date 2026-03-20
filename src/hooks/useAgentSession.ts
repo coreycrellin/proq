@@ -155,6 +155,16 @@ export function useAgentSession(
                   return updated;
                 }
               }
+              // Dedup text/thinking: scan recent blocks for identical content
+              if (msg.block.type === 'text' || msg.block.type === 'thinking') {
+                const key = msg.block.type === 'text' ? 'text' : 'thinking';
+                const val = (msg.block as Record<string, unknown>)[key];
+                for (let i = prev.length - 1; i >= 0 && i >= prev.length - 30; i--) {
+                  const p = prev[i];
+                  if (p.type === msg.block.type && (p as Record<string, unknown>)[key] === val) return prev;
+                  if (p.type === 'status' || p.type === 'user') break;
+                }
+              }
               return [...prev, msg.block];
             });
             if (msg.block.type === 'status' && msg.block.subtype === 'init' || msg.block.type === 'user') {
