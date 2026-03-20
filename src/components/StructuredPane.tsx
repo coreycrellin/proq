@@ -375,6 +375,23 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
               }
             }
           }
+          // Last resort: if the plan was output as text blocks (not written to a file),
+          // gather the most recent text blocks before ExitPlanMode as the plan content.
+          if (!planContent) {
+            const textParts: string[] = [];
+            for (let j = i - 1; j >= 0; j--) {
+              if (i - j > 50) break;
+              const prev = blocks[j];
+              if (prev.type === 'text' && prev.text) {
+                textParts.unshift(prev.text);
+              } else if (prev.type === 'user' || (prev.type === 'status' && prev.subtype === 'init')) {
+                break; // stop at user message or turn boundary
+              }
+            }
+            if (textParts.length > 0) {
+              planContent = textParts.join('\n\n');
+            }
+          }
         }
         // Check if the user already responded (a user block exists after this one)
         let alreadyResponded = false;

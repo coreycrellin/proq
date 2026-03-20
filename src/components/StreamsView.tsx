@@ -273,18 +273,22 @@ export function StreamsView({
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   // Persistent ordering: preserves task positions across status changes AND remounts.
   // Stored in localStorage per project so positions survive page reloads.
+  // Uses a ref (not state) to avoid re-render loops — the memo reads it without depending on it.
   const orderStorageKey = `proq-stream-order-${projectId}`;
-  const [manualOrder, setManualOrder] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const stored = localStorage.getItem(orderStorageKey);
-      return stored ? JSON.parse(stored) : [];
-    } catch { return []; }
-  });
-  // Keep localStorage in sync
-  useEffect(() => {
-    localStorage.setItem(orderStorageKey, JSON.stringify(manualOrder));
-  }, [orderStorageKey, manualOrder]);
+  const manualOrderRef = useRef<string[]>(
+    typeof window === 'undefined' ? [] : (() => {
+      try {
+        const stored = localStorage.getItem(orderStorageKey);
+        return stored ? JSON.parse(stored) : [];
+      } catch { return []; }
+    })()
+  );
+  // Trigger re-render when order changes via drag reorder
+  const [orderVersion, setOrderVersion] = useState(0);
+  const setManualOrder = useCallback((order: string[]) => {
+    manualOrderRef.current = order;
+    localStorage.setItem(orderStorageKey, JSON.stringify(order));
+  }, [orderStorageKey]);
   // Drag state for reordering
   const [dragSourceId, setDragSourceId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -386,7 +390,9 @@ export function StreamsView({
     return valid;
   }, [tasks, hiddenIds]);
 
-  const streamTasks = useMemo(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- orderVersion triggers re-eval when drag reorder changes the ref
+  const resolvedStreamTasks = useMemo(() => {
+    const manualOrder = manualOrderRef.current;
     const sorted = getStreamTasks(tasks, validPinnedIds, validHiddenIds);
     const newIds = new Set(sorted.map((t) => t.id));
     const prevIds = new Set(manualOrder);
@@ -405,10 +411,9 @@ export function StreamsView({
     const addedIds = [...newIds].filter((id) => !prevIds.has(id));
     const keptIds = manualOrder.filter((id) => newIds.has(id));
     const mergedOrder = [...addedIds, ...keptIds];
-    // Persist the new order
     setManualOrder(mergedOrder);
     return mergedOrder.map((id) => taskMap.get(id)!).filter(Boolean);
-  }, [tasks, validPinnedIds, validHiddenIds, manualOrder]);
+  }, [tasks, validPinnedIds, validHiddenIds, setManualOrder, orderVersion]);
 
   // Done tasks available to add (not already pinned)
   const addableDoneTasks = useMemo(
@@ -444,17 +449,15 @@ export function StreamsView({
 
   const handleReorder = useCallback((fromId: string, toId: string) => {
     if (fromId === toId) return;
-    setManualOrder((prev) => {
-      const order = [...prev];
-      const fromIdx = order.indexOf(fromId);
-      const toIdx = order.indexOf(toId);
-      if (fromIdx === -1 || toIdx === -1) return prev;
-      // Remove from old position, insert at new position
-      order.splice(fromIdx, 1);
-      order.splice(toIdx, 0, fromId);
-      return order;
-    });
-  }, []);
+    const order = [...manualOrderRef.current];
+    const fromIdx = order.indexOf(fromId);
+    const toIdx = order.indexOf(toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    order.splice(fromIdx, 1);
+    order.splice(toIdx, 0, fromId);
+    setManualOrder(order);
+    setOrderVersion((v) => v + 1);
+  }, [setManualOrder]);
 
   const handleRestoreHidden = (taskId: string) => {
     setHiddenIds((prev) => {
@@ -699,12 +702,12 @@ export function StreamsView({
   );
 
   // Clear expanded task if it's no longer in the stream
-  const expandedTask = expandedTaskId ? streamTasks.find((t) => t.id === expandedTaskId) : null;
+  const expandedTask = expandedTaskId ? resolvedStreamTasks.find((t) => t.id === expandedTaskId) : null;
   useEffect(() => {
     if (expandedTaskId && !expandedTask) setExpandedTaskId(null);
   }, [expandedTaskId, expandedTask]);
 
-  if (streamTasks.length === 0) {
+  if (resolvedStreamTasks.length === 0) {
     return (
       <div className="h-full flex flex-col text-text-tertiary relative">
         {toolbar()}
@@ -753,14 +756,14 @@ export function StreamsView({
     isDragOver: dragOverId === task.id,
   });
 
-  const useScrollLayout = streamTasks.length > 6;
+  const useScrollLayout = resolvedStreamTasks.length > 6;
 
   // For >6 tasks: horizontal scrollable 2-row layout
   if (useScrollLayout) {
     // Split into 2 rows: top row gets ceil(n/2), bottom gets the rest
-    const half = Math.ceil(streamTasks.length / 2);
-    const topRow = streamTasks.slice(0, half);
-    const bottomRow = streamTasks.slice(half);
+    const half = Math.ceil(resolvedStreamTasks.length / 2);
+    const topRow = resolvedStreamTasks.slice(0, half);
+    const bottomRow = resolvedStreamTasks.slice(half);
     // Each column is 33.333% of container width (3 visible columns × 2 rows = 6 visible)
     const colCount = Math.max(topRow.length, bottomRow.length);
 
@@ -768,7 +771,7 @@ export function StreamsView({
       <div className="h-full flex flex-col min-h-0 overflow-hidden">
         {toolbar(
           <span className="text-[10px] text-text-placeholder">
-            {streamTasks.length} streams
+            {resolvedStreamTasks.length} streams
           </span>
         )}
         {/* Scrollable area with navigation arrows */}
@@ -875,14 +878,14 @@ export function StreamsView({
   }
 
   // <=6 tasks: resizable grid
-  const { rows: gridRows, cols: gridCols } = getGridDimensions(streamTasks.length);
+  const { rows: gridRows, cols: gridCols } = getGridDimensions(resolvedStreamTasks.length);
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {toolbar()}
       <div className="flex-1 overflow-hidden min-h-0">
         <ResizableGrid rows={gridRows} cols={gridCols}>
-          {streamTasks.map((task, i) => (
+          {resolvedStreamTasks.map((task, i) => (
             <StreamCellFull
               key={task.id}
               task={task}

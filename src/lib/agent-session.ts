@@ -28,8 +28,10 @@ export interface AgentRuntimeSession {
   queryHandle: ChildProcess | null;
   blocks: AgentBlock[];
   clients: Set<WebSocket>;
-  status: "running" | "done" | "error" | "aborted";
+  status: "running" | "done" | "error" | "aborted" | "killing";
   pendingFollowUp?: PendingFollowUp;
+  /** Promise that resolves when an async ExitPlanMode block read completes */
+  pendingPlanRead?: Promise<void>;
 }
 
 // ── Singleton attached to globalThis to survive HMR ──
@@ -178,7 +180,7 @@ function wireProcess(
         error: errorMsg,
         durationMs: Date.now() - startTime,
       });
-    } else if (session.status === "running") {
+    } else if (session.status === "running" || session.status === "killing") {
       session.status = "done";
       appendBlock(session, {
         type: "status",
@@ -230,6 +232,13 @@ function wireProcess(
       if (effectivePath) {
         autoCommitIfDirty(effectivePath, task.title);
       }
+    }
+
+    // Wait for any pending async plan file read before persisting blocks,
+    // otherwise the ExitPlanMode block (with plan content) can be lost.
+    if (session.pendingPlanRead) {
+      await session.pendingPlanRead;
+      session.pendingPlanRead = undefined;
     }
 
     // Persist agent blocks to separate file
@@ -394,6 +403,9 @@ function processStreamEvent(
   session: AgentRuntimeSession,
   event: Record<string, unknown>,
 ) {
+  // After ExitPlanMode or AskUserQuestion kills the process, ignore further events
+  if (session.status === "killing") return;
+
   const type = event.type as string;
 
   if (type === "stream_event") {
@@ -450,6 +462,12 @@ function processStreamEvent(
           // The close handler will detect endedOnPlanExit and move to verify
           // for human approval. The human can then continue with full permissions.
           if (b.name === "ExitPlanMode") {
+            // Mark session so no further stream events are processed
+            session.status = "killing";
+            // Kill immediately to prevent the agent from continuing past the plan
+            if (session.queryHandle) {
+              session.queryHandle.kill("SIGTERM");
+            }
             // Find the plan file path by scanning backwards through blocks
             let planPath: string | undefined;
             for (let j = session.blocks.length - 1; j >= 0; j--) {
@@ -462,20 +480,19 @@ function processStreamEvent(
                 }
               }
             }
-            // Read the plan file, enrich the block, then append+broadcast once and kill
-            const enrichAndKill = planPath
-              ? readFile(planPath, "utf-8").then((content) => {
-                  toolBlock.input._planContent = content;
-                  toolBlock.input._planFilePath = planPath;
-                }).catch(() => { /* plan file may not exist */ })
-              : Promise.resolve();
-            enrichAndKill.then(() => {
+            // Read the plan file and enrich the block.
+            // Store the promise so the close handler can await it before persisting.
+            if (planPath) {
+              session.pendingPlanRead = readFile(planPath, "utf-8").then((content) => {
+                toolBlock.input._planContent = content;
+                toolBlock.input._planFilePath = planPath;
+                appendBlock(session, toolBlock);
+              }).catch(() => {
+                appendBlock(session, toolBlock);
+              });
+            } else {
               appendBlock(session, toolBlock);
-            }).finally(() => {
-              if (session.queryHandle) {
-                session.queryHandle.kill("SIGTERM");
-              }
-            });
+            }
           } else {
             appendBlock(session, toolBlock);
           }

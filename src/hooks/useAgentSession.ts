@@ -177,8 +177,15 @@ export function useAgentSession(
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         setConnected(false);
+        wsRef.current = null;
+        // Reconnect automatically unless the effect was cleaned up or we
+        // intentionally closed (code 1000 = normal closure).
+        // This covers idle timeouts, network blips, and server restarts.
+        if (!cancelled && event.code !== 1000) {
+          retryTimer = setTimeout(connect, RETRY_DELAY_MS);
+        }
       };
 
       ws.onerror = () => {
