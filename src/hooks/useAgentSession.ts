@@ -19,7 +19,7 @@ interface UseAgentSessionResult {
   streamingText: string;
   connected: boolean;
   sessionDone: boolean;
-  sendFollowUp: (text: string, attachments?: TaskAttachment[]) => void;
+  sendFollowUp: (text: string, attachments?: TaskAttachment[]) => boolean;
   approvePlan: (text: string) => void;
   stop: () => void;
   /** Force a WS reconnection (e.g. after HTTP fallback dispatches a task) */
@@ -238,11 +238,13 @@ export function useAgentSession(
     };
   }, [taskId, projectId, staticLog]);
 
-  const sendFollowUp = useCallback((text: string, attachments?: TaskAttachment[]) => {
+  const sendFollowUp = useCallback((text: string, attachments?: TaskAttachment[]): boolean => {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'followup', text, attachments }));
+      return true;
     }
+    return false;
   }, []);
 
   const approvePlan = useCallback((text: string) => {
