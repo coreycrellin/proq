@@ -17,6 +17,8 @@ export interface SupervisorSession {
   clients: Set<WebSocket>;
   status: "running" | "done" | "error" | "aborted";
   pendingFollowUp?: SupervisorPendingFollowUp;
+  /** Tracks content blocks already processed from the current assistant message. */
+  assistantBlocksProcessed: number;
 }
 
 // ── Singleton on globalThis to survive HMR ──
@@ -48,6 +50,16 @@ function broadcast(session: SupervisorSession, msg: object) {
 }
 
 function appendBlock(session: SupervisorSession, block: AgentBlock) {
+  // Dedup guard: scan recent blocks for identical text/thinking content.
+  if (block.type === "text" || block.type === "thinking") {
+    const searchKey = block.type === "text" ? "text" : "thinking";
+    const blockContent = block.type === "text" ? block.text : block.thinking;
+    for (let i = session.blocks.length - 1; i >= 0 && i >= session.blocks.length - 30; i--) {
+      const prev = session.blocks[i];
+      if (prev.type === block.type && (prev as Record<string, unknown>)[searchKey] === blockContent) return;
+      if (prev.type === "status" || prev.type === "user") break;
+    }
+  }
   session.blocks.push(block);
   broadcast(session, { type: "block", block });
 }
@@ -143,8 +155,10 @@ function processStreamEvent(session: SupervisorSession, event: Record<string, un
     const message = event.message as { content?: unknown[] } | undefined;
     const content = message?.content;
     if (Array.isArray(content)) {
-      for (const block of content) {
-        const b = block as Record<string, unknown>;
+      const startIdx = session.assistantBlocksProcessed ?? 0;
+      session.assistantBlocksProcessed = content.length;
+      for (let ci = startIdx; ci < content.length; ci++) {
+        const b = content[ci] as Record<string, unknown>;
         if (b.type === "text") {
           appendBlock(session, { type: "text", text: b.text as string });
         } else if (b.type === "thinking") {
@@ -160,6 +174,9 @@ function processStreamEvent(session: SupervisorSession, event: Record<string, un
       }
     }
   } else if (type === "user") {
+    // Do NOT reset assistantBlocksProcessed here — tool_result events come
+    // as "user" events mid-turn, but the next "assistant" event still includes
+    // ALL content blocks from the entire message.
     session.sessionId = event.session_id as string | undefined;
     const message = event.message as { content?: unknown[] } | undefined;
     const userContent = message?.content;
@@ -189,6 +206,7 @@ function processStreamEvent(session: SupervisorSession, event: Record<string, un
       }
     }
   } else if (type === "result") {
+    session.assistantBlocksProcessed = 0;
     session.sessionId = event.session_id as string | undefined;
     const isError = event.is_error as boolean | undefined;
     const costUsd = event.total_cost_usd as number | undefined;
@@ -322,6 +340,7 @@ export async function startSupervisorSession(text: string): Promise<void> {
     blocks: [],
     clients: new Set(),
     status: "running",
+    assistantBlocksProcessed: 0,
   };
   setSessionRef(session);
 
@@ -381,6 +400,7 @@ export async function continueSupervisorSession(
       blocks: stored.agentBlocks || [],
       clients: new Set(),
       status: "done",
+      assistantBlocksProcessed: 0,
     };
     setSessionRef(session);
   }
