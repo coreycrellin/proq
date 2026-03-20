@@ -5,6 +5,7 @@ import { attachWs, writeToPty, resizePty } from "./pty-server";
 import { attachAgentWsWithProject } from "./agent-session-server";
 import { attachSupervisorWs } from "./supervisor-server";
 import { attachAgentTabWs } from "./agent-tab-server";
+import { cleanupStaleAgentTasks } from "./db";
 
 const PORT = parseInt(process.env.PROQ_WS_PORT || process.env.NEXT_PUBLIC_WS_PORT || "42069", 10);
 
@@ -102,5 +103,8 @@ export function startWsServer() {
 
   server.listen(PORT, () => {
     console.log(`> WS server on ws://localhost:${PORT}`);
+    // On startup, clear stale agentStatus=running from tasks whose processes died
+    // (e.g. after server restart). Without this, tasks show "Thinking..." forever.
+    cleanupStaleAgentTasks();
   });
 }

@@ -65,7 +65,8 @@ export async function attachAgentWsWithProject(
   let stopPolling: (() => void) | null = null;
 
   if (session) {
-    const replay = JSON.stringify({ type: "replay", blocks: session.blocks, contextLabel: session.contextLabel });
+    const done = session.status === "done" || session.status === "error" || session.status === "aborted";
+    const replay = JSON.stringify({ type: "replay", blocks: session.blocks, contextLabel: session.contextLabel, done });
     ws.send(replay);
     attachClient(taskId, ws);
   } else {
@@ -75,20 +76,20 @@ export async function attachAgentWsWithProject(
     const isActive = task?.agentStatus === "running" || task?.agentStatus === "starting";
 
     if (blocks.length > 0) {
-      ws.send(JSON.stringify({ type: "replay", blocks }));
+      ws.send(JSON.stringify({ type: "replay", blocks, done: !isActive }));
       // If still running, poll for incremental updates — skip blocks already in the replay
       if (isActive) {
         stopPolling = startDbPolling(taskId, projectId, ws, blocks.length);
       }
     } else if (task?.agentBlocks && task.agentBlocks.length > 0) {
       // Legacy: blocks stored inline on task object
-      ws.send(JSON.stringify({ type: "replay", blocks: task.agentBlocks }));
+      ws.send(JSON.stringify({ type: "replay", blocks: task.agentBlocks, done: !isActive }));
       if (isActive) {
         stopPolling = startDbPolling(taskId, projectId, ws, task.agentBlocks.length);
       }
     } else if (isActive) {
       // Session not in memory yet but task is supposed to be running — poll for blocks
-      ws.send(JSON.stringify({ type: "replay", blocks: [] }));
+      ws.send(JSON.stringify({ type: "replay", blocks: [], done: false }));
       stopPolling = startDbPolling(taskId, projectId, ws, 0);
     } else {
       ws.send(JSON.stringify({ type: "error", error: "No session found" }));

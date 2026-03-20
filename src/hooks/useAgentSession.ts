@@ -140,16 +140,20 @@ export function useAgentSession(
             stopHttpPolling();
             setBlocks(msg.blocks);
             if (msg.contextLabel) setContextLabel(msg.contextLabel);
-            // Check if session is done — look at last status block and user blocks
-            // A user block after the last complete/error/abort means a follow-up is pending
-            const statusBlocks = msg.blocks.filter(
-              (b) => b.type === 'status' && ['complete', 'error', 'abort', 'init'].includes(b.subtype)
-            );
-            const lastStatus = statusBlocks[statusBlocks.length - 1];
-            const lastStatusIdx = lastStatus ? msg.blocks.lastIndexOf(lastStatus) : -1;
-            const hasUserAfter = msg.blocks.slice(lastStatusIdx + 1).some((b) => b.type === 'user');
-            const isDone = lastStatus?.type === 'status' && lastStatus.subtype !== 'init' && !hasUserAfter;
-            setSessionDone(isDone);
+            // Use server-provided done flag if available (authoritative — knows session state).
+            // Fall back to block analysis for backward compat.
+            if (msg.done !== undefined) {
+              setSessionDone(msg.done);
+            } else {
+              const statusBlocks = msg.blocks.filter(
+                (b) => b.type === 'status' && ['complete', 'error', 'abort', 'init'].includes(b.subtype)
+              );
+              const lastStatus = statusBlocks[statusBlocks.length - 1];
+              const lastStatusIdx = lastStatus ? msg.blocks.lastIndexOf(lastStatus) : -1;
+              const hasUserAfter = msg.blocks.slice(lastStatusIdx + 1).some((b) => b.type === 'user');
+              const isDone = lastStatus?.type === 'status' && lastStatus.subtype !== 'init' && !hasUserAfter;
+              setSessionDone(isDone);
+            }
           } else if (msg.type === 'stream_delta') {
             appendDelta(msg.text);
           } else if (msg.type === 'context_label') {

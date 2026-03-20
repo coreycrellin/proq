@@ -646,3 +646,39 @@ export async function updateSettings(data: Partial<ProqSettings>): Promise<ProqS
     return current;
   });
 }
+
+/**
+ * On server startup, clear stale agentStatus=running/starting from tasks
+ * whose agent processes died (e.g. server restart). Without this, tasks
+ * show "Thinking..." forever on fresh load.
+ */
+export function cleanupStaleAgentTasks(): void {
+  try {
+    const ws = getWorkspaceData();
+    let cleaned = 0;
+    for (const project of ws.projects) {
+      const data = getProjectData(project.id);
+      let projectDirty = false;
+      for (const status of Object.keys(data.tasks) as (keyof TaskColumns)[]) {
+        const tasks = data.tasks[status];
+        if (!tasks) continue;
+        for (const task of tasks) {
+          if (task.agentStatus === "running" || task.agentStatus === "starting") {
+            task.agentStatus = null as unknown as Task["agentStatus"];
+            cleaned++;
+            projectDirty = true;
+          }
+        }
+      }
+      if (projectDirty) {
+        const filePath = path.join(DATA_DIR, "projects", `${project.id}.json`);
+        writeJSON(filePath, data);
+      }
+    }
+    if (cleaned > 0) {
+      console.log(`[startup] Cleaned ${cleaned} stale agent task(s)`);
+    }
+  } catch (err) {
+    console.error("[startup] Failed to cleanup stale tasks:", err);
+  }
+}
