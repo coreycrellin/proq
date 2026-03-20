@@ -87,6 +87,14 @@ function scheduleBlockFlush(session: AgentRuntimeSession) {
 }
 
 function appendBlock(session: AgentRuntimeSession, block: AgentBlock) {
+  // Dedup guard: if the last block is an identical text or thinking block,
+  // skip it. This catches doubles from old processStreamEvent closures that
+  // survived HMR and don't have the assistantBlocksProcessed counter.
+  const last = session.blocks[session.blocks.length - 1];
+  if (last) {
+    if (block.type === "text" && last.type === "text" && block.text === last.text) return;
+    if (block.type === "thinking" && last.type === "thinking" && block.thinking === last.thinking) return;
+  }
   session.blocks.push(block);
   broadcast(session, { type: "block", block });
   scheduleBlockFlush(session);
@@ -450,7 +458,8 @@ function processStreamEvent(
     if (Array.isArray(content)) {
       // With --include-partial-messages, each assistant event includes ALL
       // content blocks seen so far. Only process blocks we haven't seen yet.
-      const startIdx = session.assistantBlocksProcessed;
+      // The ?? 0 handles sessions created before this field existed (HMR).
+      const startIdx = session.assistantBlocksProcessed ?? 0;
       session.assistantBlocksProcessed = content.length;
       for (let ci = startIdx; ci < content.length; ci++) {
         const b = content[ci] as Record<string, unknown>;
