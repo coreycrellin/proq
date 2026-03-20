@@ -8,14 +8,13 @@ For a high-level overview, see the [README](../README.md). For internals, see [A
 
 - **Node.js 18+**
 - **[Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)** on your PATH
-- **tmux** (installed automatically by `npm run setup` if missing)
 
 ## Install & Run
 
 ```bash
 git clone https://github.com/0xc00010ff/proq.git
 cd proq
-npm run setup   # installs deps + system prereqs (tmux, build tools)
+npm run setup   # installs deps + checks prereqs
 npm run dev     # starts dev server on localhost:1337
 ```
 
@@ -80,7 +79,7 @@ This is the recommended mode — it's easier to follow what the agent is doing.
 
 ### CLI Mode
 
-Raw terminal output via xterm.js. This is the classic "streaming terminal" view. The agent runs inside a tmux session with a PTY bridge, so you see exactly what you'd see if you `tmux attach`'d.
+Raw terminal output via xterm.js. The agent runs in a PTY bridge process, streaming output directly to the browser via a unix socket.
 
 You can toggle between modes in Settings under Agent > Render Mode.
 

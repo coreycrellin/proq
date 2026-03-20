@@ -6,6 +6,7 @@ import { TopBar, type TabOption, type GitStatus } from '@/components/TopBar';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { ListView } from '@/components/ListView';
 import { StreamsView } from '@/components/StreamsView';
+import { GridView } from '@/components/GridView';
 import WorkbenchPanel from '@/components/WorkbenchPanel';
 import { LiveTab } from '@/components/LiveTab';
 import { CodeTab } from '@/components/CodeTab';
@@ -13,7 +14,7 @@ import { DocsTab } from '@/components/DocsTab';
 import { TaskDraft } from '@/components/TaskDraft';
 import { TaskAgentModal } from '@/components/TaskAgentModal';
 import { UndoModal } from '@/components/UndoModal';
-import { ParallelModeModal } from '@/components/ParallelModeModal';
+import { ExecutionModeInfoModal } from '@/components/ExecutionModeInfoModal';
 import { AlertModal } from '@/components/Modal';
 import { ProjectSettingsModal } from '@/components/ProjectSettingsModal';
 import { CommitModal } from '@/components/CommitModal';
@@ -41,7 +42,7 @@ export default function ProjectPage() {
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('sequential');
   const [cleanupTimes, setCleanupTimes] = useState<Record<string, number>>({});
   const [undoEntry, setUndoEntry] = useState<{ task: Task; column: TaskStatus } | null>(null);
-  const [showParallelModal, setShowParallelModal] = useState(false);
+  const [pendingModeSwitch, setPendingModeSwitch] = useState<'parallel' | 'worktrees' | null>(null);
   const [showModeBlockedModal, setShowModeBlockedModal] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [showCommitModal, setShowCommitModal] = useState(false);
@@ -50,6 +51,7 @@ export default function ProjectPage() {
   const [workbenchHidden, setWorkbenchHidden] = useState(false);
   const [currentBranch, setCurrentBranch] = useState<string>('main');
   const [branches, setBranches] = useState<string[]>([]);
+  const [defaultBranch, setDefaultBranch] = useState<string | undefined>(undefined);
   const [gitStatus, setGitStatus] = useState<GitStatus>({ hasGit: true, hasRemote: false, ahead: 0, behind: 0, dirty: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const followUpDraftsRef = useRef<Map<string, FollowUpDraft>>(new Map());
@@ -106,9 +108,11 @@ export default function ProjectPage() {
           ahead: data.ahead || 0,
           behind: data.behind || 0,
           dirty: data.dirty || 0,
+          aheadOfMain: data.aheadOfMain,
         };
         setCurrentBranch(prev => prev === newBranch ? prev : newBranch);
         setBranches(prev => JSON.stringify(prev) === JSON.stringify(newBranches) ? prev : newBranches);
+        setDefaultBranch(prev => data.defaultBranch === prev ? prev : data.defaultBranch);
         setGitStatus(prev => JSON.stringify(prev) === JSON.stringify(newStatus) ? prev : newStatus);
       }
     } catch {
@@ -574,9 +578,9 @@ export default function ProjectPage() {
       setShowModeBlockedModal(true);
       return;
     }
-    // Show confirmation modal when switching to parallel
-    if (mode === 'parallel' && executionMode !== 'parallel') {
-      setShowParallelModal(true);
+    // Show info modal when switching to parallel or worktrees
+    if ((mode === 'parallel' || mode === 'worktrees') && executionMode !== mode) {
+      setPendingModeSwitch(mode);
       return;
     }
     setExecutionMode(mode);
@@ -588,13 +592,15 @@ export default function ProjectPage() {
     refresh();
   };
 
-  const applyParallelMode = async () => {
-    setShowParallelModal(false);
-    setExecutionMode('parallel');
+  const applyPendingMode = async () => {
+    if (!pendingModeSwitch) return;
+    const mode = pendingModeSwitch;
+    setPendingModeSwitch(null);
+    setExecutionMode(mode);
     await fetch(`/api/projects/${projectId}/execution-mode`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'parallel' }),
+      body: JSON.stringify({ mode }),
     });
     refresh();
   };
@@ -678,6 +684,32 @@ export default function ProjectPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ activeTab: tab }),
     }).catch(() => {});
+  }, [projectId, setProjects]);
+
+  // Cmd+Option+Left/Right to switch Project/Live/Code tabs (like Chrome)
+  useEffect(() => {
+    const tabOrder: TabOption[] = ['project', 'live', 'code'];
+    const handler = (e: KeyboardEvent) => {
+      if (e.metaKey && e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        setActiveTab(prev => {
+          const idx = tabOrder.indexOf(prev);
+          const next = e.key === 'ArrowLeft'
+            ? tabOrder[(idx - 1 + tabOrder.length) % tabOrder.length]
+            : tabOrder[(idx + 1) % tabOrder.length];
+          // Persist the tab change
+          setProjects(p => p.map(pr => pr.id === projectId ? { ...pr, activeTab: next } : pr));
+          fetch(`/api/projects/${projectId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activeTab: next }),
+          }).catch(() => {});
+          return next;
+        });
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, [projectId, setProjects]);
 
   const handleViewTypeChange = useCallback((vt: ViewType) => {
@@ -836,6 +868,7 @@ export default function ProjectPage() {
         onTabChange={handleTabChange}
         currentBranch={currentBranch}
         branches={branches}
+        defaultBranch={defaultBranch}
         taskBranchMap={taskBranchMap}
         onSwitchBranch={handleSwitchBranch}
         gitStatus={gitStatus}
@@ -871,7 +904,29 @@ export default function ProjectPage() {
                   </div>
                 </div>
               )}
-              {(project.viewType || 'kanban') === 'kanban' ? (
+              {(project.viewType || 'kanban') === 'grid' ? (
+                <GridView
+                  tasks={columns}
+                  projectId={projectId}
+                  executionMode={executionMode}
+                  onExecutionModeChange={handleExecutionModeChange}
+                  onAddTask={handleAddTask}
+                  onClickTask={(task) => {
+                    if (task.needsAttention) dismissAttention(task.id);
+                    viewingTaskIdRef.current = task.id;
+                    setAgentModalTask(task);
+                  }}
+                  followUpDraftsRef={followUpDraftsRef}
+                  onFollowUpDraftChange={(taskId, draft) => {
+                    if (draft) followUpDraftsRef.current.set(taskId, draft);
+                    else followUpDraftsRef.current.delete(taskId);
+                  }}
+                  parallelMode={executionMode === 'worktrees'}
+                  currentBranch={currentBranch}
+                  onSwitchBranch={handleSwitchBranch}
+                  defaultBranch={project?.defaultBranch || 'main'}
+                />
+              ) : (project.viewType || 'kanban') === 'kanban' ? (
                 <KanbanBoard
                   tasks={columns}
                   onMoveTask={moveTask}
@@ -926,7 +981,7 @@ export default function ProjectPage() {
                   onUpdateTitle={(taskId, title) => updateTask(taskId, { title })}
                   onDismissAttention={dismissAttention}
                   onSelectedTaskChange={(id) => { viewingTaskIdRef.current = id; }}
-                  parallelMode={executionMode === 'parallel'}
+                  parallelMode={executionMode === 'worktrees'}
                   currentBranch={currentBranch}
                   onSwitchBranch={handleSwitchBranch}
                   defaultBranch={project?.defaultBranch || 'main'}
@@ -1014,7 +1069,7 @@ export default function ProjectPage() {
           onResumeEditing={async (taskId) => {
             await updateTask(taskId, { status: 'verify' });
           }}
-          parallelMode={executionMode === 'parallel'}
+          parallelMode={executionMode === 'worktrees'}
           currentBranch={currentBranch}
           onSwitchBranch={handleSwitchBranch}
           defaultBranch={project?.defaultBranch || 'main'}
@@ -1084,10 +1139,11 @@ export default function ProjectPage() {
         />
       )}
 
-      <ParallelModeModal
-        isOpen={showParallelModal}
-        onConfirm={applyParallelMode}
-        onCancel={() => setShowParallelModal(false)}
+      <ExecutionModeInfoModal
+        isOpen={pendingModeSwitch !== null}
+        mode={pendingModeSwitch || 'parallel'}
+        onConfirm={applyPendingMode}
+        onCancel={() => setPendingModeSwitch(null)}
       />
 
       {showProjectSettings && project && (

@@ -74,6 +74,10 @@ export default function SettingsPage() {
   const [tunnelError, setTunnelError] = useState<string | null>(null);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [updateResult, setUpdateResult] = useState<{ available: boolean; count: number } | null>(null);
+  const [shellVersion, setShellVersion] = useState<string | null>(null);
+  const [shellUpdateReady, setShellUpdateReady] = useState(false);
+  const [shellUpdateVersion, setShellUpdateVersion] = useState<string | null>(null);
+  const [checkingShell, setCheckingShell] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const isScrollingTo = useRef(false);
@@ -98,6 +102,16 @@ export default function SettingsPage() {
       .then((data) => { setMobileUrl(data.url); setMobileHttps(!!data.https); })
       .catch(console.error);
     checkTunnel();
+
+    // Get shell version and listen for shell updates
+    if (isElectron && window.proqDesktop) {
+      window.proqDesktop.getVersion().then((v) => setShellVersion(v));
+      const cleanup = window.proqDesktop.onShellUpdateDownloaded((_e, result) => {
+        setShellUpdateReady(true);
+        setShellUpdateVersion(result.version);
+      });
+      return cleanup;
+    }
   }, [checkTunnel]);
 
   // Track which section is visible on scroll
@@ -220,7 +234,7 @@ export default function SettingsPage() {
               <p className="text-sm text-text-secondary leading-relaxed mb-2">
                 A task board that runs your coding agents. You write tasks,
                 agents do the work, you review and merge. proq is a kanban
-                board that launches CLI coding agents in tmux, one per task,
+                board that launches coding agents, one per task,
                 against your actual codebase.
               </p>
               <p className="text-sm text-text-secondary leading-relaxed mb-4">
@@ -229,7 +243,7 @@ export default function SettingsPage() {
                 and subagents you already have.
               </p>
               <p className="text-xs text-text-tertiary mb-1">
-                This is version 0.3.0
+                This is version 0.3.7
               </p>
               <p className="text-xs text-text-tertiary">
                 Vibed with ♥ by{" "}
@@ -407,7 +421,7 @@ export default function SettingsPage() {
                       onChange={(v) => update("autoUpdate", v)}
                     />
                   </Field>
-                  <Field label="Check for updates">
+                  <Field label="Check for web updates">
                     <div className="flex items-center gap-3">
                       {updateResult?.available ? (
                         <button
@@ -460,6 +474,51 @@ export default function SettingsPage() {
                       )}
                     </div>
                   </Field>
+                  <div className="border-t border-border-default pt-4 mt-4">
+                    <Field
+                      label="Shell updates"
+                      hint={shellVersion ? `Current shell version: ${shellVersion}` : undefined}
+                    >
+                      <div className="flex items-center gap-3">
+                        {shellUpdateReady ? (
+                          <button
+                            onClick={() => {
+                              window.proqDesktop?.installShellUpdate();
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs bg-bronze-600 text-zinc-950 hover:bg-bronze-500 font-medium"
+                          >
+                            <DownloadIcon className="w-3.5 h-3.5" />
+                            Restart to update shell{shellUpdateVersion ? ` (${shellUpdateVersion})` : ""}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              setCheckingShell(true);
+                              try {
+                                const result = await window.proqDesktop!.checkShellUpdate();
+                                if (!result.available) {
+                                  setShellUpdateReady(false);
+                                }
+                              } catch {
+                                // ignore
+                              } finally {
+                                setCheckingShell(false);
+                              }
+                            }}
+                            disabled={checkingShell}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs bg-surface-base border border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-hover disabled:opacity-50"
+                          >
+                            {checkingShell ? (
+                              <LoaderIcon className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <SearchIcon className="w-3.5 h-3.5" />
+                            )}
+                            Check for shell updates
+                          </button>
+                        )}
+                      </div>
+                    </Field>
+                  </div>
                 </div>
               </section>
             )}

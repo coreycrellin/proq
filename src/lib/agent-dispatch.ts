@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 import {
   existsSync,
   writeFileSync,
@@ -15,10 +15,11 @@ import {
   getTask,
   updateTask,
   getSettings,
+  getProjectDefaultBranch,
 } from "./db";
 import { stripAnsi } from "./utils";
 import { emitTaskUpdate } from "./task-events";
-import { removeWorktree } from "./worktree";
+import { removeWorktree, createWorktree, getCurrentBranch } from "./worktree";
 import type { TaskAttachment, TaskMode, AgentRenderMode } from "./types";
 import {
   startSession,
@@ -138,16 +139,21 @@ export function scheduleCleanup(projectId: string, taskId: string) {
 
   const expiresAt = Date.now() + CLEANUP_DELAY_MS;
   const shortId = taskId.slice(0, 8);
-  const tmuxSession = `proq-${shortId}`;
+  const sessionId = `proq-${shortId}`;
 
   const timer = setTimeout(async () => {
     try {
-      const socketLogPath = `/tmp/proq/${tmuxSession}.sock.log`;
+      const socketLogPath = `/tmp/proq/${sessionId}.sock.log`;
 
-      // Kill tmux session first — this sends SIGTERM to bridge, which writes .log file
+      // Kill bridge process — sends SIGTERM which writes .log file
+      const pidPath = `/tmp/proq/${sessionId}.pid`;
       try {
-        execSync(`tmux kill-session -t '${tmuxSession}'`, { timeout: 5_000 });
-        console.log(`[agent-cleanup] killed tmux session ${tmuxSession}`);
+        if (existsSync(pidPath)) {
+          const pid = parseInt(readFileSync(pidPath, "utf-8").trim(), 10);
+          process.kill(-pid, "SIGTERM"); // Kill process group
+          unlinkSync(pidPath);
+          console.log(`[agent-cleanup] killed bridge process ${pid} for ${sessionId}`);
+        }
       } catch {
         // Already gone
       }
@@ -179,7 +185,7 @@ export function scheduleCleanup(projectId: string, taskId: string) {
   }, CLEANUP_DELAY_MS);
 
   cleanupTimers.set(taskId, { timer, expiresAt });
-  console.log(`[agent-cleanup] scheduled cleanup for ${tmuxSession} in 1 hour`);
+  console.log(`[agent-cleanup] scheduled cleanup for ${sessionId} in 1 hour`);
 }
 
 export function cancelCleanup(taskId: string) {
@@ -231,10 +237,44 @@ export async function dispatchTask(
 
   const shortId = taskId.slice(0, 8);
   const terminalTabId = `task-${shortId}`;
-  const tmuxSession = `proq-${shortId}`;
+  const sessionId = `proq-${shortId}`;
 
-  // Parallel mode: all agents work directly in the project directory (no worktrees/branches)
-  const effectivePath = projectPath;
+  // Check if running in worktrees mode — create worktree for isolated tasks
+  const executionMode = await getExecutionMode(projectId);
+  let effectivePath = projectPath;
+
+  // Re-read the task to check if it already has a worktree (e.g., conflict resolution re-dispatch)
+  const currentTask = await getTask(projectId, taskId);
+
+  if (executionMode === "worktrees") {
+    if (currentTask?.worktreePath) {
+      // Worktree already exists (conflict resolution re-dispatch) — reuse it
+      effectivePath = currentTask.worktreePath;
+      console.log(`[agent-dispatch] reusing existing worktree ${effectivePath}`);
+    } else {
+      try {
+        // Determine base branch: use current branch if it's a non-proq, non-default branch
+        const defaultBranch = await getProjectDefaultBranch(projectId);
+        const current = getCurrentBranch(projectPath);
+        const baseBranch = (
+          current.branch.startsWith("proq/") ||
+          current.branch.startsWith("proq-preview/") ||
+          current.branch === defaultBranch
+        ) ? defaultBranch : current.branch;
+
+        const worktreePath = createWorktree(projectPath, shortId, baseBranch);
+        const branch = `proq/${shortId}`;
+        await updateTask(projectId, taskId, { worktreePath, branch, baseBranch });
+        effectivePath = worktreePath;
+      } catch (err) {
+        console.error(
+          `[agent-dispatch] failed to create worktree for ${shortId}:`,
+          err,
+        );
+        // Fall back to shared directory
+      }
+    }
+  }
 
   // Capture HEAD commit before dispatch so we can track task commits later
   try {
@@ -257,7 +297,7 @@ export async function dispatchTask(
     heading += `\n\n## Follow-up\n\nThe previous work on this task is complete. The user has sent a follow-up message with additional instructions:\n\n${followUpMessage}\n\nBuild on the existing work — do not redo what was already done. Focus on the follow-up request.`;
   }
 
-  // ── CLI mode: dispatch via tmux ──
+  // ── CLI mode: dispatch via bridge process ──
   if (renderMode === "cli") {
     let prompt: string;
 
@@ -291,9 +331,9 @@ export async function dispatchTask(
     // Write prompt + system prompt to temp files to avoid shell escaping issues
     const promptDir = join(tmpdir(), "proq-prompts");
     mkdirSync(promptDir, { recursive: true });
-    const promptFile = join(promptDir, `${tmuxSession}.md`);
-    const systemPromptFile = join(promptDir, `${tmuxSession}-system.md`);
-    const launcherFile = join(promptDir, `${tmuxSession}.sh`);
+    const promptFile = join(promptDir, `${sessionId}.md`);
+    const systemPromptFile = join(promptDir, `${sessionId}-system.md`);
+    const launcherFile = join(promptDir, `${sessionId}.sh`);
     writeFileSync(promptFile, prompt, "utf-8");
     writeFileSync(systemPromptFile, proqSystemPrompt, "utf-8");
     const claudeBin = await getClaudeBin();
@@ -306,16 +346,23 @@ export async function dispatchTask(
     // Ensure bridge socket directory exists
     mkdirSync("/tmp/proq", { recursive: true });
     const bridgePath = join(process.cwd(), "src/lib/proq-bridge.js");
-    const socketPath = `/tmp/proq/${tmuxSession}.sock`;
+    const socketPath = `/tmp/proq/${sessionId}.sock`;
 
-    // Launch via tmux with bridge — session survives server restarts, bridge exposes PTY over unix socket
+    // Launch bridge directly — detached process survives server restarts, exposes PTY over unix socket
     const proqApi = `http://localhost:${process.env.PORT || 1337}`;
-    const tmuxCmd = `tmux new-session -d -s '${tmuxSession}' -c '${effectivePath}' -e PROQ_API='${proqApi}' node '${bridgePath}' '${socketPath}' '${launcherFile}'`;
+    const pidPath = `/tmp/proq/${sessionId}.pid`;
 
     try {
-      execSync(tmuxCmd, { timeout: 10_000 });
+      const child = spawn("node", [bridgePath, socketPath, launcherFile], {
+        cwd: effectivePath,
+        detached: true,
+        stdio: "ignore",
+        env: { ...process.env, PROQ_API: proqApi, CLAUDECODE: undefined, PORT: undefined },
+      });
+      child.unref();
+      writeFileSync(pidPath, String(child.pid));
       console.log(
-        `[agent-dispatch] launched tmux session ${tmuxSession} for task ${taskId}`,
+        `[agent-dispatch] launched bridge process ${child.pid} for task ${taskId}`,
       );
 
       notify(`🚀 *${(taskTitle || "task").replace(/"/g, '\\"')}* dispatched (cli)`);
@@ -323,7 +370,7 @@ export async function dispatchTask(
       return terminalTabId;
     } catch (err) {
       console.error(
-        `[agent-dispatch] failed to launch tmux session for ${taskId}:`,
+        `[agent-dispatch] failed to launch bridge for ${taskId}:`,
         err,
       );
       return undefined;
@@ -388,21 +435,26 @@ export async function abortTask(projectId: string, taskId: string) {
   const task = await getTask(projectId, taskId);
 
   if (task?.renderMode === "cli") {
-    // CLI mode: kill tmux
+    // CLI mode: kill bridge process
     const shortId = taskId.slice(0, 8);
-    const tmuxSession = `proq-${shortId}`;
+    const sessionId = `proq-${shortId}`;
+    const pidPath = `/tmp/proq/${sessionId}.pid`;
     try {
-      execSync(`tmux kill-session -t '${tmuxSession}'`, { timeout: 5_000 });
-      console.log(`[agent-dispatch] killed tmux session ${tmuxSession}`);
+      if (existsSync(pidPath)) {
+        const pid = parseInt(readFileSync(pidPath, "utf-8").trim(), 10);
+        process.kill(-pid, "SIGTERM"); // Kill process group
+        unlinkSync(pidPath);
+        console.log(`[agent-dispatch] killed bridge process ${pid} (${sessionId})`);
+      }
     } catch (err) {
       console.error(
-        `[agent-dispatch] failed to kill tmux session ${tmuxSession}:`,
+        `[agent-dispatch] failed to kill bridge process ${sessionId}:`,
         err,
       );
     }
 
     // Clean up bridge socket and log files
-    const socketPath = `/tmp/proq/${tmuxSession}.sock`;
+    const socketPath = `/tmp/proq/${sessionId}.sock`;
     const logPath = socketPath + ".log";
     try {
       if (existsSync(socketPath)) unlinkSync(socketPath);
@@ -437,15 +489,20 @@ export function isSessionAlive(taskId: string): boolean {
   // Check agent session runtime first
   if (isSessionRunning(taskId)) return true;
 
-  // Fall back to tmux check
+  // Fall back to PID file check
   const shortId = taskId.slice(0, 8);
-  const tmuxSession = `proq-${shortId}`;
+  const pidPath = `/tmp/proq/proq-${shortId}.pid`;
   try {
-    execSync(`tmux has-session -t '${tmuxSession}'`, { timeout: 3_000 });
-    return true;
+    if (existsSync(pidPath)) {
+      const pid = parseInt(readFileSync(pidPath, "utf-8").trim(), 10);
+      process.kill(pid, 0); // Throws if process doesn't exist
+      return true;
+    }
   } catch {
-    return false;
+    // Process doesn't exist — clean up stale PID file
+    try { if (existsSync(pidPath)) unlinkSync(pidPath); } catch {}
   }
+  return false;
 }
 
 /**
@@ -457,7 +514,7 @@ export async function getInitialAgentStatus(
   excludeTaskId?: string,
 ): Promise<"queued" | "starting"> {
   const mode = await getExecutionMode(projectId);
-  if (mode === "parallel") return "starting";
+  if (mode === "parallel" || mode === "worktrees") return "starting";
 
   const columns = await getAllTasks(projectId);
   const hasActive = columns["in-progress"].some(
@@ -495,7 +552,38 @@ export async function processQueue(projectId: string): Promise<void> {
       `[processQueue] ${projectId}: mode=${mode} running=${running.length} pending=${pending.length}`,
     );
 
-    if (mode === "sequential") {
+    if (mode !== "sequential") {
+      // parallel & worktrees: launch all pending
+      for (const task of pending) {
+        console.log(
+          `[processQueue] launching ${task.id.slice(0, 8)} "${task.title || task.description.slice(0, 40)}" (${mode})`,
+        );
+        if (task.agentStatus !== "starting") {
+          await updateTask(projectId, task.id, { agentStatus: "starting" });
+          emitTaskUpdate(projectId, task.id, { agentStatus: "starting" });
+        }
+        const result = await dispatchTask(
+          projectId,
+          task.id,
+          task.title,
+          task.description,
+          task.mode,
+          task.attachments,
+          task.renderMode,
+          task.followUpMessage,
+        );
+        if (result) {
+          await updateTask(projectId, task.id, { agentStatus: "running", followUpMessage: undefined });
+          emitTaskUpdate(projectId, task.id, { agentStatus: "running" });
+        } else {
+          console.log(
+            `[processQueue] dispatch failed for ${task.id.slice(0, 8)}, rolling back`,
+          );
+          await updateTask(projectId, task.id, { agentStatus: "queued" });
+          emitTaskUpdate(projectId, task.id, { agentStatus: "queued" });
+        }
+      }
+    } else if (mode === "sequential") {
       if (running.length === 0 && pending.length > 0) {
         const next = pending[0];
         console.log(
@@ -529,37 +617,6 @@ export async function processQueue(projectId: string): Promise<void> {
         console.log(
           `[processQueue] ${running.length} task(s) running, ${pending.length} waiting`,
         );
-      }
-    } else {
-      // parallel: launch all pending
-      for (const task of pending) {
-        console.log(
-          `[processQueue] launching ${task.id.slice(0, 8)} "${task.title || task.description.slice(0, 40)}" (parallel)`,
-        );
-        if (task.agentStatus !== "starting") {
-          await updateTask(projectId, task.id, { agentStatus: "starting" });
-          emitTaskUpdate(projectId, task.id, { agentStatus: "starting" });
-        }
-        const result = await dispatchTask(
-          projectId,
-          task.id,
-          task.title,
-          task.description,
-          task.mode,
-          task.attachments,
-          task.renderMode,
-          task.followUpMessage,
-        );
-        if (result) {
-          await updateTask(projectId, task.id, { agentStatus: "running", followUpMessage: undefined });
-          emitTaskUpdate(projectId, task.id, { agentStatus: "running" });
-        } else {
-          console.log(
-            `[processQueue] dispatch failed for ${task.id.slice(0, 8)}, rolling back`,
-          );
-          await updateTask(projectId, task.id, { agentStatus: "queued" });
-          emitTaskUpdate(projectId, task.id, { agentStatus: "queued" });
-        }
       }
     }
 

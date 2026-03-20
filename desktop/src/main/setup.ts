@@ -6,9 +6,6 @@ import { getConfig, setConfig } from './config'
 
 const execFileAsync = promisify(execFile)
 
-// Homebrew may install to /opt/homebrew (Apple Silicon) or /usr/local (Intel)
-const BREW_PATHS = ['/opt/homebrew/bin/brew', '/usr/local/bin/brew']
-
 export interface CheckResult {
   ok: boolean
   version?: string
@@ -21,36 +18,17 @@ export async function checkNodeVersion(): Promise<CheckResult> {
     const { stdout } = await execFileAsync('node', ['-v'])
     const version = stdout.trim().replace(/^v/, '')
     const major = parseInt(version.split('.')[0], 10)
-    if (major >= 18) {
-      return { ok: true, version }
+    let nodePath: string | undefined
+    try {
+      const { stdout: whichOut } = await execFileAsync('which', ['node'])
+      nodePath = whichOut.trim()
+    } catch { /* not critical */ }
+    if (major >= 20) {
+      return { ok: true, version, path: nodePath }
     }
-    return { ok: false, version, error: `Node.js ${version} found — v18+ required` }
+    return { ok: false, version, path: nodePath, error: `Node.js ${version} found — v20+ required` }
   } catch {
     return { ok: false, error: 'Node.js not found' }
-  }
-}
-
-export async function checkTmux(): Promise<CheckResult> {
-  try {
-    const { stdout } = await execFileAsync('tmux', ['-V'])
-    const version = stdout.trim().replace(/^tmux\s*/, '')
-    return { ok: true, version }
-  } catch {
-    return { ok: false, error: 'tmux not found' }
-  }
-}
-
-export async function installTmux(): Promise<CheckResult> {
-  try {
-    if (process.platform === 'darwin') {
-      await execFileAsync('brew', ['install', 'tmux'])
-    } else {
-      await execFileAsync('sudo', ['apt-get', 'install', '-y', 'tmux'])
-    }
-    return checkTmux()
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e)
-    return { ok: false, error: `Failed to install tmux: ${message}` }
   }
 }
 
@@ -104,55 +82,6 @@ export async function checkClaudeCli(): Promise<CheckResult> {
   return { ok: false, error: 'Claude Code CLI not found' }
 }
 
-export async function checkHomebrew(): Promise<CheckResult> {
-  try {
-    const { stdout } = await execFileAsync('brew', ['--version'])
-    const version = stdout.trim().split('\n')[0].replace(/^Homebrew\s*/, '')
-    return { ok: true, version }
-  } catch {
-    // Check known paths directly (PATH may not include brew in GUI apps)
-    for (const brewPath of BREW_PATHS) {
-      try {
-        const { stdout } = await execFileAsync(brewPath, ['--version'])
-        const version = stdout.trim().split('\n')[0].replace(/^Homebrew\s*/, '')
-        return { ok: true, version, path: brewPath }
-      } catch {
-        continue
-      }
-    }
-    return { ok: false, error: 'Homebrew not found' }
-  }
-}
-
-export async function installHomebrew(): Promise<CheckResult> {
-  try {
-    // Write a temp script that runs the Homebrew installer in Terminal
-    const script = '/tmp/proq-install-homebrew.sh'
-    fs.writeFileSync(
-      script,
-      '#!/bin/bash\n/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"\necho "\\nDone. You can close this window."\nread -p "Press Enter to close..."'
-    )
-    fs.chmodSync(script, '755')
-    await execFileAsync('open', ['-a', 'Terminal', script])
-    // Terminal opens asynchronously — caller should re-check when user says they're done
-    return { ok: false, error: 'pending' }
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e)
-    return { ok: false, error: `Failed to launch Homebrew installer: ${message}` }
-  }
-}
-
-export async function installNode(onLog: (line: string) => void): Promise<CheckResult> {
-  try {
-    const brewBin = await findBrewBin()
-    await runStreamingCommand(brewBin, ['install', 'node'], onLog)
-    return checkNodeVersion()
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e)
-    return { ok: false, error: `Failed to install Node.js: ${message}` }
-  }
-}
-
 export async function installXcodeTools(): Promise<CheckResult> {
   if (process.platform !== 'darwin') {
     return { ok: true, version: 'n/a' }
@@ -182,24 +111,6 @@ export async function installClaude(onLog: (line: string) => void): Promise<Chec
   }
 }
 
-/** Find the brew binary, preferring PATH then known locations */
-async function findBrewBin(): Promise<string> {
-  try {
-    const { stdout } = await execFileAsync('which', ['brew'])
-    return stdout.trim()
-  } catch {
-    for (const p of BREW_PATHS) {
-      try {
-        await fs.promises.access(p, fs.constants.X_OK)
-        return p
-      } catch {
-        continue
-      }
-    }
-    throw new Error('Homebrew not found — install it first')
-  }
-}
-
 /** Run a command with streaming stdout/stderr to onLog callback */
 function runStreamingCommand(
   cmd: string,
@@ -226,8 +137,8 @@ export async function checkXcodeTools(): Promise<CheckResult> {
     return { ok: true, version: 'n/a' }
   }
   try {
-    await execFileAsync('xcode-select', ['-p'])
-    return { ok: true }
+    const { stdout } = await execFileAsync('xcode-select', ['-p'])
+    return { ok: true, path: stdout.trim() }
   } catch {
     return { ok: false, error: 'Xcode Command Line Tools not installed' }
   }

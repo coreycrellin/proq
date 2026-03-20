@@ -1,6 +1,6 @@
 // ── Project ──────────────────────────────────────────────
 export type ProjectTab = 'project' | 'live' | 'code' | 'docs';
-export type ViewType = 'kanban' | 'list' | 'streams';
+export type ViewType = 'kanban' | 'list' | 'streams' | 'grid';
 
 export interface Project {
   id: string;
@@ -140,7 +140,7 @@ export interface ProqSettings {
   claudeBin: string;
   defaultModel: string;
   systemPromptAdditions: string;
-  executionMode: 'sequential' | 'parallel';
+  executionMode: ExecutionMode;
   agentRenderMode: AgentRenderMode;
   showCosts: boolean;
   codingAgent: string;
@@ -158,7 +158,7 @@ export interface ProqSettings {
 }
 
 // ── Per-project state ────────────────────────────────────
-export type ExecutionMode = 'sequential' | 'parallel';
+export type ExecutionMode = 'sequential' | 'parallel' | 'worktrees';
 
 export interface WorkbenchTabInfo {
   id: string;
