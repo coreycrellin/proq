@@ -32,6 +32,13 @@ export interface AgentRuntimeSession {
   pendingFollowUp?: PendingFollowUp;
   /** Promise that resolves when an async ExitPlanMode block read completes */
   pendingPlanRead?: Promise<void>;
+  /**
+   * Tracks the number of content blocks already processed from the current
+   * assistant message. With --include-partial-messages, each partial `assistant`
+   * event includes ALL content blocks so far. Without this counter, the same
+   * text/thinking blocks would be appended multiple times.
+   */
+  assistantBlocksProcessed: number;
 }
 
 // ── Singleton attached to globalThis to survive HMR ──
@@ -315,6 +322,7 @@ export async function startSession(
     blocks: [],
     clients: new Set(),
     status: "running",
+    assistantBlocksProcessed: 0,
   };
   sessions.set(taskId, session);
 
@@ -440,8 +448,12 @@ function processStreamEvent(
     const message = event.message as { content?: unknown[] } | undefined;
     const content = message?.content;
     if (Array.isArray(content)) {
-      for (const block of content) {
-        const b = block as Record<string, unknown>;
+      // With --include-partial-messages, each assistant event includes ALL
+      // content blocks seen so far. Only process blocks we haven't seen yet.
+      const startIdx = session.assistantBlocksProcessed;
+      session.assistantBlocksProcessed = content.length;
+      for (let ci = startIdx; ci < content.length; ci++) {
+        const b = content[ci] as Record<string, unknown>;
         if (b.type === "text") {
           appendBlock(session, { type: "text", text: b.text as string });
         } else if (b.type === "thinking") {
@@ -500,6 +512,9 @@ function processStreamEvent(
       }
     }
   } else if (type === "user") {
+    // New turn — reset the assistant block counter so the next assistant
+    // message processes all its content blocks from the start.
+    session.assistantBlocksProcessed = 0;
     session.sessionId = event.session_id as string | undefined;
     const message = event.message as { content?: unknown[] } | undefined;
     const userContent = message?.content;
@@ -534,6 +549,7 @@ function processStreamEvent(
       }
     }
   } else if (type === "result") {
+    session.assistantBlocksProcessed = 0;
     session.sessionId = event.session_id as string | undefined;
     const isError = event.is_error as boolean | undefined;
     const costUsd = event.total_cost_usd as number | undefined;
@@ -588,6 +604,7 @@ export async function continueSession(
       blocks: stored.blocks,
       clients: new Set(),
       status: "done",
+      assistantBlocksProcessed: 0,
     };
     sessions.set(taskId, session);
   } else {
