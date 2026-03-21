@@ -477,11 +477,19 @@ function processStreamEvent(
     const content = message?.content;
     if (Array.isArray(content)) {
       // With --include-partial-messages, each assistant event includes ALL
-      // content blocks seen so far. Only process blocks we haven't seen yet.
-      // The ?? 0 handles sessions created before this field existed (HMR).
+      // content blocks seen so far for THE CURRENT message. After a tool
+      // result, the CLI starts a NEW assistant message with content from
+      // index 0. Detect this by checking if content.length dropped below
+      // the counter — if so, reset to process the new message fully.
+      if (!session.contentToBlockIdx) session.contentToBlockIdx = new Map();
+      const prev = session.assistantBlocksProcessed ?? 0;
+      if (content.length < prev) {
+        // New assistant message (new turn after tool result) — reset
+        session.assistantBlocksProcessed = 0;
+        session.contentToBlockIdx.clear();
+      }
       const startIdx = session.assistantBlocksProcessed ?? 0;
       session.assistantBlocksProcessed = content.length;
-      if (!session.contentToBlockIdx) session.contentToBlockIdx = new Map();
 
       // Update existing text/thinking blocks if their content grew (partial messages).
       // This ensures replays show the final text, not the first partial fragment.
