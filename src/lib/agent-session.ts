@@ -69,9 +69,14 @@ function broadcast(session: AgentRuntimeSession, msg: object) {
   const data = JSON.stringify(msg);
   for (const ws of session.clients) {
     try {
-      if (ws.readyState === 1) ws.send(data);
+      if (ws.readyState === 1) {
+        ws.send(data);
+      } else if (ws.readyState >= 2) {
+        // CLOSING or CLOSED — remove stale client to prevent duplicate broadcasts
+        session.clients.delete(ws);
+      }
     } catch {
-      // client gone
+      session.clients.delete(ws);
     }
   }
 }

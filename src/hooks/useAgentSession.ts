@@ -130,6 +130,7 @@ export function useAgentSession(
       };
 
       ws.onmessage = (event) => {
+        if (cancelled) return; // Prevent stale WS (closing during cleanup) from double-processing deltas
         try {
           const msg: AgentWsServerMsg = JSON.parse(event.data);
 
@@ -260,7 +261,10 @@ export function useAgentSession(
       connectRef.current = null;
       if (retryTimer) clearTimeout(retryTimer);
       stopHttpPolling();
-      if (wsRef.current) wsRef.current.close();
+      if (wsRef.current) {
+        wsRef.current.onmessage = null; // Prevent stale messages during close handshake
+        wsRef.current.close();
+      }
       wsRef.current = null;
     };
   }, [taskId, projectId, staticLog]);
