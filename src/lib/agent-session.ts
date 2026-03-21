@@ -625,6 +625,14 @@ function processStreamEvent(
       error: isError ? resultText || "Agent error" : undefined,
     });
 
+    // Broadcast a full replay so clients get the final text/thinking content.
+    // With --include-partial-messages, text/thinking blocks are updated in place
+    // on the server but those in-place updates are not broadcast individually.
+    // The client relies on stream_delta for live display, but clears the buffer
+    // on session completion — leaving stale partial content in the block.
+    // A replay here ensures the client has the fully updated blocks.
+    broadcast(session, { type: "replay", blocks: session.blocks, done: true, contextLabel: session.contextLabel });
+
     // Mark session done/error based on result — actual DB persistence happens in wireProcess close handler
     if (isError) {
       session.status = "error";
