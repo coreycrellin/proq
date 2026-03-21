@@ -623,6 +623,23 @@ function processStreamEvent(
     const costUsd = event.total_cost_usd as number | undefined;
     const resultText = event.result as string | undefined;
 
+    // With --include-partial-messages, the text response may be streamed
+    // only via stream_delta events without ever appearing in an assistant
+    // event's content blocks. The result event carries the final text in
+    // its `result` field. If no text block was stored for this turn, create
+    // one so the response persists across replays/reloads.
+    if (resultText && !isError) {
+      let hasTextInCurrentTurn = false;
+      for (let i = session.blocks.length - 1; i >= 0; i--) {
+        const b = session.blocks[i];
+        if (b.type === "text") { hasTextInCurrentTurn = true; break; }
+        if (b.type === "user" || (b.type === "status" && b.subtype === "init")) break;
+      }
+      if (!hasTextInCurrentTurn) {
+        appendBlock(session, { type: "text", text: resultText });
+      }
+    }
+
     appendBlock(session, {
       type: "status",
       subtype: isError ? "error" : "complete",
