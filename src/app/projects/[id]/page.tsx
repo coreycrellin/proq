@@ -757,6 +757,93 @@ export default function ProjectPage() {
     setChatPercent((prev) => Math.max(prev, 25));
   }, [patchWorkbenchState]);
 
+  // Undo peek (callable from palette without a keyboard event)
+  const peekUndo = useCallback(async () => {
+    if (undoEntry) return;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/tasks/undo`);
+      if (res.ok) {
+        const data = await res.json();
+        setUndoEntry({ task: data.task, column: data.column });
+      }
+    } catch { /* no-op */ }
+  }, [projectId, undoEntry]);
+
+  // Command palette commands
+  const commands = useCommands({
+    projects,
+    currentProjectId: projectId,
+    activeTab,
+    viewType: project?.viewType || 'kanban',
+    executionMode,
+    currentBranch,
+    branches,
+    workbenchCollapsed,
+    onTabChange: handleTabChange,
+    onViewTypeChange: handleViewTypeChange,
+    onExecutionModeChange: handleExecutionModeChange,
+    onSwitchBranch: handleSwitchBranch,
+    onAddTask: handleAddTask,
+    onPush: handlePush,
+    onPull: handlePull,
+    onOpenCommit: () => setShowCommitModal(true),
+    onOpenProjectSettings: () => setShowProjectSettings(true),
+    onToggleWorkbench: toggleWorkbenchCollapsed,
+    onUndo: peekUndo,
+  });
+
+  // Global keyboard shortcuts: ⌘K, ⌘1-4, ⌘N, ⌘`, ⌘J, ⌘S
+  useEffect(() => {
+    const tabMap: Record<string, 'project' | 'live' | 'code' | 'docs'> = {
+      '1': 'project', '2': 'live', '3': 'code', '4': 'docs',
+    };
+    const handler = (e: KeyboardEvent) => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+      // ⌘K — command palette (always, even in inputs)
+      if (e.key === 'k' && !e.shiftKey) {
+        e.preventDefault();
+        setCommandPaletteOpen(o => !o);
+        return;
+      }
+
+      // Everything below skips text inputs
+      if (inInput) return;
+
+      // ⌘1-4 — switch tabs
+      if (tabMap[e.key] && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        handleTabChange(tabMap[e.key]);
+        return;
+      }
+
+      // ⌘N — new task
+      if (e.key === 'n' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        handleAddTask();
+        return;
+      }
+
+      // ⌘` or ⌘J — toggle workbench
+      if ((e.key === '`' || e.key === 'j') && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        toggleWorkbenchCollapsed();
+        return;
+      }
+
+      // ⌘S — open commit modal (outside of Code tab which handles its own ⌘S)
+      if (e.key === 's' && !e.shiftKey && !e.altKey && activeTab !== 'code') {
+        e.preventDefault();
+        setShowCommitModal(true);
+        return;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleTabChange, handleAddTask, toggleWorkbenchCollapsed, activeTab]);
+
   // ── Live workbench controls ──
 
   const toggleLiveWorkbenchCollapsed = useCallback(() => {
@@ -1172,6 +1259,12 @@ export default function ProjectPage() {
       >
         Complete or move all in-progress and verify tasks back to Todo before switching modes.
       </AlertModal>
+
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        commands={commands}
+      />
     </>
   );
 }
