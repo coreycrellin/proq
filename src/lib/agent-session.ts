@@ -778,16 +778,19 @@ function generateContextLabel(session: AgentRuntimeSession) {
   console.log(`[context-label] ${session.taskId.slice(0, 8)} — generating from ${parts.length} parts:`, parts);
 
   const prompt = [
-    "Based on this conversation, generate a very short title (3-8 words, title case) describing what is currently being worked on.",
-    "Focus on the MOST RECENT direction — if the user changed course, reflect the new focus.",
-    "Examples: Fix Login Page CSS, Add Dark Mode Toggle, Refactor API Routes, Debug Auth Flow",
-    "Just output the title, nothing else. No quotes, no punctuation at the end.",
+    "Generate a 3-8 word title for this task. Title case. No quotes. No punctuation.",
+    "IMPORTANT: Maximum 8 words. Never write a sentence or explanation. Just a short label.",
+    "Focus on the MOST RECENT user message — if the user changed course, reflect the new focus.",
+    "Examples: Push Code to GitHub, Tell Programming Jokes, Fix Login CSS, Add Dark Mode, Refactor API Routes",
     "",
     parts.join("\n"),
   ].join("\n");
 
   claudeOneShot(prompt).then(async (raw) => {
-    const title = raw.trim().split("\n")[0].replace(/^["']|["']$/g, "").replace(/\.+$/, "");
+    let title = raw.trim().split("\n")[0].replace(/^["']|["']$/g, "").replace(/\.+$/, "").replace(/^#+\s*/, "");
+    // Enforce max length — if Haiku returned a sentence, truncate to first 8 words
+    const words = title.split(/\s+/);
+    if (words.length > 10) title = words.slice(0, 8).join(" ");
     logLine(`${session.taskId.slice(0, 8)} — haiku returned: "${title}"`);
     console.log(`[context-label] ${session.taskId.slice(0, 8)} — haiku returned: "${title}"`);
     if (!title) return;
