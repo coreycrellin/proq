@@ -8,7 +8,7 @@ import { attachmentUrl } from '@/lib/upload';
 export function UserBlock({ text, attachments, fontSize }: { text: string; attachments?: TaskAttachment[]; fontSize?: number }) {
   return (
     <div className="flex items-baseline gap-2 my-3">
-      <div className="inline-flex flex-col bg-surface-hover rounded px-2.5 py-1.5">
+      <div className="inline-flex flex-col bg-surface-hover/60 rounded px-2.5 py-1.5">
         <div className="flex items-baseline gap-2">
           <span className="text-xs font-bold text-text-chrome shrink-0">{'\u276F'}</span>
           <p className="text-sm leading-relaxed text-text-primary whitespace-pre-wrap" style={fontSize ? { fontSize: `${fontSize}px` } : undefined}>{text}</p>
