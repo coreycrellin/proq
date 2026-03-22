@@ -527,11 +527,32 @@ function processStreamEvent(
       // content blocks seen so far for THE CURRENT message. After a tool
       // result, the CLI starts a NEW assistant message with content from
       // index 0. Detect this by checking if content.length dropped below
-      // the counter — if so, reset to process the new message fully.
+      // the counter, OR if block types at existing indices changed (which
+      // catches the case where the new message has the same number of blocks).
       if (!session.contentToBlockIdx) session.contentToBlockIdx = new Map();
       const prev = session.assistantBlocksProcessed ?? 0;
-      if (content.length < prev) {
-        // New assistant message (new turn after tool result) — reset
+      let isNewMessage = content.length < prev;
+      if (!isNewMessage && prev > 0) {
+        // Check for type mismatch at existing indices — indicates a new
+        // assistant message even when content.length >= prev
+        for (let ci = 0; ci < Math.min(prev, content.length); ci++) {
+          const b = content[ci] as Record<string, unknown>;
+          const blockIdx = session.contentToBlockIdx.get(ci);
+          if (blockIdx === undefined) continue;
+          const stored = session.blocks[blockIdx];
+          if (stored && b.type !== stored.type) {
+            isNewMessage = true;
+            break;
+          }
+          // Also detect tool_use ID changes (same type but different tool)
+          if (b.type === "tool_use" && stored?.type === "tool_use" &&
+              b.id !== (stored as { toolId?: string }).toolId) {
+            isNewMessage = true;
+            break;
+          }
+        }
+      }
+      if (isNewMessage) {
         session.assistantBlocksProcessed = 0;
         session.contentToBlockIdx.clear();
       }
