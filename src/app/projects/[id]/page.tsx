@@ -47,7 +47,7 @@ export default function ProjectPage() {
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [showCommitModal, setShowCommitModal] = useState(false);
   const [topBarHidden, setTopBarHidden] = useState(false);
-  const [topBarContentHidden, setTopBarContentHidden] = useState(true);
+  const [topBarContentHidden, setTopBarContentHidden] = useState(false);
   const [workbenchHidden, setWorkbenchHidden] = useState(false);
   const [currentBranch, setCurrentBranch] = useState<string>('main');
   const [branches, setBranches] = useState<string[]>([]);

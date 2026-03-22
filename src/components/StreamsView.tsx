@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import type { Task, TaskColumns, ExecutionMode, FollowUpDraft } from '@/lib/types';
 import { StructuredPane } from './StructuredPane';
+import { TerminalPane } from './TerminalPane';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -991,6 +992,8 @@ function StreamCellFull({
   };
 
   const isLive = task.agentStatus === 'running' || task.agentStatus === 'starting';
+  const isStructured = task.renderMode !== 'cli';
+  const terminalTabId = `task-${task.id.slice(0, 8)}`;
   // Only use static blocks for "done" tasks — verify tasks need a live WS connection for follow-ups
   const staticBlocks =
     !isLive && task.status === 'done' && task.agentBlocks
@@ -1086,23 +1089,27 @@ function StreamCellFull({
         </div>
       )}
 
-      {/* Full StructuredPane — scrollable stream + input area */}
+      {/* Agent output — StructuredPane (Pretty) or TerminalPane (CLI) */}
       <div className="flex-1 min-h-0 flex flex-col" style={fontSize && fontSize !== 9 ? { zoom: fontSize / 9 } : undefined}>
-        <StructuredPane
-          taskId={task.id}
-          projectId={projectId}
-          visible={true}
-          taskStatus={task.status}
-          agentBlocks={staticBlocks}
-          followUpDraft={followUpDraft}
-          onFollowUpDraftChange={onFollowUpDraftChange ?? undefined}
-          onTaskStatusChange={(status) => {
-            if (status === 'verify' && onResumeEditing) onResumeEditing(task.id);
-          }}
-          compact={compact}
-          userFontSize={userFontSize}
-          responseFontSize={responseFontSize}
-        />
+        {isStructured ? (
+          <StructuredPane
+            taskId={task.id}
+            projectId={projectId}
+            visible={true}
+            taskStatus={task.status}
+            agentBlocks={staticBlocks}
+            followUpDraft={followUpDraft}
+            onFollowUpDraftChange={onFollowUpDraftChange ?? undefined}
+            onTaskStatusChange={(status) => {
+              if (status === 'verify' && onResumeEditing) onResumeEditing(task.id);
+            }}
+            compact={compact}
+            userFontSize={userFontSize}
+            responseFontSize={responseFontSize}
+          />
+        ) : (
+          <TerminalPane tabId={terminalTabId} visible={true} enableDrop />
+        )}
       </div>
     </div>
   );

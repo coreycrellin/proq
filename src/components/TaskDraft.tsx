@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { XIcon, PaperclipIcon, FileIcon, PlayIcon, Loader2Icon, RefreshCwIcon } from 'lucide-react';
-import type { Task, TaskAttachment, TaskMode } from '@/lib/types';
+import type { Task, TaskAttachment, TaskMode, AgentRenderMode } from '@/lib/types';
 import { uploadFiles, attachmentUrl } from '@/lib/upload';
 import { handleChatCommand } from '@/lib/chat-commands';
 
@@ -29,6 +29,7 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
   const [title, setTitle] = useState(task.title || '');
   const [description, setDescription] = useState(task.description);
   const [mode, setMode] = useState<TaskMode>(task.mode || 'auto');
+  const [renderMode, setRenderMode] = useState<AgentRenderMode>(task.renderMode || 'structured');
   const [attachments, setAttachments] = useState<TaskAttachment[]>(
     task.attachments || [],
   );
@@ -184,12 +185,12 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
           fireAutoTitle(description);
         }
         setDispatching(true);
-        onMoveToInProgress(task.id, { title, description, attachments, mode });
+        onMoveToInProgress(task.id, { title, description, attachments, mode, renderMode });
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onMoveToInProgress, title, description, attachments, mode, dispatching, task.id, fireAutoTitle]);
+  }, [isOpen, onMoveToInProgress, title, description, attachments, mode, renderMode, dispatching, task.id, fireAutoTitle]);
 
   // Compute modal height: grow with text content, clamp between 600px and 80vh
   useLayoutEffect(() => {
@@ -489,29 +490,56 @@ export function TaskDraft({ projectId, task, isOpen, onClose, onSave, onMoveToIn
           <div className="flex-1" />
 
           {onMoveToInProgress && (
-            <button
-              onClick={async () => {
-                if (saveTimeout.current) clearTimeout(saveTimeout.current);
-                if (autoTitleTimeout.current) {
-                  clearTimeout(autoTitleTimeout.current);
-                  autoTitleTimeout.current = null;
-                }
-                if (!title.trim() && description.trim()) {
-                  fireAutoTitle(description);
-                }
-                setDispatching(true);
-                await onMoveToInProgress(task.id, { title, description, attachments, mode });
-              }}
-              disabled={!description.trim() || dispatching}
-              className={`btn-primary flex items-center gap-1.5 ${dispatching ? 'pointer-events-none' : 'disabled:opacity-30 disabled:pointer-events-none'}`}
-            >
-              {dispatching ? (
-                <Loader2Icon className="w-3 h-3 animate-spin" />
-              ) : (
-                <PlayIcon className="w-3 h-3" />
-              )}
-              {dispatching ? 'Starting...' : 'Start Now'}
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Pretty / Terminal toggle */}
+              <div className="flex items-center bg-surface-secondary rounded-md border border-border-default overflow-hidden">
+                <button
+                  onClick={() => setRenderMode('structured')}
+                  className={`px-2 py-1 text-[10px] font-medium transition-colors ${
+                    renderMode === 'structured'
+                      ? 'bg-surface-hover text-text-primary'
+                      : 'text-text-tertiary hover:text-text-secondary'
+                  }`}
+                  title="Pretty chat view"
+                >
+                  Pretty
+                </button>
+                <button
+                  onClick={() => setRenderMode('cli')}
+                  className={`px-2 py-1 text-[10px] font-medium transition-colors ${
+                    renderMode === 'cli'
+                      ? 'bg-surface-hover text-text-primary'
+                      : 'text-text-tertiary hover:text-text-secondary'
+                  }`}
+                  title="Raw terminal view"
+                >
+                  Terminal
+                </button>
+              </div>
+              <button
+                onClick={async () => {
+                  if (saveTimeout.current) clearTimeout(saveTimeout.current);
+                  if (autoTitleTimeout.current) {
+                    clearTimeout(autoTitleTimeout.current);
+                    autoTitleTimeout.current = null;
+                  }
+                  if (!title.trim() && description.trim()) {
+                    fireAutoTitle(description);
+                  }
+                  setDispatching(true);
+                  await onMoveToInProgress(task.id, { title, description, attachments, mode, renderMode });
+                }}
+                disabled={!description.trim() || dispatching}
+                className={`btn-primary flex items-center gap-1.5 ${dispatching ? 'pointer-events-none' : 'disabled:opacity-30 disabled:pointer-events-none'}`}
+              >
+                {dispatching ? (
+                  <Loader2Icon className="w-3 h-3 animate-spin" />
+                ) : (
+                  <PlayIcon className="w-3 h-3" />
+                )}
+                {dispatching ? 'Starting...' : 'Start Now'}
+              </button>
+            </div>
           )}
 
           <input
