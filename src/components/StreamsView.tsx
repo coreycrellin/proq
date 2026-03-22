@@ -716,10 +716,13 @@ export function StreamsView({
     return (
       <div className="h-full flex flex-col text-text-tertiary relative">
         {toolbar()}
-        <div className="flex-1 flex flex-col items-center justify-center gap-3">
+        <div
+          className={`flex-1 flex flex-col items-center justify-center gap-3${onAddTask ? ' cursor-pointer' : ''}`}
+          onClick={onAddTask}
+        >
           <RadioTowerIcon className="w-8 h-8 opacity-30" />
           <p className="text-sm">No active streams</p>
-          <p className="text-xs opacity-60">Start a task to see agent output here</p>
+          <p className="text-xs opacity-60">{onAddTask ? 'Click anywhere to create a task' : 'Start a task to see agent output here'}</p>
         </div>
       </div>
     );
