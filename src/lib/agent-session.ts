@@ -731,14 +731,13 @@ function processStreamEvent(
  * Also updates the task title in the DB so kanban cards reflect current focus.
  */
 function generateContextLabel(session: AgentRuntimeSession) {
-  // Gather recent user prompts, text blocks, and tool names for context
-  // Use a small window (last 3) so direction changes are picked up quickly
+  // Gather context: user prompts and tool names (skip assistant text — it's too
+  // verbose and causes Haiku to echo back reasoning instead of generating a title)
   const parts: string[] = [];
-  for (let i = session.blocks.length - 1; i >= 0 && parts.length < 3; i--) {
+  for (let i = session.blocks.length - 1; i >= 0 && parts.length < 4; i--) {
     const b = session.blocks[i];
     if (b.type === "user") parts.unshift(`User: ${b.text.slice(0, 200)}`);
-    else if (b.type === "text") parts.unshift(`Assistant: ${b.text.slice(0, 200)}`);
-    else if (b.type === "tool_use") parts.unshift(`Tool: ${b.name}(${JSON.stringify(b.input).slice(0, 100)})`);
+    else if (b.type === "tool_use") parts.unshift(`Tool: ${b.name}`);
   }
   const fs = require("fs");
   const logLine = (msg: string) => { try { fs.appendFileSync("/tmp/proq-context-label.log", `${new Date().toISOString()} ${msg}\n`); } catch {} };
