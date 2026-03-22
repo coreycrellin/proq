@@ -230,6 +230,11 @@ function wireProcess(
       });
     }
 
+    // Update context label / task title (safety net — the result event handler
+    // also calls this, but it can be missed if the CLI exits before emitting
+    // a result event, e.g. with --resume on short responses)
+    generateContextLabel(session);
+
     // Check if the last tool_use was AskUserQuestion or ExitPlanMode — surface to human
     const lastToolUse = [...session.blocks]
       .reverse()
