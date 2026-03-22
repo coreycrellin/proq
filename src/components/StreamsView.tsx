@@ -1090,8 +1090,8 @@ function StreamCellFull({
       )}
 
       {/* Agent output — StructuredPane (Pretty) or TerminalPane (CLI) */}
-      <div className="flex-1 min-h-0 flex flex-col" style={fontSize && fontSize !== 9 ? { zoom: fontSize / 9 } : undefined}>
-        {isStructured ? (
+      {isStructured ? (
+        <div className="flex-1 min-h-0 flex flex-col" style={fontSize && fontSize !== 9 ? { zoom: fontSize / 9 } : undefined}>
           <StructuredPane
             taskId={task.id}
             projectId={projectId}
@@ -1107,10 +1107,12 @@ function StreamCellFull({
             userFontSize={userFontSize}
             responseFontSize={responseFontSize}
           />
-        ) : (
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 relative">
           <TerminalPane tabId={terminalTabId} visible={true} enableDrop />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
