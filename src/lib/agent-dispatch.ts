@@ -289,12 +289,12 @@ export async function dispatchTask(
     // Not a git repo or no commits yet — skip
   }
 
-  let heading = taskTitle
-    ? `# ${taskTitle}\n\n${taskDescription}`
-    : taskDescription;
+  // Send the user's text as-is — don't wrap in headings or formal structure.
+  // Claude should receive the message the same way it would in terminal.
+  let heading = taskDescription;
 
   if (followUpMessage) {
-    heading += `\n\n## Follow-up\n\nThe previous work on this task is complete. The user has sent a follow-up message with additional instructions:\n\n${followUpMessage}\n\nBuild on the existing work — do not redo what was already done. Focus on the follow-up request.`;
+    heading += `\n\n${followUpMessage}`;
   }
 
   // ── CLI mode: dispatch via bridge process ──
