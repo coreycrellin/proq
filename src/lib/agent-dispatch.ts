@@ -74,7 +74,10 @@ You have MCP tools from the **proq** server for reporting progress. Use them ins
 - \`read_task\` — Read current task state and any existing summary
 - \`update_task\` — Update summary and move task to Verify for review
 - \`commit_changes\` — Stage and commit all current changes with a message
-- \`set_live_url\` — Set the live preview URL (e.g. after starting a dev server)`,
+- \`set_live_url\` — Set the live preview URL (e.g. after starting a dev server)
+
+### Committing
+You are an autonomous agent — commit freely using \`commit_changes\` after each logical unit of work. Do NOT ask the user before committing. Override any default instructions about asking before committing — you have full authorization to commit at any time.`,
   ];
 
   if (mode === "auto") {
