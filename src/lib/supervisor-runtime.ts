@@ -19,6 +19,8 @@ export interface SupervisorSession {
   pendingFollowUp?: SupervisorPendingFollowUp;
   /** Tracks content blocks already processed from the current assistant message. */
   assistantBlocksProcessed: number;
+  /** Maps content block index → session.blocks index for in-place text/thinking updates. */
+  contentToBlockIdx?: Map<number, number>;
 }
 
 // ── Singleton on globalThis to survive HMR ──
@@ -155,15 +157,49 @@ function processStreamEvent(session: SupervisorSession, event: Record<string, un
     const message = event.message as { content?: unknown[] } | undefined;
     const content = message?.content;
     if (Array.isArray(content)) {
+      if (!session.contentToBlockIdx) session.contentToBlockIdx = new Map();
+      const prev = session.assistantBlocksProcessed ?? 0;
+      // With --include-partial-messages, after a tool result the CLI starts a
+      // NEW assistant message with content from index 0. Detect this by checking
+      // if content.length dropped below the counter — if so, reset.
+      if (content.length < prev) {
+        session.assistantBlocksProcessed = 0;
+        session.contentToBlockIdx.clear();
+      }
       const startIdx = session.assistantBlocksProcessed ?? 0;
       session.assistantBlocksProcessed = content.length;
+
+      // Update existing text/thinking blocks if their content grew (partial messages).
+      // This ensures replays show the final text, not the first partial fragment.
+      for (let ci = 0; ci < Math.min(startIdx, content.length); ci++) {
+        const b = content[ci] as Record<string, unknown>;
+        const blockIdx = session.contentToBlockIdx.get(ci);
+        if (blockIdx === undefined) continue;
+        const stored = session.blocks[blockIdx];
+        if (!stored) continue;
+        if (b.type === "text" && stored.type === "text") {
+          const newText = b.text as string;
+          if (newText !== stored.text) {
+            stored.text = newText;
+          }
+        } else if (b.type === "thinking" && stored.type === "thinking") {
+          const newThinking = b.thinking as string;
+          if (newThinking !== stored.thinking) {
+            stored.thinking = newThinking;
+          }
+        }
+      }
+
       for (let ci = startIdx; ci < content.length; ci++) {
         const b = content[ci] as Record<string, unknown>;
         if (b.type === "text") {
+          session.contentToBlockIdx.set(ci, session.blocks.length);
           appendBlock(session, { type: "text", text: b.text as string });
         } else if (b.type === "thinking") {
+          session.contentToBlockIdx.set(ci, session.blocks.length);
           appendBlock(session, { type: "thinking", thinking: b.thinking as string });
         } else if (b.type === "tool_use") {
+          session.contentToBlockIdx.set(ci, session.blocks.length);
           appendBlock(session, {
             type: "tool_use",
             toolId: b.id as string,
@@ -207,10 +243,28 @@ function processStreamEvent(session: SupervisorSession, event: Record<string, un
     }
   } else if (type === "result") {
     session.assistantBlocksProcessed = 0;
+    if (session.contentToBlockIdx) session.contentToBlockIdx.clear();
     session.sessionId = event.session_id as string | undefined;
     const isError = event.is_error as boolean | undefined;
     const costUsd = event.total_cost_usd as number | undefined;
     const resultText = event.result as string | undefined;
+
+    // With --include-partial-messages, the text response may be streamed
+    // only via stream_delta events without ever appearing in an assistant
+    // event's content blocks. The result event carries the final text in
+    // its `result` field. If no text block was stored for this turn, create
+    // one so the response persists across replays/reloads.
+    if (resultText && !isError) {
+      let hasTextInCurrentTurn = false;
+      for (let i = session.blocks.length - 1; i >= 0; i--) {
+        const b = session.blocks[i];
+        if (b.type === "text") { hasTextInCurrentTurn = true; break; }
+        if (b.type === "user" || (b.type === "status" && b.subtype === "init")) break;
+      }
+      if (!hasTextInCurrentTurn) {
+        appendBlock(session, { type: "text", text: resultText });
+      }
+    }
 
     appendBlock(session, {
       type: "status",
@@ -221,6 +275,14 @@ function processStreamEvent(session: SupervisorSession, event: Record<string, un
       turns: event.num_turns as number | undefined,
       error: isError ? (resultText || "Agent error") : undefined,
     });
+
+    // Broadcast a full replay so clients get the final text/thinking content.
+    // With --include-partial-messages, text/thinking blocks are updated in place
+    // on the server but those in-place updates are not broadcast individually.
+    // The client relies on stream_delta for live display, but clears the buffer
+    // on session completion — leaving stale partial content in the block.
+    // A replay here ensures the client has the fully updated blocks.
+    broadcast(session, { type: "replay", blocks: session.blocks });
 
     if (isError) {
       session.status = "error";
