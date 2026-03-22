@@ -676,12 +676,19 @@ function processStreamEvent(
     // The client relies on stream_delta for live display, but clears the buffer
     // on session completion — leaving stale partial content in the block.
     // A replay here ensures the client has the fully updated blocks.
-    broadcast(session, { type: "replay", blocks: session.blocks, done: true, contextLabel: session.contextLabel });
+    //
+    // If there's a pending follow-up, don't broadcast done:true — the close
+    // handler will start the next turn, and we don't want the client to briefly
+    // show a "done" state that causes the streaming buffer to be cleared.
+    const hasPending = !!session.pendingFollowUp;
+    broadcast(session, { type: "replay", blocks: session.blocks, done: !hasPending, contextLabel: session.contextLabel });
 
-    // Mark session done/error based on result — actual DB persistence happens in wireProcess close handler
+    // Mark session done/error based on result — actual DB persistence happens in wireProcess close handler.
+    // If there's a pending follow-up, keep status as "running" so the close
+    // handler's pending follow-up check succeeds (it requires status === "running").
     if (isError) {
       session.status = "error";
-    } else {
+    } else if (!hasPending) {
       session.status = "done";
     }
 

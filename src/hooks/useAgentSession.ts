@@ -54,26 +54,34 @@ export function useAgentSession(
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
     let wsFailCount = 0;
+    // Incremented each time polling is stopped so in-flight fetches can bail out
+    let pollGeneration = 0;
 
     function stopHttpPolling() {
       if (pollTimerRef.current) {
         clearInterval(pollTimerRef.current);
         pollTimerRef.current = null;
       }
+      // Invalidate any in-flight fetch responses from polling
+      pollGeneration++;
     }
 
-    // ── HTTP polling fallback ──
     function startHttpPolling() {
       if (cancelled || pollTimerRef.current) return;
       let lastTotal = 0;
 
       pollTimerRef.current = setInterval(async () => {
         if (cancelled) { stopHttpPolling(); return; }
+        // If polling was stopped (e.g. WS connected), bail out
+        if (!pollTimerRef.current) return;
+        const gen = pollGeneration;
         try {
           const res = await fetch(
             `/api/projects/${projectId}/tasks/${taskId}/blocks?after=${lastTotal}`
           );
           if (!res.ok) return;
+          // Check if polling was stopped while fetch was in flight
+          if (gen !== pollGeneration || cancelled) return;
           const data = await res.json();
 
           if (data.blocks && data.blocks.length > 0) {
@@ -101,6 +109,14 @@ export function useAgentSession(
     // ── WebSocket connection ──
     function connect() {
       if (cancelled) return;
+
+      // Close any existing WS to prevent duplicate connections (which cause
+      // doubled stream_delta processing and duplicated rendered text)
+      if (wsRef.current) {
+        wsRef.current.onmessage = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
 
       // Check if WS port is likely reachable: if we're on a tunnel domain (not a local IP/localhost),
       // the separate WS port won't be forwarded. Skip WS and go straight to polling.
@@ -223,6 +239,8 @@ export function useAgentSession(
         // - we intentionally closed (code 1000 = normal closure)
         // - HTTP polling is already active (avoid running both channels)
         if (!cancelled && event.code !== 1000 && !pollTimerRef.current) {
+          // Clear any existing retry timer to prevent duplicate connections
+          if (retryTimer) clearTimeout(retryTimer);
           retryTimer = setTimeout(connect, RETRY_DELAY_MS);
         }
       };
@@ -244,6 +262,11 @@ export function useAgentSession(
       // Reset retry state so the new connection gets fresh attempts
       retryCount = 0;
       wsFailCount = 0;
+      // Cancel any pending retry timer to prevent a second concurrent WS connection
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
       // Stop polling — we're explicitly reconnecting WS
       stopHttpPolling();
       // Close existing WS if any (use 1000 to prevent onclose from also reconnecting)
