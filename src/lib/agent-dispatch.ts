@@ -315,10 +315,10 @@ export async function dispatchTask(
       const imageFiles = attachments.filter((a) => a.filePath && a.type.startsWith("image/")).map((a) => a.filePath!);
       const otherFiles = attachments.filter((a) => a.filePath && !a.type.startsWith("image/")).map((a) => a.filePath!);
       if (imageFiles.length > 0) {
-        prompt += `\n## Attached Images\nThe following image files are attached to this task. Use your Read tool to view them:\n${imageFiles.map((f) => `- ${f}`).join("\n")}\n`;
+        prompt += `\nAttached Images\nAttached images:\n${imageFiles.map((f) => `- ${f}`).join("\n")}\n`;
       }
       if (otherFiles.length > 0) {
-        prompt += `\n## Attached Files\nThe following files are attached to this task. Use your Read tool to view them:\n${otherFiles.map((f) => `- ${f}`).join("\n")}\n`;
+        prompt += `\nAttached Files\nAttached files:\n${otherFiles.map((f) => `- ${f}`).join("\n")}\n`;
       }
     }
 
@@ -391,10 +391,10 @@ export async function dispatchTask(
     const imageFiles = attachments.filter((a) => a.filePath && a.type.startsWith("image/")).map((a) => a.filePath!);
     const otherFiles = attachments.filter((a) => a.filePath && !a.type.startsWith("image/")).map((a) => a.filePath!);
     if (imageFiles.length > 0) {
-      prompt += `\n\n## Attached Images\nThe following image files are attached to this task. Use your Read tool to view them:\n${imageFiles.map((f) => `- ${f}`).join("\n")}\n`;
+      prompt += `\n\nAttached Images\nAttached images:\n${imageFiles.map((f) => `- ${f}`).join("\n")}\n`;
     }
     if (otherFiles.length > 0) {
-      prompt += `\n\n## Attached Files\nThe following files are attached to this task. Use your Read tool to view them:\n${otherFiles.map((f) => `- ${f}`).join("\n")}\n`;
+      prompt += `\n\nAttached Files\nAttached files:\n${otherFiles.map((f) => `- ${f}`).join("\n")}\n`;
     }
   }
 

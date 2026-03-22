@@ -19,6 +19,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import type { TreeNode } from './FileTree';
 import type { Project } from '@/lib/types';
+import WorkbenchPanel from '@/components/WorkbenchPanel';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -128,11 +129,18 @@ export function DocsTab({ project }: DocsTabProps) {
   const [fileContent, setFileContent] = useState<string>('');
   const [editMode, setEditMode] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
-  const [isDragging, setIsDragging] = useState(false);
+  const [isSidebarDragging, setIsSidebarDragging] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [searchFilter, setSearchFilter] = useState('');
   const [showNewMenu, setShowNewMenu] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const outerRef = useRef<HTMLDivElement>(null);
+
+  // Workbench panel state
+  const [wbCollapsed, setWbCollapsed] = useState(false);
+  const [wbHidden, setWbHidden] = useState(false);
+  const [wbPercent, setWbPercent] = useState(40);
+  const [wbDragging, setWbDragging] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedContentRef = useRef<string>('');
@@ -158,23 +166,65 @@ export function DocsTab({ project }: DocsTabProps) {
     return { aiFiles: ai, otherFiles: other };
   }, [mdFiles, searchFilter]);
 
-  // Resize drag handling
+  // Sidebar resize drag handling
   useEffect(() => {
-    if (!isDragging) return;
+    if (!isSidebarDragging) return;
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
       setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, x)));
     };
-    const handleMouseUp = () => setIsDragging(false);
+    const handleMouseUp = () => setIsSidebarDragging(false);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isSidebarDragging]);
+
+  // Workbench panel callbacks
+  const toggleWbCollapsed = useCallback(() => setWbCollapsed(p => !p), []);
+  const expandWb = useCallback(() => {
+    setWbCollapsed(false);
+    setWbPercent(p => Math.max(p, 25));
+  }, []);
+  const handleWbResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setWbDragging(true);
+  }, []);
+
+  // Workbench resize drag handling
+  useEffect(() => {
+    if (!wbDragging) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!outerRef.current) return;
+      const rect = outerRef.current.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const percent = ((rect.height - y) / rect.height) * 100;
+      if (wbCollapsed && percent > 5) setWbCollapsed(false);
+      setWbPercent(Math.min(100, Math.max(3, percent)));
+    };
+    const handleMouseUp = (e: MouseEvent) => {
+      if (outerRef.current) {
+        const rect = outerRef.current.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const pixelHeight = rect.height - y;
+        if (pixelHeight < 200) {
+          setWbCollapsed(true);
+          setWbPercent(40);
+        }
+      }
+      setWbDragging(false);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [wbDragging, wbCollapsed]);
 
   // Close new menu on outside click
   useEffect(() => {
@@ -304,7 +354,12 @@ export function DocsTab({ project }: DocsTabProps) {
   const selectedFile = mdFiles.find((f) => f.path === selectedPath);
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-deep">
+    <div ref={outerRef} className="flex-1 flex flex-col h-full overflow-hidden bg-surface-deep">
+      {/* Docs content area */}
+      <div
+        className="flex-1 min-h-0 overflow-hidden flex flex-col"
+        style={wbCollapsed ? undefined : { flexBasis: `${100 - wbPercent}%` }}
+      >
       {/* Toolbar */}
       <div className="h-10 flex-shrink-0 flex items-center justify-between px-3 border-b border-border-default bg-surface-base/80">
         <div className="flex items-center gap-2">
@@ -491,10 +546,10 @@ export function DocsTab({ project }: DocsTabProps) {
         <div
           onMouseDown={(e) => {
             e.preventDefault();
-            setIsDragging(true);
+            setIsSidebarDragging(true);
           }}
           className={`w-[5px] flex-shrink-0 cursor-col-resize transition-colors ${
-            isDragging ? 'bg-lazuli-dark' : 'bg-border-default hover:bg-border-hover'
+            isSidebarDragging ? 'bg-lazuli-dark' : 'bg-border-default hover:bg-border-hover'
           }`}
         />
 
@@ -536,8 +591,27 @@ export function DocsTab({ project }: DocsTabProps) {
         </div>
       </div>
 
-      {/* Drag overlay */}
-      {isDragging && <div className="fixed inset-0 z-50 cursor-col-resize" />}
+      {/* Sidebar drag overlay */}
+      {isSidebarDragging && <div className="fixed inset-0 z-50 cursor-col-resize" />}
+      </div>
+
+      <WorkbenchPanel
+        projectId={project.id}
+        projectPath={project.path}
+        scope="docs"
+        agentContext="project"
+        style={{ flexBasis: `${wbPercent}%` }}
+        collapsed={wbCollapsed}
+        onToggleCollapsed={toggleWbCollapsed}
+        onExpand={expandWb}
+        onResizeStart={handleWbResizeStart}
+        isDragging={wbDragging}
+        hidden={wbHidden}
+        onToggleHidden={() => setWbHidden(h => !h)}
+      />
+
+      {/* Workbench drag overlay */}
+      {wbDragging && <div className="fixed inset-0 z-50 cursor-grabbing" />}
     </div>
   );
 }

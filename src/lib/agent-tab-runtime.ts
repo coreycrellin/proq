@@ -441,10 +441,10 @@ export async function continueAgentTabSession(
     const imageFiles = attachments.filter((a) => a.filePath && a.type.startsWith("image/")).map((a) => a.filePath!);
     const otherFiles = attachments.filter((a) => a.filePath && !a.type.startsWith("image/")).map((a) => a.filePath!);
     if (imageFiles.length > 0) {
-      promptText += `\n\n## Attached Images\nThe following image files are attached to this message. Use your Read tool to view them:\n${imageFiles.map((f) => `- ${f}`).join("\n")}\n`;
+      promptText += `\n\nAttached images:\n${imageFiles.map((f) => `- ${f}`).join("\n")}\n`;
     }
     if (otherFiles.length > 0) {
-      promptText += `\n\n## Attached Files\nThe following files are attached to this message. Use your Read tool to view them:\n${otherFiles.map((f) => `- ${f}`).join("\n")}\n`;
+      promptText += `\n\nAttached files:\n${otherFiles.map((f) => `- ${f}`).join("\n")}\n`;
     }
   }
 

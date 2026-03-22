@@ -29,13 +29,19 @@ interface WorkbenchTabsContextValue {
 
 const WorkbenchTabsContext = createContext<WorkbenchTabsContextValue | null>(null);
 
-export type WorkbenchScope = 'project' | 'live';
+export type WorkbenchScope = 'project' | 'live' | 'docs';
 
 function defaultTabs(projectId: string, scope: WorkbenchScope = 'project'): WorkbenchTab[] {
   if (scope === 'live') {
     return [
       { id: `live-agent-${projectId}`, label: 'Agent', type: 'agent' },
       { id: `live-shell-${projectId}`, label: 'Terminal', type: 'shell' },
+    ];
+  }
+  if (scope === 'docs') {
+    return [
+      { id: `docs-agent-${projectId}`, label: 'Agent', type: 'agent' },
+      { id: `docs-shell-${projectId}`, label: 'Terminal', type: 'shell' },
     ];
   }
   return [
