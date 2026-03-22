@@ -264,6 +264,34 @@ function wireProcess(
     const task = await getTask(projectId, taskId);
     const stillInProgress = task?.status === "in-progress";
 
+    // Plan mode safety net: if a plan-mode task completed without calling
+    // ExitPlanMode (agent just output the plan as text), synthesize an
+    // ExitPlanMode block so the PlanApprovalBlock UI renders.
+    if (task?.mode === "plan" && !endedOnPlanExit && !endedOnQuestion) {
+      // Gather text blocks from the last turn as the plan content
+      const textParts: string[] = [];
+      for (let i = session.blocks.length - 1; i >= 0; i--) {
+        const b = session.blocks[i];
+        if (b.type === "text" && b.text) {
+          textParts.unshift(b.text);
+        } else if (b.type === "user" || (b.type === "status" && b.subtype === "init")) {
+          break;
+        }
+      }
+      if (textParts.length > 0) {
+        appendBlock(session, {
+          type: "tool_use",
+          toolId: `synthetic-plan-${Date.now()}`,
+          name: "ExitPlanMode",
+          input: { _planContent: textParts.join("\n\n") },
+        });
+        questionFields = {
+          nextSteps: "Agent has a plan ready for approval — review plan in chat window ←.",
+          summary: "Agent created a plan and is waiting for approval.",
+        };
+      }
+    }
+
     // Safety net: auto-commit any leftover uncommitted changes
     if (task && !endedOnQuestion && !endedOnPlanExit) {
       const effectivePath = task.worktreePath || await (async () => {
