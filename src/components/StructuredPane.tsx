@@ -329,15 +329,9 @@ export function StructuredPane({ taskId, projectId, visible, taskStatus, agentBl
     }
   }
 
-  // Check if agent is actively thinking (last non-status block has no result yet)
+  // Show thinking indicator whenever the agent is actively working
   const isRunning = !sessionDone;
-  const lastBlock = blocks.length > 0 ? blocks[blocks.length - 1] : null;
-  const isThinking = isRunning && !streamingText && blocks.length > 0 && (
-    (lastBlock?.type === 'status' && lastBlock.subtype === 'init') ||
-    (lastBlock?.type === 'tool_result') ||
-    (lastBlock?.type === 'text') ||
-    (lastBlock?.type === 'user')
-  );
+  const isThinking = isRunning && blocks.length > 0;
 
   // Group consecutive tool_use blocks of the same type into render items
   type RenderItem =
