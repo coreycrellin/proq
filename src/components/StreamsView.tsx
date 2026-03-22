@@ -223,7 +223,7 @@ function ResizableGrid({
                       onDrag={(delta) => handleColResize(colIdx - 1, delta)}
                     />
                   )}
-                  <div className="min-w-0 min-h-0 overflow-hidden" style={{ flex: colSizes[colIdx] }}>
+                  <div className="min-w-0 min-h-0 overflow-hidden relative" style={{ flex: colSizes[colIdx] }}>
                     {children[childIndex]}
                   </div>
                 </React.Fragment>

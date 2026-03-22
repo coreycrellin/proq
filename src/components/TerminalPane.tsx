@@ -27,6 +27,7 @@ export function useTerminal(
   cwd?: string,
 ) {
   const instanceRef = useRef<TerminalInstance | null>(null);
+  const [instanceReady, setInstanceReady] = useState(false);
 
   // Mount / unmount the terminal instance
   useEffect(() => {
@@ -124,6 +125,7 @@ export function useTerminal(
 
       instance = { terminal, ws, fitAddon };
       instanceRef.current = instance;
+      setInstanceReady(true);
     })();
 
     return () => {
@@ -133,6 +135,7 @@ export function useTerminal(
         try { instance.terminal.dispose(); } catch {}
       }
       instanceRef.current = null;
+      setInstanceReady(false);
     };
     // Only re-run if tabId changes (container ref is stable)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -163,7 +166,7 @@ export function useTerminal(
     const observer = new ResizeObserver(fit);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [visible, containerRef, tabId]);
+  }, [visible, containerRef, tabId, instanceReady]);
 
   /** Send raw data to the terminal's PTY (as if typed) */
   const sendData = useCallback((data: string) => {
