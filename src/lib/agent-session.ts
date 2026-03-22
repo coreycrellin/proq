@@ -740,11 +740,16 @@ function generateContextLabel(session: AgentRuntimeSession) {
     else if (b.type === "text") parts.unshift(`Assistant: ${b.text.slice(0, 200)}`);
     else if (b.type === "tool_use") parts.unshift(`Tool: ${b.name}(${JSON.stringify(b.input).slice(0, 100)})`);
   }
+  const fs = require("fs");
+  const logLine = (msg: string) => { try { fs.appendFileSync("/tmp/proq-context-label.log", `${new Date().toISOString()} ${msg}\n`); } catch {} };
+
   if (parts.length === 0) {
+    logLine(`${session.taskId.slice(0, 8)} — no parts found, skipping`);
     console.log(`[context-label] ${session.taskId.slice(0, 8)} — no parts found, skipping`);
     return;
   }
 
+  logLine(`${session.taskId.slice(0, 8)} — generating from ${parts.length} parts: ${JSON.stringify(parts)}`);
   console.log(`[context-label] ${session.taskId.slice(0, 8)} — generating from ${parts.length} parts:`, parts);
 
   const prompt = [
@@ -758,6 +763,7 @@ function generateContextLabel(session: AgentRuntimeSession) {
 
   claudeOneShot(prompt).then(async (raw) => {
     const title = raw.trim().split("\n")[0].replace(/^["']|["']$/g, "").replace(/\.+$/, "");
+    logLine(`${session.taskId.slice(0, 8)} — haiku returned: "${title}"`);
     console.log(`[context-label] ${session.taskId.slice(0, 8)} — haiku returned: "${title}"`);
     if (!title) return;
 
@@ -778,11 +784,14 @@ function generateContextLabel(session: AgentRuntimeSession) {
       }
       await updateTask(session.projectId, session.taskId, updates);
       emitTaskUpdate(session.projectId, session.taskId, updates);
+      logLine(`${session.taskId.slice(0, 8)} — title updated to: "${title}"`);
       console.log(`[context-label] ${session.taskId.slice(0, 8)} — title updated to: "${title}"`);
     } catch (err) {
+      logLine(`${session.taskId.slice(0, 8)} — DB update failed: ${err}`);
       console.error(`[context-label] ${session.taskId.slice(0, 8)} — DB update failed:`, err);
     }
   }).catch((err) => {
+    logLine(`${session.taskId.slice(0, 8)} — claudeOneShot failed: ${err}`);
     console.error(`[context-label] ${session.taskId.slice(0, 8)} — claudeOneShot failed:`, err);
   });
 }
