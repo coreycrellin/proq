@@ -86,6 +86,7 @@ export function TaskAgentModal({ task, projectId, isQueued, cleanupExpiresAt, fo
             const isQ = isQueued || task.agentStatus === 'queued';
             if (isQ) return <ClockIcon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />;
             if (isDispatched) return <Loader2Icon className="w-3.5 h-3.5 text-bronze-500 animate-spin shrink-0" />;
+            if (task.agentStatus === 'idle') return <span className="w-2.5 h-2.5 rounded-full bg-bronze-500/60 shrink-0" />;
             if (task.status === 'verify') return <ClockIcon className="w-3.5 h-3.5 text-lazuli shrink-0" />;
             if (task.status === 'done') return <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald shrink-0" />;
             return null;

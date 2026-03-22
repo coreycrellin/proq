@@ -43,6 +43,7 @@ function getStreamTasks(columns: TaskColumns, focusTaskId?: string | null): Task
       // Focused todo task sorts first
       t.id === focusTaskId && t.status === 'todo' ? -1
       : t.agentStatus === 'running' ? 0
+      : t.agentStatus === 'idle' ? 0.5
       : t.agentStatus === 'starting' ? 1
       : t.agentStatus === 'queued' ? 2
       : t.status === 'verify' ? 3
@@ -57,6 +58,14 @@ function statusBadge(task: Task) {
       <span className="flex items-center gap-1 text-xs text-blue-400">
         <Loader2Icon className="w-3 h-3 animate-spin" />
         Running
+      </span>
+    );
+  }
+  if (task.agentStatus === 'idle') {
+    return (
+      <span className="flex items-center gap-1 text-xs text-blue-400/70">
+        <span className="w-2 h-2 rounded-full bg-blue-400/60 inline-block" />
+        Idle
       </span>
     );
   }
@@ -686,7 +695,7 @@ export function MobileStreamView({ tasks, projectId, onTaskCreated, focusTaskId,
                     visible={i === currentIndex}
                     taskStatus={task.status}
                     agentBlocks={
-                      !(task.agentStatus === 'running' || task.agentStatus === 'starting') && task.status === 'done' && task.agentBlocks
+                      !(task.agentStatus === 'running' || task.agentStatus === 'starting' || task.agentStatus === 'idle') && task.status === 'done' && task.agentBlocks
                         ? task.agentBlocks
                         : undefined
                     }

@@ -520,7 +520,7 @@ export async function getInitialAgentStatus(
   const hasActive = columns["in-progress"].some(
     (t) =>
       t.id !== excludeTaskId &&
-      (t.agentStatus === "starting" || t.agentStatus === "running"),
+      (t.agentStatus === "starting" || t.agentStatus === "running" || t.agentStatus === "idle"),
   );
   return hasActive ? "queued" : "starting";
 }
@@ -546,7 +546,7 @@ export async function processQueue(projectId: string): Promise<void> {
       (t) => t.agentStatus === "queued" || t.agentStatus === "starting",
     );
 
-    const running = inProgress.filter((t) => t.agentStatus === "running");
+    const running = inProgress.filter((t) => t.agentStatus === "running" || t.agentStatus === "idle");
 
     console.log(
       `[processQueue] ${projectId}: mode=${mode} running=${running.length} pending=${pending.length}`,

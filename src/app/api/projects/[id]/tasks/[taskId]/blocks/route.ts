@@ -38,7 +38,7 @@ export async function GET(request: Request, { params }: Params) {
 
   const allBlocks = task.agentBlocks || [];
   const blocks = after > 0 ? allBlocks.slice(after) : allBlocks;
-  const isRunning = task.agentStatus === "running" || task.agentStatus === "starting";
+  const isRunning = task.agentStatus === "running" || task.agentStatus === "starting" || task.agentStatus === "idle";
 
   return NextResponse.json({
     blocks,

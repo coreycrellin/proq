@@ -45,7 +45,7 @@ function startDbPolling(
       }
 
       // Stop polling when task is no longer running
-      if (task.agentStatus !== "running" && task.agentStatus !== "starting") {
+      if (task.agentStatus !== "running" && task.agentStatus !== "starting" && task.agentStatus !== "idle") {
         clearInterval(interval);
       }
     } catch {
@@ -73,7 +73,7 @@ export async function attachAgentWsWithProject(
     // Load from separate agent-blocks file, fall back to task DB
     const blocks = await getTaskAgentBlocks(taskId);
     const task = await getTask(projectId, taskId);
-    const isActive = task?.agentStatus === "running" || task?.agentStatus === "starting";
+    const isActive = task?.agentStatus === "running" || task?.agentStatus === "starting" || task?.agentStatus === "idle";
 
     if (blocks.length > 0) {
       ws.send(JSON.stringify({ type: "replay", blocks, done: !isActive }));

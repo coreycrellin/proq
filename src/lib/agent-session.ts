@@ -52,6 +52,8 @@ export interface AgentRuntimeSession {
    * by Haiku after each turn. Displayed near the input in the chat UI.
    */
   contextLabel?: string;
+  /** Tracks last emitted agentStatus to avoid redundant updates */
+  _lastAgentStatus?: "running" | "idle";
 }
 
 // ── Singleton attached to globalThis to survive HMR ──
@@ -356,6 +358,7 @@ export async function startSession(
     status: "running",
     assistantBlocksProcessed: 0,
     contentToBlockIdx: new Map(),
+    _lastAgentStatus: "running",
   };
   sessions.set(taskId, session);
 
@@ -478,6 +481,12 @@ function processStreamEvent(
     }
   } else if (type === "assistant") {
     session.sessionId = event.session_id as string | undefined;
+    // Agent started processing — mark as running (transitions from idle back to running)
+    if (session._lastAgentStatus !== "running") {
+      session._lastAgentStatus = "running";
+      emitTaskUpdate(session.projectId, session.taskId, { agentStatus: "running" });
+      updateTask(session.projectId, session.taskId, { agentStatus: "running" }).catch(() => {});
+    }
     const message = event.message as { content?: unknown[] } | undefined;
     const content = message?.content;
     if (Array.isArray(content)) {
@@ -624,6 +633,12 @@ function processStreamEvent(
     session.assistantBlocksProcessed = 0;
     if (session.contentToBlockIdx) session.contentToBlockIdx.clear();
     session.sessionId = event.session_id as string | undefined;
+    // Agent finished its turn — mark as idle (process still alive, but not actively processing)
+    if (session._lastAgentStatus !== "idle") {
+      session._lastAgentStatus = "idle";
+      emitTaskUpdate(session.projectId, session.taskId, { agentStatus: "idle" });
+      updateTask(session.projectId, session.taskId, { agentStatus: "idle" }).catch(() => {});
+    }
     const isError = event.is_error as boolean | undefined;
     const costUsd = event.total_cost_usd as number | undefined;
     const resultText = event.result as string | undefined;
@@ -740,6 +755,7 @@ export async function continueSession(
       status: "done",
       assistantBlocksProcessed: 0,
       contentToBlockIdx: new Map(),
+      _lastAgentStatus: "running",
     };
     sessions.set(taskId, session);
   } else {
@@ -781,6 +797,7 @@ export async function continueSession(
 
   const settings = await getSettings();
   session.status = "running";
+  session._lastAgentStatus = "running";
   // Reset the partial-message dedup counter and content mapping — the new
   // CLI process starts fresh, so its first assistant event has content from index 0.
   session.assistantBlocksProcessed = 0;

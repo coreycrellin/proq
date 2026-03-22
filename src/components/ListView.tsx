@@ -148,6 +148,7 @@ function SortableListRow({
 
   const isRunning = task.agentStatus === 'running';
   const isStarting = task.agentStatus === 'starting';
+  const isIdle = task.agentStatus === 'idle';
   const isQueued = task.agentStatus === 'queued';
 
   return (
@@ -206,7 +207,7 @@ function SortableListRow({
 
         {/* Footer: status + agent indicator + task ID */}
         <div className="flex items-center mt-2">
-          {isPreviewActive && !isRunning && !isStarting && !isQueued ? (
+          {isPreviewActive && !isRunning && !isStarting && !isIdle && !isQueued ? (
             <div className="flex items-center gap-1.5">
               <EyeIcon className="w-3 h-3 text-lazuli" />
               <span className="text-[10px] text-lazuli font-medium uppercase tracking-wide">Previewing</span>
@@ -220,6 +221,11 @@ function SortableListRow({
             <div className="flex items-center gap-1.5">
               <Loader2Icon className="w-3 h-3 text-bronze-500 animate-spin" />
               <span className="text-[10px] text-bronze-500 font-medium uppercase tracking-wide">Agent working</span>
+            </div>
+          ) : isIdle ? (
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-bronze-500/60" />
+              <span className="text-[10px] text-bronze-500/70 font-medium uppercase tracking-wide">Agent idle</span>
             </div>
           ) : isStarting ? (
             <div className="flex items-center gap-1.5">

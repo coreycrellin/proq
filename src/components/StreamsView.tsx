@@ -64,6 +64,7 @@ function getStreamTasks(
     .sort((a, b) => {
       const score = (t: Task) =>
         t.agentStatus === 'running' ? 0
+        : t.agentStatus === 'idle' ? 0.5
         : t.agentStatus === 'starting' ? 1
         : t.agentStatus === 'queued' ? 2
         : t.status === 'verify' ? 3
@@ -238,6 +239,9 @@ function ResizableGrid({
 function statusIcon(task: Task): React.ReactNode {
   if (task.agentStatus === 'running' || task.agentStatus === 'starting') {
     return <Loader2Icon className="w-3 h-3 text-blue-400 animate-spin" />;
+  }
+  if (task.agentStatus === 'idle') {
+    return <span className="w-2 h-2 rounded-full bg-blue-400/60 inline-block" />;
   }
   if (task.agentStatus === 'queued') {
     return <ClockIcon className="w-3 h-3 text-amber-400" />;
@@ -991,7 +995,7 @@ function StreamCellFull({
     }
   };
 
-  const isLive = task.agentStatus === 'running' || task.agentStatus === 'starting';
+  const isLive = task.agentStatus === 'running' || task.agentStatus === 'starting' || task.agentStatus === 'idle';
   const isStructured = task.renderMode !== 'cli';
   const terminalTabId = `task-${task.id.slice(0, 8)}`;
   // Only use static blocks for "done" tasks — verify tasks need a live WS connection for follow-ups
@@ -1109,7 +1113,7 @@ function StreamCellFull({
           />
         </div>
       ) : (
-        <div className="flex-1 min-h-0 relative">
+        <div className="flex-1 min-h-0 relative" onDrop={(e) => e.stopPropagation()}>
           <TerminalPane tabId={terminalTabId} visible={true} enableDrop />
         </div>
       )}

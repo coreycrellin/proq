@@ -663,7 +663,7 @@ export function cleanupStaleAgentTasks(): void {
         const tasks = data.tasks[status];
         if (!tasks) continue;
         for (const task of tasks) {
-          if (task.agentStatus === "running" || task.agentStatus === "starting") {
+          if (task.agentStatus === "running" || task.agentStatus === "starting" || task.agentStatus === "idle") {
             task.agentStatus = null as unknown as Task["agentStatus"];
             cleaned++;
             projectDirty = true;

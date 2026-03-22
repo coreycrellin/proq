@@ -29,7 +29,9 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, colum
   const steps = parseLines(task.humanSteps);
   const isRunning = task.agentStatus === 'running';
   const isStarting = task.agentStatus === 'starting';
+  const isIdle = task.agentStatus === 'idle';
   const isActive = isRunning || isStarting;
+  const isDispatched = isActive || isIdle;
   const canEditTitle = !!onUpdateTitle;
 
   // Track summary changes to trigger flash animation
@@ -77,6 +79,8 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, colum
           ? 'border-lazuli/50 shadow-[0_0_12px_rgba(91,131,176,0.15)]'
           : isRunning
           ? 'border-bronze-500/40 shadow-[0_0_12px_rgba(228,189,137,0.15)] animate-pulse-subtle'
+          : isIdle
+          ? 'border-bronze-500/20'
           : isQueued || isStarting
           ? 'border-zinc-500/30'
           : 'border-border-default'}
@@ -172,7 +176,7 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, colum
         )}
 
         <div className="flex items-center justify-between mt-3 pt-2 border-t border-border-subtle/60">
-          {isPreviewActive && !isActive && !isQueued ? (
+          {isPreviewActive && !isDispatched && !isQueued ? (
             <div className="flex items-center gap-1.5">
               <EyeIcon className="w-3 h-3 text-lazuli" />
               <span className="text-[10px] text-lazuli font-medium uppercase tracking-wide">
@@ -191,6 +195,13 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, colum
               <Loader2Icon className="w-3 h-3 text-bronze-500 animate-spin" />
               <span className="text-[10px] text-bronze-500 font-medium uppercase tracking-wide">
                 Agent working
+              </span>
+            </div>
+          ) : isIdle ? (
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-bronze-500/60" />
+              <span className="text-[10px] text-bronze-500/70 font-medium uppercase tracking-wide">
+                Agent idle
               </span>
             </div>
           ) : isStarting ? (
