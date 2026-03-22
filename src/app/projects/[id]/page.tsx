@@ -18,6 +18,7 @@ import { ExecutionModeInfoModal } from '@/components/ExecutionModeInfoModal';
 import { AlertModal } from '@/components/Modal';
 import { ProjectSettingsModal } from '@/components/ProjectSettingsModal';
 import { CommitModal } from '@/components/CommitModal';
+import { CommandPalette, useCommands } from '@/components/CommandPalette';
 import { useProjects } from '@/components/ProjectsProvider';
 import { emptyTasks } from '@/components/ProjectsProvider';
 import type { Task, TaskStatus, TaskColumns, ExecutionMode, FollowUpDraft, TaskAttachment, ViewType } from '@/lib/types';
@@ -55,6 +56,7 @@ export default function ProjectPage() {
   const [gitStatus, setGitStatus] = useState<GitStatus>({ hasGit: true, hasRemote: false, ahead: 0, behind: 0, dirty: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const followUpDraftsRef = useRef<Map<string, FollowUpDraft>>(new Map());
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [boardDragOver, setBoardDragOver] = useState(false);
   const boardDragCounter = useRef(0);
   const kanbanDraggingRef = useRef(false);
