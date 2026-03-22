@@ -740,7 +740,12 @@ function generateContextLabel(session: AgentRuntimeSession) {
     else if (b.type === "text") parts.unshift(`Assistant: ${b.text.slice(0, 200)}`);
     else if (b.type === "tool_use") parts.unshift(`Tool: ${b.name}(${JSON.stringify(b.input).slice(0, 100)})`);
   }
-  if (parts.length === 0) return;
+  if (parts.length === 0) {
+    console.log(`[context-label] ${session.taskId.slice(0, 8)} — no parts found, skipping`);
+    return;
+  }
+
+  console.log(`[context-label] ${session.taskId.slice(0, 8)} — generating from ${parts.length} parts:`, parts);
 
   const prompt = [
     "Based on this conversation, generate a very short title (3-8 words, title case) describing what is currently being worked on.",
@@ -753,6 +758,7 @@ function generateContextLabel(session: AgentRuntimeSession) {
 
   claudeOneShot(prompt).then(async (raw) => {
     const title = raw.trim().split("\n")[0].replace(/^["']|["']$/g, "").replace(/\.+$/, "");
+    console.log(`[context-label] ${session.taskId.slice(0, 8)} — haiku returned: "${title}"`);
     if (!title) return;
 
     // kebab-case version for contextLabel (used near chat input)
@@ -772,11 +778,12 @@ function generateContextLabel(session: AgentRuntimeSession) {
       }
       await updateTask(session.projectId, session.taskId, updates);
       emitTaskUpdate(session.projectId, session.taskId, updates);
-    } catch {
-      // Non-critical — don't break the session
+      console.log(`[context-label] ${session.taskId.slice(0, 8)} — title updated to: "${title}"`);
+    } catch (err) {
+      console.error(`[context-label] ${session.taskId.slice(0, 8)} — DB update failed:`, err);
     }
-  }).catch(() => {
-    // Non-critical — don't break the session
+  }).catch((err) => {
+    console.error(`[context-label] ${session.taskId.slice(0, 8)} — claudeOneShot failed:`, err);
   });
 }
 
