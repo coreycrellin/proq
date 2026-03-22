@@ -700,6 +700,7 @@ function processStreamEvent(
 /**
  * Generate a short context label describing what Claude is working on.
  * Uses Haiku for speed/cost. Updates on each turn so the label stays current.
+ * Also updates the task title in the DB so kanban cards reflect current focus.
  */
 function generateContextLabel(session: AgentRuntimeSession) {
   // Gather recent user prompts and text blocks for context
@@ -712,18 +713,37 @@ function generateContextLabel(session: AgentRuntimeSession) {
   if (parts.length === 0) return;
 
   const prompt = [
-    "Based on this conversation, generate a very short label (2-5 words, lowercase, kebab-case) describing what is being worked on.",
-    "Examples: fix-login-css, add-dark-mode, refactor-api-routes, update-photo-gallery, debug-auth-flow",
-    "Just output the label, nothing else.",
+    "Based on this conversation, generate a very short title (3-8 words, title case) describing what is currently being worked on.",
+    "Focus on the MOST RECENT direction — if the user changed course, reflect the new focus.",
+    "Examples: Fix Login Page CSS, Add Dark Mode Toggle, Refactor API Routes, Debug Auth Flow",
+    "Just output the title, nothing else. No quotes, no punctuation at the end.",
     "",
     parts.join("\n"),
   ].join("\n");
 
-  claudeOneShot(prompt).then((raw) => {
-    const label = raw.trim().split("\n")[0].toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
+  claudeOneShot(prompt).then(async (raw) => {
+    const title = raw.trim().split("\n")[0].replace(/^["']|["']$/g, "").replace(/\.+$/, "");
+    if (!title) return;
+
+    // kebab-case version for contextLabel (used near chat input)
+    const label = title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
     if (label) {
       session.contextLabel = label;
       broadcast(session, { type: "context_label", label });
+    }
+
+    // Update task title in DB so kanban cards show current focus
+    try {
+      // Preserve original title on first update
+      const task = await getTask(session.projectId, session.taskId);
+      const updates: Record<string, string> = { title };
+      if (task && !task.originalTitle && task.title) {
+        updates.originalTitle = task.title;
+      }
+      await updateTask(session.projectId, session.taskId, updates);
+      emitTaskUpdate(session.projectId, session.taskId, updates);
+    } catch {
+      // Non-critical — don't break the session
     }
   }).catch(() => {
     // Non-critical — don't break the session

@@ -74,6 +74,7 @@ export interface FollowUpDraft {
 export interface Task {
   id: string;
   title?: string;
+  originalTitle?: string;
   description: string;
   status: TaskStatus;
   priority?: 'low' | 'medium' | 'high';

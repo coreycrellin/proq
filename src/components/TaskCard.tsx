@@ -151,6 +151,12 @@ export function TaskCard({ task, isDragOverlay, isQueued, isPreviewActive, colum
           </div>
         </div>
 
+        {task.originalTitle && task.originalTitle !== task.title && (
+          <p className="text-[10px] text-text-chrome leading-snug mt-0.5 line-clamp-1">
+            {task.originalTitle}
+          </p>
+        )}
+
         {task.title && task.description && (
           <p className="text-xs text-text-tertiary leading-relaxed mt-2 line-clamp-2">
             {task.description}
