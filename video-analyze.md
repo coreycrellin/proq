@@ -1,6 +1,6 @@
 # Video Analysis Instructions for Claude Code
 
-When given a video file path, follow these steps to extract visual frames and audio transcript, align them, and produce a structured manifest that you can use for Q&A.
+When given a video file path OR a YouTube URL, follow these steps to extract visual frames and audio transcript, align them, and produce a structured manifest that you can use for Q&A.
 
 ## Prerequisites
 
@@ -11,6 +11,37 @@ which ffmpeg && which ffprobe && python3 -c "import whisper; print('whisper OK')
 ```
 
 If whisper is missing: `pip install openai-whisper`
+
+Check for yt-dlp (only needed for YouTube URLs):
+```bash
+which yt-dlp
+```
+If missing: `pip install yt-dlp`
+
+## Step 0: Download (YouTube URLs only)
+
+If the input is a YouTube URL (contains `youtube.com` or `youtu.be`), download it first. Skip this step for local files.
+
+```bash
+OUTDIR="./video_analysis"
+mkdir -p "$OUTDIR"
+
+# Download best quality video+audio, merge to mp4
+yt-dlp -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
+  --merge-output-format mp4 \
+  -o "$OUTDIR/source.%(ext)s" \
+  "YOUTUBE_URL"
+
+VIDEO_PATH="$OUTDIR/source.mp4"
+```
+
+If you only need the audio (podcast, lecture, music — no meaningful visuals):
+```bash
+yt-dlp -x --audio-format wav -o "$OUTDIR/audio.%(ext)s" "YOUTUBE_URL"
+# Then skip to Step 3 (transcription) using $OUTDIR/audio.wav directly
+```
+
+After downloading, continue with Step 1 using `VIDEO_PATH="$OUTDIR/source.mp4"`.
 
 ## Configuration
 
