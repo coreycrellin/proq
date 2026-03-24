@@ -72,29 +72,29 @@ function formatSize(bytes: number): string {
 
 function MessageContent({ text }: { text: string }) {
   return (
-    <div className="prose-chat text-sm leading-relaxed text-text-secondary">
+    <div className="text-sm leading-relaxed text-text-secondary py-2 px-1">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+          p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
           strong: ({ children }) => <strong className="font-semibold text-text-primary">{children}</strong>,
           em: ({ children }) => <em className="text-text-secondary">{children}</em>,
           code: ({ children, className }) => {
             const isBlock = className?.includes('language-');
             if (isBlock) {
-              return <code className={`${className} block bg-surface-base rounded px-3 py-2 text-[12px] font-mono text-text-secondary overflow-x-auto my-2`}>{children}</code>;
+              return <code className={`${className} block bg-surface-deep rounded px-3 py-2 text-[12px] font-mono text-text-secondary overflow-x-auto my-2`}>{children}</code>;
             }
             return <code className="bg-surface-primary/70 text-text-secondary rounded px-1 py-0.5 text-[12px] font-mono">{children}</code>;
           },
-          pre: ({ children }) => <pre className="bg-surface-base rounded-md overflow-x-auto my-2">{children}</pre>,
-          ul: ({ children }) => <ul className="list-disc pl-5 mb-2 space-y-0.5">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 space-y-0.5">{children}</ol>,
+          pre: ({ children }) => <pre className="bg-surface-deep rounded-md overflow-x-auto my-2">{children}</pre>,
+          ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1">{children}</ol>,
           li: ({ children }) => <li className="text-text-secondary">{children}</li>,
-          a: ({ href, children }) => <a href={href} className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
-          blockquote: ({ children }) => <blockquote className="border-l-2 border-border-default pl-3 text-text-secondary italic my-2">{children}</blockquote>,
-          h1: ({ children }) => <h1 className="text-base font-semibold text-text-primary mb-1">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-sm font-semibold text-text-primary mb-1">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-sm font-semibold text-text-secondary mb-1">{children}</h3>,
+          a: ({ href, children }) => <a href={href} className="text-lazuli hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+          blockquote: ({ children }) => <blockquote className="border-l-2 border-border-strong pl-3 text-text-secondary italic my-2">{children}</blockquote>,
+          h1: ({ children }) => <h1 className="text-base font-semibold text-text-primary mt-4 mb-2 first:mt-0">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-sm font-semibold text-text-primary mt-3 mb-1.5 first:mt-0">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-sm font-semibold text-text-secondary mt-2.5 mb-1 first:mt-0">{children}</h3>,
         }}
       >
         {text}
@@ -106,18 +106,18 @@ function MessageContent({ text }: { text: string }) {
 function AttachmentPreview({ attachments }: { attachments: TaskAttachment[] }) {
   if (!attachments || attachments.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-1.5 mt-2">
+    <div className="flex flex-wrap gap-1.5 mt-1.5 ml-4">
       {attachments.map((att) => {
         const url = att.filePath ? attachmentUrl(att.filePath) : undefined;
         const isImage = att.type?.startsWith('image/') && url;
         return isImage ? (
-          <div key={att.id} className="rounded overflow-hidden border border-zinc-700/50 bg-zinc-800/60">
+          <div key={att.id} className="rounded overflow-hidden border border-border-strong/50 bg-surface-hover/60">
             <img src={url} alt={att.name} className="h-16 w-auto max-w-[100px] object-cover block" />
           </div>
         ) : (
-          <div key={att.id} className="flex items-center gap-1.5 bg-zinc-800/60 border border-zinc-700/50 rounded px-2 py-1.5">
-            <FileIcon className="w-3 h-3 text-zinc-500 shrink-0" />
-            <span className="text-[10px] text-zinc-400 truncate max-w-[100px]">{att.name}</span>
+          <div key={att.id} className="flex items-center gap-1.5 bg-surface-hover/60 border border-border-strong/50 rounded px-2 py-1">
+            <FileIcon className="w-3 h-3 text-text-tertiary shrink-0" />
+            <span className="text-[10px] text-text-secondary truncate max-w-[100px]">{att.name}</span>
           </div>
         );
       })}
@@ -225,10 +225,10 @@ export function ChatPanel({ messages, onSendMessage, style, streamingMessage, is
               </div>
             ) : (
               <div className="flex items-baseline gap-2">
-                <div className="inline-flex flex-col bg-surface-topbar rounded px-2.5 py-1">
+                <div className="inline-flex flex-col bg-surface-hover/60 rounded px-2.5 py-1.5">
                   <div className="flex items-baseline gap-2">
                     <span className="text-xs font-bold text-text-chrome shrink-0">{'\u276F'}</span>
-                    <p className="text-sm leading-relaxed text-text-primary">{msg.message}</p>
+                    <p className="text-sm leading-relaxed text-text-primary whitespace-pre-wrap">{msg.message}</p>
                   </div>
                   {msg.attachments && msg.attachments.length > 0 && (
                     <AttachmentPreview attachments={msg.attachments} />
