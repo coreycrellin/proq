@@ -1,5 +1,5 @@
 // ── Project ──────────────────────────────────────────────
-export type ProjectTab = 'project' | 'live' | 'code' | 'docs';
+export type ProjectTab = 'project' | 'live' | 'code' | 'docs' | 'cymatic';
 export type ViewType = 'kanban' | 'list' | 'streams' | 'grid';
 
 export interface Project {

@@ -11,6 +11,7 @@ import WorkbenchPanel from '@/components/WorkbenchPanel';
 import { LiveTab } from '@/components/LiveTab';
 import { CodeTab } from '@/components/CodeTab';
 import { DocsTab } from '@/components/DocsTab';
+import CymaticTab from '@/components/CymaticTab';
 import { TaskDraft } from '@/components/TaskDraft';
 import { TaskAgentModal } from '@/components/TaskAgentModal';
 import { UndoModal } from '@/components/UndoModal';
@@ -348,7 +349,7 @@ export default function ProjectPage() {
 
   // Cmd+Option+Left/Right to navigate between tabs
   useEffect(() => {
-    const tabOrder: TabOption[] = ['project', 'live', 'code', 'docs'];
+    const tabOrder: TabOption[] = ['project', 'live', 'code', 'docs', 'cymatic'];
     const handleTabNav = (e: KeyboardEvent) => {
       if (!e.metaKey || !e.altKey) return;
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -1131,6 +1132,7 @@ export default function ProjectPage() {
         )}
         {activeTab === 'code' && project && <CodeTab project={project} />}
         {activeTab === 'docs' && project && <DocsTab project={project} />}
+        {activeTab === 'cymatic' && <CymaticTab />}
       </main>
 
       {(isDragging || liveIsDragging) && <div className="fixed inset-0 z-50 cursor-grabbing" />}
